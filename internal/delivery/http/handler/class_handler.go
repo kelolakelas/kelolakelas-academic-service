@@ -21,6 +21,21 @@ func NewClassHandler(classUsecase usecase.ClassUsecase) *ClassHandler {
 	}
 }
 
+// Create godoc
+// @Summary Create academic class
+// @Description Create a new class within a category for a tenant
+// @Tags Classes
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param X-Tenant-ID header string true "Tenant ID dalam format UUID"
+// @Param request body domain.CreateClassRequest true "Create class payload"
+// @Success 201 {object} domain.HTTPResponse{data=domain.ClassResponse}
+// @Failure 400 {object} domain.ErrorResponse
+// @Failure 401 {object} domain.ErrorResponse
+// @Failure 403 {object} domain.ErrorResponse
+// @Failure 500 {object} domain.ErrorResponse
+// @Router /api/v1/classes [post]
 func (h *ClassHandler) Create(c *gin.Context) {
 	tenantIDStr := c.GetString("tenant_id")
 	if tenantIDStr == "" {

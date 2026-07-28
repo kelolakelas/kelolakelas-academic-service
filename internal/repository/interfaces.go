@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"time"
 
 	"github.com/google/uuid"
 
@@ -29,9 +30,25 @@ type ClassTeacherRepository interface {
 
 type ClassScheduleRepository interface {
 	Create(ctx context.Context, schedule *domain.ClassSchedule) error
+	BatchCreate(ctx context.Context, schedules []*domain.ClassSchedule) error
 	GetByID(ctx context.Context, id uuid.UUID) (*domain.ClassSchedule, error)
 	Update(ctx context.Context, schedule *domain.ClassSchedule) error
 	Delete(ctx context.Context, id uuid.UUID) error
+}
+
+type ScheduleRepository = ClassScheduleRepository
+
+type SessionRepository interface {
+	Create(ctx context.Context, session *domain.ClassSession) error
+	BatchCreate(ctx context.Context, sessions []*domain.ClassSession) error
+	GetByID(ctx context.Context, id uuid.UUID) (*domain.ClassSession, error)
+	Update(ctx context.Context, session *domain.ClassSession) error
+	DeleteFutureSessionsBySchedule(ctx context.Context, scheduleID uuid.UUID, fromDate time.Time) error
+	UpdateFutureSessionsTutor(ctx context.Context, scheduleID uuid.UUID, newTutorID uuid.UUID, newScheduleID uuid.UUID, fromDate time.Time) error
+}
+
+type TransactionManager interface {
+	WithTransaction(ctx context.Context, fn func(ctx context.Context) error) error
 }
 
 type StudentRepository interface {
@@ -51,6 +68,7 @@ type StudentNoteRepository interface {
 type EnrollmentRepository interface {
 	Create(ctx context.Context, enrollment *domain.Enrollment) error
 	GetByID(ctx context.Context, id uuid.UUID) (*domain.Enrollment, error)
+	GetActiveByClassID(ctx context.Context, classID uuid.UUID) ([]*domain.Enrollment, error)
 	Update(ctx context.Context, enrollment *domain.Enrollment) error
 	Delete(ctx context.Context, id uuid.UUID) error
 }

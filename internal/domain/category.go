@@ -8,6 +8,18 @@ import (
 	"gorm.io/gorm"
 )
 
+type HTTPResponse struct {
+	Status  string      `json:"status" example:"success"`
+	Message string      `json:"message" example:"Operation completed successfully"`
+	Data    interface{} `json:"data,omitempty"`
+}
+
+type ErrorResponse struct {
+	Status  string      `json:"status" example:"error"`
+	Message string      `json:"message" example:"An error occurred"`
+	Data    interface{} `json:"data,omitempty"`
+}
+
 type Category struct {
 	ID          uuid.UUID        `gorm:"type:uuid;primaryKey;default:gen_random_uuid()" json:"id"`
 	TenantID    uuid.UUID        `gorm:"type:uuid;not null;index" json:"tenant_id"`

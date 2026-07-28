@@ -21,6 +21,21 @@ func NewCategoryHandler(categoryUsecase usecase.CategoryUsecase) *CategoryHandle
 	}
 }
 
+// Create godoc
+// @Summary Create academic category
+// @Description Create a new subject/course category for a tenant
+// @Tags Categories
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param X-Tenant-ID header string true "Tenant ID dalam format UUID"
+// @Param request body domain.CreateCategoryRequest true "Create category payload"
+// @Success 201 {object} domain.HTTPResponse{data=domain.CategoryResponse}
+// @Failure 400 {object} domain.ErrorResponse
+// @Failure 401 {object} domain.ErrorResponse
+// @Failure 403 {object} domain.ErrorResponse
+// @Failure 500 {object} domain.ErrorResponse
+// @Router /api/v1/categories [post]
 func (h *CategoryHandler) Create(c *gin.Context) {
 	tenantIDStr := c.GetString("tenant_id")
 	if tenantIDStr == "" {

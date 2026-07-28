@@ -32,3 +32,23 @@ type AcademicUsecase interface {
 	CreateReport(ctx context.Context, report *domain.Report) error
 	GetReportByID(ctx context.Context, id uuid.UUID) (*domain.Report, error)
 }
+
+type ScheduleUsecase interface {
+	// Scenario 1: Create Initial Schedules for an Existing Class
+	CreateInitialSchedules(ctx context.Context, req *domain.CreateInitialSchedulesRequest) (*domain.CreateInitialSchedulesResponse, error)
+
+	// Scenario 2: Temporary Schedule Change (One-off Reschedule / Make-up Class)
+	RescheduleSession(ctx context.Context, req *domain.RescheduleSessionRequest) (*domain.RescheduleSessionResponse, error)
+
+	// Scenario 3: Permanent Schedule Change
+	ChangeSchedulePermanent(ctx context.Context, req *domain.PermanentScheduleChangeRequest) (*domain.PermanentScheduleChangeResponse, error)
+
+	// Scenario 4: Temporary Tutor Change (Substitute Teacher)
+	ChangeTutorTemporary(ctx context.Context, req *domain.SubstituteTutorRequest) (*domain.SubstituteTutorResponse, error)
+
+	// Scenario 5: Permanent Tutor Change
+	ChangeTutorPermanent(ctx context.Context, req *domain.PermanentTutorChangeRequest) (*domain.PermanentTutorChangeResponse, error)
+
+	// Attendance/Session Read Logic
+	GetSessionAttendees(ctx context.Context, sessionID uuid.UUID) ([]*domain.Enrollment, error)
+}

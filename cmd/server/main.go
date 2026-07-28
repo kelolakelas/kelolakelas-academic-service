@@ -40,6 +40,10 @@ func main() {
 	if err := db.AutoMigrate(
 		&domain.Category{},
 		&domain.Class{},
+		&domain.Student{},
+		&domain.Enrollment{},
+		&domain.ClassSchedule{},
+		&domain.ClassSession{},
 	); err != nil {
 		slog.Error("Auto-migration failed", "error", err)
 		os.Exit(1)
@@ -54,16 +58,22 @@ func main() {
 	defer tenantClient.Close()
 
 	// Initialize Repositories
+	txManager := repository.NewTransactionManager(db)
 	categoryRepo := repository.NewCategoryRepository(db)
 	classRepo := repository.NewClassRepository(db)
+	scheduleRepo := repository.NewScheduleRepository(db)
+	sessionRepo := repository.NewSessionRepository(db)
+	enrollmentRepo := repository.NewEnrollmentRepository(db)
 
 	// Initialize Usecases
 	categoryUsecase := usecase.NewCategoryUsecase(categoryRepo, tenantClient)
 	classUsecase := usecase.NewClassUsecase(classRepo, tenantClient)
+	scheduleUsecase := usecase.NewScheduleUsecase(txManager, classRepo, scheduleRepo, sessionRepo, enrollmentRepo)
 
 	// Initialize Handlers
 	categoryHandler := handler.NewCategoryHandler(categoryUsecase)
 	classHandler := handler.NewClassHandler(classUsecase)
+	scheduleHandler := handler.NewScheduleHandler(scheduleUsecase)
 
 	// Initialize Router
 	r := gin.New()
@@ -78,8 +88,27 @@ func main() {
 	})
 
 	// Routes
-	r.POST("/api/v1/categories", categoryHandler.Create)
-	r.POST("/api/v1/classes", classHandler.Create)
+	apiV1 := r.Group("/api/v1")
+	{
+		apiV1.POST("/categories", categoryHandler.Create)
+		apiV1.POST("/classes", classHandler.Create)
+
+		// Schedule Routes
+		apiV1.POST("/schedules", scheduleHandler.CreateInitialSchedules)
+		apiV1.PUT("/schedules/permanent", scheduleHandler.ChangeSchedulePermanent)
+		apiV1.PUT("/schedules/:id/permanent", scheduleHandler.ChangeSchedulePermanent)
+		apiV1.PATCH("/schedules/tutor-permanent", scheduleHandler.ChangeTutorPermanent)
+		apiV1.PATCH("/schedules/:id/tutor-permanent", scheduleHandler.ChangeTutorPermanent)
+		apiV1.PUT("/schedules/tutor-permanent", scheduleHandler.ChangeTutorPermanent)
+		apiV1.PUT("/schedules/:id/tutor-permanent", scheduleHandler.ChangeTutorPermanent)
+
+		// Session Routes
+		apiV1.POST("/sessions/reschedule", scheduleHandler.RescheduleSession)
+		apiV1.POST("/sessions/:id/reschedule", scheduleHandler.RescheduleSession)
+		apiV1.PATCH("/sessions/substitute-tutor", scheduleHandler.ChangeTutorTemporary)
+		apiV1.PATCH("/sessions/:id/substitute-tutor", scheduleHandler.ChangeTutorTemporary)
+		apiV1.GET("/sessions/:id/attendees", scheduleHandler.GetSessionAttendees)
+	}
 
 	slog.Info("Starting academic service", "port", cfg.Port)
 	if err := r.Run(":" + cfg.Port); err != nil {
