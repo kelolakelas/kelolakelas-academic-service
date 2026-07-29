@@ -1,0 +1,843 @@
+basePath: /
+definitions:
+  github_com_tutorin-id_tutorin-academic-service_internal_domain.Category:
+    properties:
+      created_at:
+        type: string
+      deleted_at:
+        $ref: '#/definitions/gorm.DeletedAt'
+      description:
+        items:
+          type: integer
+        type: array
+      id:
+        type: string
+      name:
+        type: string
+      tenant_id:
+        type: string
+      updated_at:
+        type: string
+    type: object
+  github_com_tutorin-id_tutorin-academic-service_internal_domain.CategoryResponse:
+    properties:
+      created_at:
+        type: string
+      description:
+        items:
+          type: integer
+        type: array
+      id:
+        type: string
+      name:
+        type: string
+      tenant_id:
+        type: string
+    type: object
+  github_com_tutorin-id_tutorin-academic-service_internal_domain.Class:
+    properties:
+      capacity:
+        type: integer
+      category:
+        $ref: '#/definitions/github_com_tutorin-id_tutorin-academic-service_internal_domain.Category'
+      category_id:
+        type: string
+      created_at:
+        type: string
+      deleted_at:
+        $ref: '#/definitions/gorm.DeletedAt'
+      description:
+        items:
+          type: integer
+        type: array
+      id:
+        type: string
+      name:
+        type: string
+      price:
+        description: 'Financial Data: Always use int64 for money, price, balance,
+          or amounts'
+        type: integer
+      tenant_id:
+        type: string
+      type:
+        description: '''private'' or ''group'''
+        type: string
+      updated_at:
+        type: string
+    type: object
+  github_com_tutorin-id_tutorin-academic-service_internal_domain.ClassResponse:
+    properties:
+      capacity:
+        type: integer
+      category_id:
+        type: string
+      created_at:
+        type: string
+      description:
+        items:
+          type: integer
+        type: array
+      id:
+        type: string
+      name:
+        type: string
+      price:
+        type: integer
+      tenant_id:
+        type: string
+      type:
+        type: string
+    type: object
+  github_com_tutorin-id_tutorin-academic-service_internal_domain.ClassSchedule:
+    properties:
+      class:
+        $ref: '#/definitions/github_com_tutorin-id_tutorin-academic-service_internal_domain.Class'
+      class_id:
+        type: string
+      day_of_week:
+        description: 1 = Senin, 7 = Minggu (ISO 8601)
+        type: integer
+      end_time:
+        description: standard HH:MM:SS for time column
+        type: string
+      enrollment:
+        $ref: '#/definitions/github_com_tutorin-id_tutorin-academic-service_internal_domain.Enrollment'
+      enrollment_id:
+        type: string
+      id:
+        type: string
+      location:
+        type: string
+      start_time:
+        description: standard HH:MM:SS for time column
+        type: string
+      tutor_id:
+        type: string
+      valid_from:
+        type: string
+      valid_until:
+        type: string
+    type: object
+  github_com_tutorin-id_tutorin-academic-service_internal_domain.ClassSession:
+    properties:
+      class:
+        $ref: '#/definitions/github_com_tutorin-id_tutorin-academic-service_internal_domain.Class'
+      class_id:
+        type: string
+      end_time:
+        type: string
+      enrollment:
+        $ref: '#/definitions/github_com_tutorin-id_tutorin-academic-service_internal_domain.Enrollment'
+      enrollment_id:
+        type: string
+      id:
+        type: string
+      schedule:
+        $ref: '#/definitions/github_com_tutorin-id_tutorin-academic-service_internal_domain.ClassSchedule'
+      schedule_id:
+        type: string
+      session_date:
+        type: string
+      start_time:
+        type: string
+      status:
+        description: '''scheduled'', ''rescheduled'', ''cancelled'', ''completed'''
+        type: string
+      tutor_id:
+        type: string
+    type: object
+  github_com_tutorin-id_tutorin-academic-service_internal_domain.CreateCategoryRequest:
+    properties:
+      description:
+        items:
+          type: integer
+        type: array
+      name:
+        type: string
+    required:
+    - name
+    type: object
+  github_com_tutorin-id_tutorin-academic-service_internal_domain.CreateClassRequest:
+    properties:
+      capacity:
+        type: integer
+      category_id:
+        type: string
+      description:
+        items:
+          type: integer
+        type: array
+      name:
+        type: string
+      price:
+        minimum: 0
+        type: integer
+      type:
+        enum:
+        - private
+        - group
+        type: string
+    required:
+    - category_id
+    - name
+    - price
+    - type
+    type: object
+  github_com_tutorin-id_tutorin-academic-service_internal_domain.CreateInitialSchedulesRequest:
+    properties:
+      class_id:
+        type: string
+      schedules:
+        items:
+          $ref: '#/definitions/github_com_tutorin-id_tutorin-academic-service_internal_domain.ScheduleItemRequest'
+        minItems: 1
+        type: array
+    required:
+    - class_id
+    - schedules
+    type: object
+  github_com_tutorin-id_tutorin-academic-service_internal_domain.CreateInitialSchedulesResponse:
+    properties:
+      schedules:
+        items:
+          $ref: '#/definitions/github_com_tutorin-id_tutorin-academic-service_internal_domain.ClassSchedule'
+        type: array
+      sessions:
+        items:
+          $ref: '#/definitions/github_com_tutorin-id_tutorin-academic-service_internal_domain.ClassSession'
+        type: array
+    type: object
+  github_com_tutorin-id_tutorin-academic-service_internal_domain.Enrollment:
+    properties:
+      class:
+        $ref: '#/definitions/github_com_tutorin-id_tutorin-academic-service_internal_domain.Class'
+      class_id:
+        type: string
+      deleted_at:
+        $ref: '#/definitions/gorm.DeletedAt'
+      id:
+        type: string
+      joined_at:
+        type: string
+      status:
+        description: '''pending'', ''active'', ''completed'', ''dropped'''
+        type: string
+      student:
+        $ref: '#/definitions/github_com_tutorin-id_tutorin-academic-service_internal_domain.Student'
+      student_id:
+        type: string
+      tenant_id:
+        description: Cross-service, ordinary UUID
+        type: string
+      updated_at:
+        type: string
+    type: object
+  github_com_tutorin-id_tutorin-academic-service_internal_domain.ErrorResponse:
+    properties:
+      data: {}
+      message:
+        example: An error occurred
+        type: string
+      status:
+        example: error
+        type: string
+    type: object
+  github_com_tutorin-id_tutorin-academic-service_internal_domain.HTTPResponse:
+    properties:
+      data: {}
+      message:
+        example: Operation completed successfully
+        type: string
+      status:
+        example: success
+        type: string
+    type: object
+  github_com_tutorin-id_tutorin-academic-service_internal_domain.PermanentScheduleChangeRequest:
+    properties:
+      effective_date:
+        type: string
+      new_day_of_week:
+        maximum: 7
+        minimum: 1
+        type: integer
+      new_end_time:
+        type: string
+      new_start_time:
+        type: string
+      old_schedule_id:
+        type: string
+    required:
+    - effective_date
+    - new_day_of_week
+    - new_end_time
+    - new_start_time
+    - old_schedule_id
+    type: object
+  github_com_tutorin-id_tutorin-academic-service_internal_domain.PermanentScheduleChangeResponse:
+    properties:
+      new_schedule:
+        $ref: '#/definitions/github_com_tutorin-id_tutorin-academic-service_internal_domain.ClassSchedule'
+      new_sessions:
+        items:
+          $ref: '#/definitions/github_com_tutorin-id_tutorin-academic-service_internal_domain.ClassSession'
+        type: array
+      old_schedule:
+        $ref: '#/definitions/github_com_tutorin-id_tutorin-academic-service_internal_domain.ClassSchedule'
+    type: object
+  github_com_tutorin-id_tutorin-academic-service_internal_domain.PermanentTutorChangeRequest:
+    properties:
+      effective_date:
+        type: string
+      new_tutor_id:
+        type: string
+      schedule_id:
+        type: string
+    required:
+    - effective_date
+    - new_tutor_id
+    - schedule_id
+    type: object
+  github_com_tutorin-id_tutorin-academic-service_internal_domain.PermanentTutorChangeResponse:
+    properties:
+      new_schedule:
+        $ref: '#/definitions/github_com_tutorin-id_tutorin-academic-service_internal_domain.ClassSchedule'
+      old_schedule:
+        $ref: '#/definitions/github_com_tutorin-id_tutorin-academic-service_internal_domain.ClassSchedule'
+    type: object
+  github_com_tutorin-id_tutorin-academic-service_internal_domain.RescheduleSessionRequest:
+    properties:
+      new_end_time:
+        type: string
+      new_location:
+        type: string
+      new_session_date:
+        type: string
+      new_start_time:
+        type: string
+      session_id:
+        type: string
+    required:
+    - new_end_time
+    - new_session_date
+    - new_start_time
+    - session_id
+    type: object
+  github_com_tutorin-id_tutorin-academic-service_internal_domain.RescheduleSessionResponse:
+    properties:
+      new_session:
+        $ref: '#/definitions/github_com_tutorin-id_tutorin-academic-service_internal_domain.ClassSession'
+      original_session:
+        $ref: '#/definitions/github_com_tutorin-id_tutorin-academic-service_internal_domain.ClassSession'
+    type: object
+  github_com_tutorin-id_tutorin-academic-service_internal_domain.ScheduleItemRequest:
+    properties:
+      day_of_week:
+        description: 1=Monday, ..., 7=Sunday
+        maximum: 7
+        minimum: 1
+        type: integer
+      end_time:
+        description: HH:MM:SS
+        type: string
+      enrollment_id:
+        type: string
+      location:
+        type: string
+      start_time:
+        description: HH:MM:SS
+        type: string
+      tutor_id:
+        type: string
+      valid_from:
+        type: string
+    required:
+    - day_of_week
+    - end_time
+    - start_time
+    type: object
+  github_com_tutorin-id_tutorin-academic-service_internal_domain.SessionAttendeesResponse:
+    properties:
+      attendees:
+        items:
+          $ref: '#/definitions/github_com_tutorin-id_tutorin-academic-service_internal_domain.Enrollment'
+        type: array
+      class_id:
+        type: string
+      session_id:
+        type: string
+    type: object
+  github_com_tutorin-id_tutorin-academic-service_internal_domain.Student:
+    properties:
+      created_at:
+        type: string
+      date_of_birth:
+        type: string
+      deleted_at:
+        $ref: '#/definitions/gorm.DeletedAt'
+      full_name:
+        type: string
+      id:
+        type: string
+      parent_id:
+        description: Cross-service, ordinary UUID
+        type: string
+      updated_at:
+        type: string
+    type: object
+  github_com_tutorin-id_tutorin-academic-service_internal_domain.SubstituteTutorRequest:
+    properties:
+      session_id:
+        type: string
+      substitute_tutor_id:
+        type: string
+    required:
+    - session_id
+    - substitute_tutor_id
+    type: object
+  github_com_tutorin-id_tutorin-academic-service_internal_domain.SubstituteTutorResponse:
+    properties:
+      session:
+        $ref: '#/definitions/github_com_tutorin-id_tutorin-academic-service_internal_domain.ClassSession'
+    type: object
+  gorm.DeletedAt:
+    properties:
+      time:
+        type: string
+      valid:
+        description: Valid is true if Time is not NULL
+        type: boolean
+    type: object
+info:
+  contact: {}
+  description: Academic Management Service for Tutorin Platform
+  title: Tutorin Academic Service API
+  version: "1.0"
+paths:
+  /api/v1/categories:
+    post:
+      consumes:
+      - application/json
+      description: Create a new subject/course category for a tenant
+      parameters:
+      - description: Tenant ID dalam format UUID
+        in: header
+        name: X-Tenant-ID
+        required: true
+        type: string
+      - description: Create category payload
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_tutorin-id_tutorin-academic-service_internal_domain.CreateCategoryRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_tutorin-id_tutorin-academic-service_internal_domain.HTTPResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_tutorin-id_tutorin-academic-service_internal_domain.CategoryResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_tutorin-id_tutorin-academic-service_internal_domain.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_tutorin-id_tutorin-academic-service_internal_domain.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_tutorin-id_tutorin-academic-service_internal_domain.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_tutorin-id_tutorin-academic-service_internal_domain.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Create academic category
+      tags:
+      - Categories
+  /api/v1/classes:
+    post:
+      consumes:
+      - application/json
+      description: Create a new class within a category for a tenant
+      parameters:
+      - description: Tenant ID dalam format UUID
+        in: header
+        name: X-Tenant-ID
+        required: true
+        type: string
+      - description: Create class payload
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_tutorin-id_tutorin-academic-service_internal_domain.CreateClassRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_tutorin-id_tutorin-academic-service_internal_domain.HTTPResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_tutorin-id_tutorin-academic-service_internal_domain.ClassResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_tutorin-id_tutorin-academic-service_internal_domain.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_tutorin-id_tutorin-academic-service_internal_domain.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_tutorin-id_tutorin-academic-service_internal_domain.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_tutorin-id_tutorin-academic-service_internal_domain.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Create academic class
+      tags:
+      - Classes
+  /api/v1/schedules:
+    post:
+      consumes:
+      - application/json
+      description: Create recurring schedule items and corresponding class sessions
+        for a class
+      parameters:
+      - description: Tenant ID dalam format UUID
+        in: header
+        name: X-Tenant-ID
+        required: true
+        type: string
+      - description: Create initial schedules request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_tutorin-id_tutorin-academic-service_internal_domain.CreateInitialSchedulesRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_tutorin-id_tutorin-academic-service_internal_domain.HTTPResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_tutorin-id_tutorin-academic-service_internal_domain.CreateInitialSchedulesResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_tutorin-id_tutorin-academic-service_internal_domain.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_tutorin-id_tutorin-academic-service_internal_domain.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_tutorin-id_tutorin-academic-service_internal_domain.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_tutorin-id_tutorin-academic-service_internal_domain.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Create initial schedules for a class
+      tags:
+      - Schedules
+  /api/v1/schedules/{id}/permanent:
+    put:
+      consumes:
+      - application/json
+      description: Apply permanent day/time schedule change and regenerate upcoming
+        sessions
+      parameters:
+      - description: Tenant ID dalam format UUID
+        in: header
+        name: X-Tenant-ID
+        required: true
+        type: string
+      - description: Schedule ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Permanent schedule change payload
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_tutorin-id_tutorin-academic-service_internal_domain.PermanentScheduleChangeRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_tutorin-id_tutorin-academic-service_internal_domain.HTTPResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_tutorin-id_tutorin-academic-service_internal_domain.PermanentScheduleChangeResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_tutorin-id_tutorin-academic-service_internal_domain.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_tutorin-id_tutorin-academic-service_internal_domain.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_tutorin-id_tutorin-academic-service_internal_domain.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_tutorin-id_tutorin-academic-service_internal_domain.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Permanently change schedule
+      tags:
+      - Schedules
+  /api/v1/schedules/{id}/tutor-permanent:
+    patch:
+      consumes:
+      - application/json
+      description: Permanently reassign tutor for a schedule
+      parameters:
+      - description: Tenant ID dalam format UUID
+        in: header
+        name: X-Tenant-ID
+        required: true
+        type: string
+      - description: Schedule ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Permanent tutor change payload
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_tutorin-id_tutorin-academic-service_internal_domain.PermanentTutorChangeRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_tutorin-id_tutorin-academic-service_internal_domain.HTTPResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_tutorin-id_tutorin-academic-service_internal_domain.PermanentTutorChangeResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_tutorin-id_tutorin-academic-service_internal_domain.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_tutorin-id_tutorin-academic-service_internal_domain.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_tutorin-id_tutorin-academic-service_internal_domain.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_tutorin-id_tutorin-academic-service_internal_domain.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Permanently change tutor
+      tags:
+      - Schedules
+  /api/v1/sessions/{id}/attendees:
+    get:
+      consumes:
+      - application/json
+      description: Retrieve attendee list (enrolled students) for a specific session
+      parameters:
+      - description: Tenant ID dalam format UUID
+        in: header
+        name: X-Tenant-ID
+        required: true
+        type: string
+      - description: Session ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_tutorin-id_tutorin-academic-service_internal_domain.HTTPResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_tutorin-id_tutorin-academic-service_internal_domain.SessionAttendeesResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_tutorin-id_tutorin-academic-service_internal_domain.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_tutorin-id_tutorin-academic-service_internal_domain.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_tutorin-id_tutorin-academic-service_internal_domain.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_tutorin-id_tutorin-academic-service_internal_domain.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get session attendees
+      tags:
+      - Sessions
+  /api/v1/sessions/{id}/reschedule:
+    post:
+      consumes:
+      - application/json
+      description: One-off reschedule or make-up class for an existing session
+      parameters:
+      - description: Tenant ID dalam format UUID
+        in: header
+        name: X-Tenant-ID
+        required: true
+        type: string
+      - description: Session ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Reschedule session payload
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_tutorin-id_tutorin-academic-service_internal_domain.RescheduleSessionRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_tutorin-id_tutorin-academic-service_internal_domain.HTTPResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_tutorin-id_tutorin-academic-service_internal_domain.RescheduleSessionResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_tutorin-id_tutorin-academic-service_internal_domain.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_tutorin-id_tutorin-academic-service_internal_domain.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_tutorin-id_tutorin-academic-service_internal_domain.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_tutorin-id_tutorin-academic-service_internal_domain.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Reschedule a specific session
+      tags:
+      - Sessions
+  /api/v1/sessions/{id}/substitute-tutor:
+    patch:
+      consumes:
+      - application/json
+      description: Assign a temporary substitute tutor for a single session
+      parameters:
+      - description: Tenant ID dalam format UUID
+        in: header
+        name: X-Tenant-ID
+        required: true
+        type: string
+      - description: Session ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Substitute tutor payload
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_tutorin-id_tutorin-academic-service_internal_domain.SubstituteTutorRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_tutorin-id_tutorin-academic-service_internal_domain.HTTPResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_tutorin-id_tutorin-academic-service_internal_domain.SubstituteTutorResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_tutorin-id_tutorin-academic-service_internal_domain.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_tutorin-id_tutorin-academic-service_internal_domain.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_tutorin-id_tutorin-academic-service_internal_domain.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_tutorin-id_tutorin-academic-service_internal_domain.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Assign substitute tutor
+      tags:
+      - Sessions
+securityDefinitions:
+  BearerAuth:
+    in: header
+    name: Authorization
+    type: apiKey
+swagger: "2.0"

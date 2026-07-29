@@ -6,7 +6,10 @@ import (
 	"os"
 
 	"github.com/gin-gonic/gin"
+	swaggerFiles "github.com/swaggo/files"
+	ginSwagger "github.com/swaggo/gin-swagger"
 
+	_ "github.com/tutorin-id/tutorin-academic-service/docs"
 	"github.com/tutorin-id/tutorin-academic-service/internal/config"
 	"github.com/tutorin-id/tutorin-academic-service/internal/delivery/http/handler"
 	"github.com/tutorin-id/tutorin-academic-service/internal/domain"
@@ -16,6 +19,13 @@ import (
 	"github.com/tutorin-id/tutorin-academic-service/pkg/grpcclient"
 )
 
+// @title Tutorin Academic Service API
+// @version 1.0
+// @description Academic Management Service for Tutorin Platform
+// @BasePath /
+// @securityDefinitions.apikey BearerAuth
+// @in header
+// @name Authorization
 func main() {
 	// Initialize JSON logging
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
@@ -86,6 +96,9 @@ func main() {
 			"service": "academic-service",
 		})
 	})
+
+	// Swagger UI
+	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
 	// Routes
 	apiV1 := r.Group("/api/v1")
