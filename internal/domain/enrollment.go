@@ -20,3 +20,24 @@ type Enrollment struct {
 	Student *Student `gorm:"foreignKey:StudentID" json:"student,omitempty"`
 	Class   *Class   `gorm:"foreignKey:ClassID" json:"class,omitempty"`
 }
+
+type UpdateEnrollmentStatusRequest struct {
+	Status string `json:"status" binding:"required"`
+}
+
+type EnrollStudentRequest struct {
+	StudentID    uuid.UUID `json:"student_id" binding:"required"`
+	ClassID      uuid.UUID `json:"class_id" binding:"required"`
+	BillingCycle string    `json:"billing_cycle" binding:"required,oneof=monthly quarterly yearly"`
+	PlatformFee  int64     `json:"platform_fee" binding:"gte=0"`
+}
+
+type EnrollmentResponse struct {
+	ID        uuid.UUID `json:"id"`
+	TenantID  uuid.UUID `json:"tenant_id"`
+	StudentID uuid.UUID `json:"student_id"`
+	ClassID   uuid.UUID `json:"class_id"`
+	Status    string    `json:"status"`
+	JoinedAt  time.Time `json:"joined_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+}

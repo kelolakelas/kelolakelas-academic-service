@@ -7,8 +7,8 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/tutorin-id/tutorin-academic-service/internal/domain"
-	"github.com/tutorin-id/tutorin-academic-service/internal/repository"
+	"github.com/kelolakelas/kelolakelas-academic-service/internal/domain"
+	"github.com/kelolakelas/kelolakelas-academic-service/internal/repository"
 )
 
 var (

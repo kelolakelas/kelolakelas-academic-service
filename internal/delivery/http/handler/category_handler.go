@@ -7,8 +7,8 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 
-	"github.com/tutorin-id/tutorin-academic-service/internal/domain"
-	"github.com/tutorin-id/tutorin-academic-service/internal/usecase"
+	"github.com/kelolakelas/kelolakelas-academic-service/internal/domain"
+	"github.com/kelolakelas/kelolakelas-academic-service/internal/usecase"
 )
 
 type CategoryHandler struct {

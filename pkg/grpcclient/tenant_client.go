@@ -6,7 +6,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 
-	pb "github.com/tutorin-id/tutorin-academic-service/pkg/proto/tenant"
+	pb "github.com/kelolakelas/kelolakelas-academic-service/pkg/proto/tenant"
 )
 
 type TenantClient interface {

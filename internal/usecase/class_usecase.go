@@ -5,9 +5,9 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/tutorin-id/tutorin-academic-service/internal/domain"
-	"github.com/tutorin-id/tutorin-academic-service/internal/repository"
-	"github.com/tutorin-id/tutorin-academic-service/pkg/grpcclient"
+	"github.com/kelolakelas/kelolakelas-academic-service/internal/domain"
+	"github.com/kelolakelas/kelolakelas-academic-service/internal/repository"
+	"github.com/kelolakelas/kelolakelas-academic-service/pkg/grpcclient"
 )
 
 type ClassUsecase interface {

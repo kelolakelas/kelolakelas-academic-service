@@ -47,7 +47,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_tutorin-id_tutorin-academic-service_internal_domain.CreateCategoryRequest"
+                            "$ref": "#/definitions/github_com_kelolakelas-id_kelolakelas-academic-service_internal_domain.CreateCategoryRequest"
                         }
                     }
                 ],
@@ -57,13 +57,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/github_com_tutorin-id_tutorin-academic-service_internal_domain.HTTPResponse"
+                                    "$ref": "#/definitions/github_com_kelolakelas-id_kelolakelas-academic-service_internal_domain.HTTPResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/github_com_tutorin-id_tutorin-academic-service_internal_domain.CategoryResponse"
+                                            "$ref": "#/definitions/github_com_kelolakelas-id_kelolakelas-academic-service_internal_domain.CategoryResponse"
                                         }
                                     }
                                 }
@@ -73,25 +73,25 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/github_com_tutorin-id_tutorin-academic-service_internal_domain.ErrorResponse"
+                            "$ref": "#/definitions/github_com_kelolakelas-id_kelolakelas-academic-service_internal_domain.ErrorResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/github_com_tutorin-id_tutorin-academic-service_internal_domain.ErrorResponse"
+                            "$ref": "#/definitions/github_com_kelolakelas-id_kelolakelas-academic-service_internal_domain.ErrorResponse"
                         }
                     },
                     "403": {
                         "description": "Forbidden",
                         "schema": {
-                            "$ref": "#/definitions/github_com_tutorin-id_tutorin-academic-service_internal_domain.ErrorResponse"
+                            "$ref": "#/definitions/github_com_kelolakelas-id_kelolakelas-academic-service_internal_domain.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_tutorin-id_tutorin-academic-service_internal_domain.ErrorResponse"
+                            "$ref": "#/definitions/github_com_kelolakelas-id_kelolakelas-academic-service_internal_domain.ErrorResponse"
                         }
                     }
                 }
@@ -129,7 +129,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_tutorin-id_tutorin-academic-service_internal_domain.CreateClassRequest"
+                            "$ref": "#/definitions/github_com_kelolakelas-id_kelolakelas-academic-service_internal_domain.CreateClassRequest"
                         }
                     }
                 ],
@@ -139,13 +139,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/github_com_tutorin-id_tutorin-academic-service_internal_domain.HTTPResponse"
+                                    "$ref": "#/definitions/github_com_kelolakelas-id_kelolakelas-academic-service_internal_domain.HTTPResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/github_com_tutorin-id_tutorin-academic-service_internal_domain.ClassResponse"
+                                            "$ref": "#/definitions/github_com_kelolakelas-id_kelolakelas-academic-service_internal_domain.ClassResponse"
                                         }
                                     }
                                 }
@@ -155,25 +155,96 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/github_com_tutorin-id_tutorin-academic-service_internal_domain.ErrorResponse"
+                            "$ref": "#/definitions/github_com_kelolakelas-id_kelolakelas-academic-service_internal_domain.ErrorResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/github_com_tutorin-id_tutorin-academic-service_internal_domain.ErrorResponse"
+                            "$ref": "#/definitions/github_com_kelolakelas-id_kelolakelas-academic-service_internal_domain.ErrorResponse"
                         }
                     },
                     "403": {
                         "description": "Forbidden",
                         "schema": {
-                            "$ref": "#/definitions/github_com_tutorin-id_tutorin-academic-service_internal_domain.ErrorResponse"
+                            "$ref": "#/definitions/github_com_kelolakelas-id_kelolakelas-academic-service_internal_domain.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_tutorin-id_tutorin-academic-service_internal_domain.ErrorResponse"
+                            "$ref": "#/definitions/github_com_kelolakelas-id_kelolakelas-academic-service_internal_domain.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/enrollments/{id}/status": {
+            "put": {
+                "description": "Update status of an enrollment (e.g. from pending to active upon payment)",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Enrollments"
+                ],
+                "summary": "Update enrollment status",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Enrollment ID (UUID)",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Status update payload",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas-id_kelolakelas-academic-service_internal_domain.UpdateEnrollmentStatusRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/github_com_kelolakelas-id_kelolakelas-academic-service_internal_domain.HTTPResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/github_com_kelolakelas-id_kelolakelas-academic-service_internal_domain.EnrollmentResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas-id_kelolakelas-academic-service_internal_domain.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas-id_kelolakelas-academic-service_internal_domain.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas-id_kelolakelas-academic-service_internal_domain.ErrorResponse"
                         }
                     }
                 }
@@ -211,7 +282,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_tutorin-id_tutorin-academic-service_internal_domain.CreateInitialSchedulesRequest"
+                            "$ref": "#/definitions/github_com_kelolakelas-id_kelolakelas-academic-service_internal_domain.CreateInitialSchedulesRequest"
                         }
                     }
                 ],
@@ -221,13 +292,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/github_com_tutorin-id_tutorin-academic-service_internal_domain.HTTPResponse"
+                                    "$ref": "#/definitions/github_com_kelolakelas-id_kelolakelas-academic-service_internal_domain.HTTPResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/github_com_tutorin-id_tutorin-academic-service_internal_domain.CreateInitialSchedulesResponse"
+                                            "$ref": "#/definitions/github_com_kelolakelas-id_kelolakelas-academic-service_internal_domain.CreateInitialSchedulesResponse"
                                         }
                                     }
                                 }
@@ -237,25 +308,25 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/github_com_tutorin-id_tutorin-academic-service_internal_domain.ErrorResponse"
+                            "$ref": "#/definitions/github_com_kelolakelas-id_kelolakelas-academic-service_internal_domain.ErrorResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/github_com_tutorin-id_tutorin-academic-service_internal_domain.ErrorResponse"
+                            "$ref": "#/definitions/github_com_kelolakelas-id_kelolakelas-academic-service_internal_domain.ErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/github_com_tutorin-id_tutorin-academic-service_internal_domain.ErrorResponse"
+                            "$ref": "#/definitions/github_com_kelolakelas-id_kelolakelas-academic-service_internal_domain.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_tutorin-id_tutorin-academic-service_internal_domain.ErrorResponse"
+                            "$ref": "#/definitions/github_com_kelolakelas-id_kelolakelas-academic-service_internal_domain.ErrorResponse"
                         }
                     }
                 }
@@ -300,7 +371,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_tutorin-id_tutorin-academic-service_internal_domain.PermanentScheduleChangeRequest"
+                            "$ref": "#/definitions/github_com_kelolakelas-id_kelolakelas-academic-service_internal_domain.PermanentScheduleChangeRequest"
                         }
                     }
                 ],
@@ -310,13 +381,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/github_com_tutorin-id_tutorin-academic-service_internal_domain.HTTPResponse"
+                                    "$ref": "#/definitions/github_com_kelolakelas-id_kelolakelas-academic-service_internal_domain.HTTPResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/github_com_tutorin-id_tutorin-academic-service_internal_domain.PermanentScheduleChangeResponse"
+                                            "$ref": "#/definitions/github_com_kelolakelas-id_kelolakelas-academic-service_internal_domain.PermanentScheduleChangeResponse"
                                         }
                                     }
                                 }
@@ -326,25 +397,25 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/github_com_tutorin-id_tutorin-academic-service_internal_domain.ErrorResponse"
+                            "$ref": "#/definitions/github_com_kelolakelas-id_kelolakelas-academic-service_internal_domain.ErrorResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/github_com_tutorin-id_tutorin-academic-service_internal_domain.ErrorResponse"
+                            "$ref": "#/definitions/github_com_kelolakelas-id_kelolakelas-academic-service_internal_domain.ErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/github_com_tutorin-id_tutorin-academic-service_internal_domain.ErrorResponse"
+                            "$ref": "#/definitions/github_com_kelolakelas-id_kelolakelas-academic-service_internal_domain.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_tutorin-id_tutorin-academic-service_internal_domain.ErrorResponse"
+                            "$ref": "#/definitions/github_com_kelolakelas-id_kelolakelas-academic-service_internal_domain.ErrorResponse"
                         }
                     }
                 }
@@ -389,7 +460,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_tutorin-id_tutorin-academic-service_internal_domain.PermanentTutorChangeRequest"
+                            "$ref": "#/definitions/github_com_kelolakelas-id_kelolakelas-academic-service_internal_domain.PermanentTutorChangeRequest"
                         }
                     }
                 ],
@@ -399,13 +470,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/github_com_tutorin-id_tutorin-academic-service_internal_domain.HTTPResponse"
+                                    "$ref": "#/definitions/github_com_kelolakelas-id_kelolakelas-academic-service_internal_domain.HTTPResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/github_com_tutorin-id_tutorin-academic-service_internal_domain.PermanentTutorChangeResponse"
+                                            "$ref": "#/definitions/github_com_kelolakelas-id_kelolakelas-academic-service_internal_domain.PermanentTutorChangeResponse"
                                         }
                                     }
                                 }
@@ -415,25 +486,25 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/github_com_tutorin-id_tutorin-academic-service_internal_domain.ErrorResponse"
+                            "$ref": "#/definitions/github_com_kelolakelas-id_kelolakelas-academic-service_internal_domain.ErrorResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/github_com_tutorin-id_tutorin-academic-service_internal_domain.ErrorResponse"
+                            "$ref": "#/definitions/github_com_kelolakelas-id_kelolakelas-academic-service_internal_domain.ErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/github_com_tutorin-id_tutorin-academic-service_internal_domain.ErrorResponse"
+                            "$ref": "#/definitions/github_com_kelolakelas-id_kelolakelas-academic-service_internal_domain.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_tutorin-id_tutorin-academic-service_internal_domain.ErrorResponse"
+                            "$ref": "#/definitions/github_com_kelolakelas-id_kelolakelas-academic-service_internal_domain.ErrorResponse"
                         }
                     }
                 }
@@ -479,13 +550,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/github_com_tutorin-id_tutorin-academic-service_internal_domain.HTTPResponse"
+                                    "$ref": "#/definitions/github_com_kelolakelas-id_kelolakelas-academic-service_internal_domain.HTTPResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/github_com_tutorin-id_tutorin-academic-service_internal_domain.SessionAttendeesResponse"
+                                            "$ref": "#/definitions/github_com_kelolakelas-id_kelolakelas-academic-service_internal_domain.SessionAttendeesResponse"
                                         }
                                     }
                                 }
@@ -495,25 +566,25 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/github_com_tutorin-id_tutorin-academic-service_internal_domain.ErrorResponse"
+                            "$ref": "#/definitions/github_com_kelolakelas-id_kelolakelas-academic-service_internal_domain.ErrorResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/github_com_tutorin-id_tutorin-academic-service_internal_domain.ErrorResponse"
+                            "$ref": "#/definitions/github_com_kelolakelas-id_kelolakelas-academic-service_internal_domain.ErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/github_com_tutorin-id_tutorin-academic-service_internal_domain.ErrorResponse"
+                            "$ref": "#/definitions/github_com_kelolakelas-id_kelolakelas-academic-service_internal_domain.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_tutorin-id_tutorin-academic-service_internal_domain.ErrorResponse"
+                            "$ref": "#/definitions/github_com_kelolakelas-id_kelolakelas-academic-service_internal_domain.ErrorResponse"
                         }
                     }
                 }
@@ -558,7 +629,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_tutorin-id_tutorin-academic-service_internal_domain.RescheduleSessionRequest"
+                            "$ref": "#/definitions/github_com_kelolakelas-id_kelolakelas-academic-service_internal_domain.RescheduleSessionRequest"
                         }
                     }
                 ],
@@ -568,13 +639,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/github_com_tutorin-id_tutorin-academic-service_internal_domain.HTTPResponse"
+                                    "$ref": "#/definitions/github_com_kelolakelas-id_kelolakelas-academic-service_internal_domain.HTTPResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/github_com_tutorin-id_tutorin-academic-service_internal_domain.RescheduleSessionResponse"
+                                            "$ref": "#/definitions/github_com_kelolakelas-id_kelolakelas-academic-service_internal_domain.RescheduleSessionResponse"
                                         }
                                     }
                                 }
@@ -584,25 +655,25 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/github_com_tutorin-id_tutorin-academic-service_internal_domain.ErrorResponse"
+                            "$ref": "#/definitions/github_com_kelolakelas-id_kelolakelas-academic-service_internal_domain.ErrorResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/github_com_tutorin-id_tutorin-academic-service_internal_domain.ErrorResponse"
+                            "$ref": "#/definitions/github_com_kelolakelas-id_kelolakelas-academic-service_internal_domain.ErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/github_com_tutorin-id_tutorin-academic-service_internal_domain.ErrorResponse"
+                            "$ref": "#/definitions/github_com_kelolakelas-id_kelolakelas-academic-service_internal_domain.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_tutorin-id_tutorin-academic-service_internal_domain.ErrorResponse"
+                            "$ref": "#/definitions/github_com_kelolakelas-id_kelolakelas-academic-service_internal_domain.ErrorResponse"
                         }
                     }
                 }
@@ -647,7 +718,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_tutorin-id_tutorin-academic-service_internal_domain.SubstituteTutorRequest"
+                            "$ref": "#/definitions/github_com_kelolakelas-id_kelolakelas-academic-service_internal_domain.SubstituteTutorRequest"
                         }
                     }
                 ],
@@ -657,13 +728,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/github_com_tutorin-id_tutorin-academic-service_internal_domain.HTTPResponse"
+                                    "$ref": "#/definitions/github_com_kelolakelas-id_kelolakelas-academic-service_internal_domain.HTTPResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/github_com_tutorin-id_tutorin-academic-service_internal_domain.SubstituteTutorResponse"
+                                            "$ref": "#/definitions/github_com_kelolakelas-id_kelolakelas-academic-service_internal_domain.SubstituteTutorResponse"
                                         }
                                     }
                                 }
@@ -673,25 +744,77 @@ const docTemplate = `{
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/github_com_tutorin-id_tutorin-academic-service_internal_domain.ErrorResponse"
+                            "$ref": "#/definitions/github_com_kelolakelas-id_kelolakelas-academic-service_internal_domain.ErrorResponse"
                         }
                     },
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/github_com_tutorin-id_tutorin-academic-service_internal_domain.ErrorResponse"
+                            "$ref": "#/definitions/github_com_kelolakelas-id_kelolakelas-academic-service_internal_domain.ErrorResponse"
                         }
                     },
                     "404": {
                         "description": "Not Found",
                         "schema": {
-                            "$ref": "#/definitions/github_com_tutorin-id_tutorin-academic-service_internal_domain.ErrorResponse"
+                            "$ref": "#/definitions/github_com_kelolakelas-id_kelolakelas-academic-service_internal_domain.ErrorResponse"
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
-                            "$ref": "#/definitions/github_com_tutorin-id_tutorin-academic-service_internal_domain.ErrorResponse"
+                            "$ref": "#/definitions/github_com_kelolakelas-id_kelolakelas-academic-service_internal_domain.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/tenants/{tenant_id}/enrollments": {
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Enrollments"
+                ],
+                "summary": "Enroll a student in a class",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Tenant ID",
+                        "name": "tenant_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Enrollment request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas-id_kelolakelas-academic-service_internal_domain.EnrollStudentRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/github_com_kelolakelas-id_kelolakelas-academic-service_internal_domain.HTTPResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/github_com_kelolakelas-id_kelolakelas-academic-service_internal_domain.EnrollmentResponse"
+                                        }
+                                    }
+                                }
+                            ]
                         }
                     }
                 }
@@ -699,7 +822,7 @@ const docTemplate = `{
         }
     },
     "definitions": {
-        "github_com_tutorin-id_tutorin-academic-service_internal_domain.Category": {
+        "github_com_kelolakelas-id_kelolakelas-academic-service_internal_domain.Category": {
             "type": "object",
             "properties": {
                 "created_at": {
@@ -728,7 +851,7 @@ const docTemplate = `{
                 }
             }
         },
-        "github_com_tutorin-id_tutorin-academic-service_internal_domain.CategoryResponse": {
+        "github_com_kelolakelas-id_kelolakelas-academic-service_internal_domain.CategoryResponse": {
             "type": "object",
             "properties": {
                 "created_at": {
@@ -751,14 +874,14 @@ const docTemplate = `{
                 }
             }
         },
-        "github_com_tutorin-id_tutorin-academic-service_internal_domain.Class": {
+        "github_com_kelolakelas-id_kelolakelas-academic-service_internal_domain.Class": {
             "type": "object",
             "properties": {
                 "capacity": {
                     "type": "integer"
                 },
                 "category": {
-                    "$ref": "#/definitions/github_com_tutorin-id_tutorin-academic-service_internal_domain.Category"
+                    "$ref": "#/definitions/github_com_kelolakelas-id_kelolakelas-academic-service_internal_domain.Category"
                 },
                 "category_id": {
                     "type": "string"
@@ -797,7 +920,7 @@ const docTemplate = `{
                 }
             }
         },
-        "github_com_tutorin-id_tutorin-academic-service_internal_domain.ClassResponse": {
+        "github_com_kelolakelas-id_kelolakelas-academic-service_internal_domain.ClassResponse": {
             "type": "object",
             "properties": {
                 "capacity": {
@@ -832,11 +955,11 @@ const docTemplate = `{
                 }
             }
         },
-        "github_com_tutorin-id_tutorin-academic-service_internal_domain.ClassSchedule": {
+        "github_com_kelolakelas-id_kelolakelas-academic-service_internal_domain.ClassSchedule": {
             "type": "object",
             "properties": {
                 "class": {
-                    "$ref": "#/definitions/github_com_tutorin-id_tutorin-academic-service_internal_domain.Class"
+                    "$ref": "#/definitions/github_com_kelolakelas-id_kelolakelas-academic-service_internal_domain.Class"
                 },
                 "class_id": {
                     "type": "string"
@@ -850,7 +973,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "enrollment": {
-                    "$ref": "#/definitions/github_com_tutorin-id_tutorin-academic-service_internal_domain.Enrollment"
+                    "$ref": "#/definitions/github_com_kelolakelas-id_kelolakelas-academic-service_internal_domain.Enrollment"
                 },
                 "enrollment_id": {
                     "type": "string"
@@ -876,11 +999,11 @@ const docTemplate = `{
                 }
             }
         },
-        "github_com_tutorin-id_tutorin-academic-service_internal_domain.ClassSession": {
+        "github_com_kelolakelas-id_kelolakelas-academic-service_internal_domain.ClassSession": {
             "type": "object",
             "properties": {
                 "class": {
-                    "$ref": "#/definitions/github_com_tutorin-id_tutorin-academic-service_internal_domain.Class"
+                    "$ref": "#/definitions/github_com_kelolakelas-id_kelolakelas-academic-service_internal_domain.Class"
                 },
                 "class_id": {
                     "type": "string"
@@ -889,7 +1012,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "enrollment": {
-                    "$ref": "#/definitions/github_com_tutorin-id_tutorin-academic-service_internal_domain.Enrollment"
+                    "$ref": "#/definitions/github_com_kelolakelas-id_kelolakelas-academic-service_internal_domain.Enrollment"
                 },
                 "enrollment_id": {
                     "type": "string"
@@ -898,7 +1021,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "schedule": {
-                    "$ref": "#/definitions/github_com_tutorin-id_tutorin-academic-service_internal_domain.ClassSchedule"
+                    "$ref": "#/definitions/github_com_kelolakelas-id_kelolakelas-academic-service_internal_domain.ClassSchedule"
                 },
                 "schedule_id": {
                     "type": "string"
@@ -918,7 +1041,7 @@ const docTemplate = `{
                 }
             }
         },
-        "github_com_tutorin-id_tutorin-academic-service_internal_domain.CreateCategoryRequest": {
+        "github_com_kelolakelas-id_kelolakelas-academic-service_internal_domain.CreateCategoryRequest": {
             "type": "object",
             "required": [
                 "name"
@@ -935,7 +1058,7 @@ const docTemplate = `{
                 }
             }
         },
-        "github_com_tutorin-id_tutorin-academic-service_internal_domain.CreateClassRequest": {
+        "github_com_kelolakelas-id_kelolakelas-academic-service_internal_domain.CreateClassRequest": {
             "type": "object",
             "required": [
                 "category_id",
@@ -972,7 +1095,7 @@ const docTemplate = `{
                 }
             }
         },
-        "github_com_tutorin-id_tutorin-academic-service_internal_domain.CreateInitialSchedulesRequest": {
+        "github_com_kelolakelas-id_kelolakelas-academic-service_internal_domain.CreateInitialSchedulesRequest": {
             "type": "object",
             "required": [
                 "class_id",
@@ -986,33 +1109,61 @@ const docTemplate = `{
                     "type": "array",
                     "minItems": 1,
                     "items": {
-                        "$ref": "#/definitions/github_com_tutorin-id_tutorin-academic-service_internal_domain.ScheduleItemRequest"
+                        "$ref": "#/definitions/github_com_kelolakelas-id_kelolakelas-academic-service_internal_domain.ScheduleItemRequest"
                     }
                 }
             }
         },
-        "github_com_tutorin-id_tutorin-academic-service_internal_domain.CreateInitialSchedulesResponse": {
+        "github_com_kelolakelas-id_kelolakelas-academic-service_internal_domain.CreateInitialSchedulesResponse": {
             "type": "object",
             "properties": {
                 "schedules": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/github_com_tutorin-id_tutorin-academic-service_internal_domain.ClassSchedule"
+                        "$ref": "#/definitions/github_com_kelolakelas-id_kelolakelas-academic-service_internal_domain.ClassSchedule"
                     }
                 },
                 "sessions": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/github_com_tutorin-id_tutorin-academic-service_internal_domain.ClassSession"
+                        "$ref": "#/definitions/github_com_kelolakelas-id_kelolakelas-academic-service_internal_domain.ClassSession"
                     }
                 }
             }
         },
-        "github_com_tutorin-id_tutorin-academic-service_internal_domain.Enrollment": {
+        "github_com_kelolakelas-id_kelolakelas-academic-service_internal_domain.EnrollStudentRequest": {
+            "type": "object",
+            "required": [
+                "billing_cycle",
+                "class_id",
+                "student_id"
+            ],
+            "properties": {
+                "billing_cycle": {
+                    "type": "string",
+                    "enum": [
+                        "monthly",
+                        "quarterly",
+                        "yearly"
+                    ]
+                },
+                "class_id": {
+                    "type": "string"
+                },
+                "platform_fee": {
+                    "type": "integer",
+                    "minimum": 0
+                },
+                "student_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_kelolakelas-id_kelolakelas-academic-service_internal_domain.Enrollment": {
             "type": "object",
             "properties": {
                 "class": {
-                    "$ref": "#/definitions/github_com_tutorin-id_tutorin-academic-service_internal_domain.Class"
+                    "$ref": "#/definitions/github_com_kelolakelas-id_kelolakelas-academic-service_internal_domain.Class"
                 },
                 "class_id": {
                     "type": "string"
@@ -1031,7 +1182,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "student": {
-                    "$ref": "#/definitions/github_com_tutorin-id_tutorin-academic-service_internal_domain.Student"
+                    "$ref": "#/definitions/github_com_kelolakelas-id_kelolakelas-academic-service_internal_domain.Student"
                 },
                 "student_id": {
                     "type": "string"
@@ -1045,7 +1196,33 @@ const docTemplate = `{
                 }
             }
         },
-        "github_com_tutorin-id_tutorin-academic-service_internal_domain.ErrorResponse": {
+        "github_com_kelolakelas-id_kelolakelas-academic-service_internal_domain.EnrollmentResponse": {
+            "type": "object",
+            "properties": {
+                "class_id": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "joined_at": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "student_id": {
+                    "type": "string"
+                },
+                "tenant_id": {
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_kelolakelas-id_kelolakelas-academic-service_internal_domain.ErrorResponse": {
             "type": "object",
             "properties": {
                 "data": {},
@@ -1059,7 +1236,7 @@ const docTemplate = `{
                 }
             }
         },
-        "github_com_tutorin-id_tutorin-academic-service_internal_domain.HTTPResponse": {
+        "github_com_kelolakelas-id_kelolakelas-academic-service_internal_domain.HTTPResponse": {
             "type": "object",
             "properties": {
                 "data": {},
@@ -1073,7 +1250,7 @@ const docTemplate = `{
                 }
             }
         },
-        "github_com_tutorin-id_tutorin-academic-service_internal_domain.PermanentScheduleChangeRequest": {
+        "github_com_kelolakelas-id_kelolakelas-academic-service_internal_domain.PermanentScheduleChangeRequest": {
             "type": "object",
             "required": [
                 "effective_date",
@@ -1102,24 +1279,24 @@ const docTemplate = `{
                 }
             }
         },
-        "github_com_tutorin-id_tutorin-academic-service_internal_domain.PermanentScheduleChangeResponse": {
+        "github_com_kelolakelas-id_kelolakelas-academic-service_internal_domain.PermanentScheduleChangeResponse": {
             "type": "object",
             "properties": {
                 "new_schedule": {
-                    "$ref": "#/definitions/github_com_tutorin-id_tutorin-academic-service_internal_domain.ClassSchedule"
+                    "$ref": "#/definitions/github_com_kelolakelas-id_kelolakelas-academic-service_internal_domain.ClassSchedule"
                 },
                 "new_sessions": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/github_com_tutorin-id_tutorin-academic-service_internal_domain.ClassSession"
+                        "$ref": "#/definitions/github_com_kelolakelas-id_kelolakelas-academic-service_internal_domain.ClassSession"
                     }
                 },
                 "old_schedule": {
-                    "$ref": "#/definitions/github_com_tutorin-id_tutorin-academic-service_internal_domain.ClassSchedule"
+                    "$ref": "#/definitions/github_com_kelolakelas-id_kelolakelas-academic-service_internal_domain.ClassSchedule"
                 }
             }
         },
-        "github_com_tutorin-id_tutorin-academic-service_internal_domain.PermanentTutorChangeRequest": {
+        "github_com_kelolakelas-id_kelolakelas-academic-service_internal_domain.PermanentTutorChangeRequest": {
             "type": "object",
             "required": [
                 "effective_date",
@@ -1138,18 +1315,18 @@ const docTemplate = `{
                 }
             }
         },
-        "github_com_tutorin-id_tutorin-academic-service_internal_domain.PermanentTutorChangeResponse": {
+        "github_com_kelolakelas-id_kelolakelas-academic-service_internal_domain.PermanentTutorChangeResponse": {
             "type": "object",
             "properties": {
                 "new_schedule": {
-                    "$ref": "#/definitions/github_com_tutorin-id_tutorin-academic-service_internal_domain.ClassSchedule"
+                    "$ref": "#/definitions/github_com_kelolakelas-id_kelolakelas-academic-service_internal_domain.ClassSchedule"
                 },
                 "old_schedule": {
-                    "$ref": "#/definitions/github_com_tutorin-id_tutorin-academic-service_internal_domain.ClassSchedule"
+                    "$ref": "#/definitions/github_com_kelolakelas-id_kelolakelas-academic-service_internal_domain.ClassSchedule"
                 }
             }
         },
-        "github_com_tutorin-id_tutorin-academic-service_internal_domain.RescheduleSessionRequest": {
+        "github_com_kelolakelas-id_kelolakelas-academic-service_internal_domain.RescheduleSessionRequest": {
             "type": "object",
             "required": [
                 "new_end_time",
@@ -1175,18 +1352,18 @@ const docTemplate = `{
                 }
             }
         },
-        "github_com_tutorin-id_tutorin-academic-service_internal_domain.RescheduleSessionResponse": {
+        "github_com_kelolakelas-id_kelolakelas-academic-service_internal_domain.RescheduleSessionResponse": {
             "type": "object",
             "properties": {
                 "new_session": {
-                    "$ref": "#/definitions/github_com_tutorin-id_tutorin-academic-service_internal_domain.ClassSession"
+                    "$ref": "#/definitions/github_com_kelolakelas-id_kelolakelas-academic-service_internal_domain.ClassSession"
                 },
                 "original_session": {
-                    "$ref": "#/definitions/github_com_tutorin-id_tutorin-academic-service_internal_domain.ClassSession"
+                    "$ref": "#/definitions/github_com_kelolakelas-id_kelolakelas-academic-service_internal_domain.ClassSession"
                 }
             }
         },
-        "github_com_tutorin-id_tutorin-academic-service_internal_domain.ScheduleItemRequest": {
+        "github_com_kelolakelas-id_kelolakelas-academic-service_internal_domain.ScheduleItemRequest": {
             "type": "object",
             "required": [
                 "day_of_week",
@@ -1222,13 +1399,13 @@ const docTemplate = `{
                 }
             }
         },
-        "github_com_tutorin-id_tutorin-academic-service_internal_domain.SessionAttendeesResponse": {
+        "github_com_kelolakelas-id_kelolakelas-academic-service_internal_domain.SessionAttendeesResponse": {
             "type": "object",
             "properties": {
                 "attendees": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/github_com_tutorin-id_tutorin-academic-service_internal_domain.Enrollment"
+                        "$ref": "#/definitions/github_com_kelolakelas-id_kelolakelas-academic-service_internal_domain.Enrollment"
                     }
                 },
                 "class_id": {
@@ -1239,7 +1416,7 @@ const docTemplate = `{
                 }
             }
         },
-        "github_com_tutorin-id_tutorin-academic-service_internal_domain.Student": {
+        "github_com_kelolakelas-id_kelolakelas-academic-service_internal_domain.Student": {
             "type": "object",
             "properties": {
                 "created_at": {
@@ -1266,7 +1443,7 @@ const docTemplate = `{
                 }
             }
         },
-        "github_com_tutorin-id_tutorin-academic-service_internal_domain.SubstituteTutorRequest": {
+        "github_com_kelolakelas-id_kelolakelas-academic-service_internal_domain.SubstituteTutorRequest": {
             "type": "object",
             "required": [
                 "session_id",
@@ -1281,11 +1458,22 @@ const docTemplate = `{
                 }
             }
         },
-        "github_com_tutorin-id_tutorin-academic-service_internal_domain.SubstituteTutorResponse": {
+        "github_com_kelolakelas-id_kelolakelas-academic-service_internal_domain.SubstituteTutorResponse": {
             "type": "object",
             "properties": {
                 "session": {
-                    "$ref": "#/definitions/github_com_tutorin-id_tutorin-academic-service_internal_domain.ClassSession"
+                    "$ref": "#/definitions/github_com_kelolakelas-id_kelolakelas-academic-service_internal_domain.ClassSession"
+                }
+            }
+        },
+        "github_com_kelolakelas-id_kelolakelas-academic-service_internal_domain.UpdateEnrollmentStatusRequest": {
+            "type": "object",
+            "required": [
+                "status"
+            ],
+            "properties": {
+                "status": {
+                    "type": "string"
                 }
             }
         },
@@ -1317,8 +1505,8 @@ var SwaggerInfo = &swag.Spec{
 	Host:             "",
 	BasePath:         "/",
 	Schemes:          []string{},
-	Title:            "Tutorin Academic Service API",
-	Description:      "Academic Management Service for Tutorin Platform",
+	Title:            "KelolaKelas Academic Service API",
+	Description:      "Academic Management Service for KelolaKelas Platform",
 	InfoInstanceName: "swagger",
 	SwaggerTemplate:  docTemplate,
 	LeftDelim:        "{{",

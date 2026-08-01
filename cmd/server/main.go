@@ -9,19 +9,20 @@ import (
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
 
-	_ "github.com/tutorin-id/tutorin-academic-service/docs"
-	"github.com/tutorin-id/tutorin-academic-service/internal/config"
-	"github.com/tutorin-id/tutorin-academic-service/internal/delivery/http/handler"
-	"github.com/tutorin-id/tutorin-academic-service/internal/domain"
-	"github.com/tutorin-id/tutorin-academic-service/internal/repository"
-	"github.com/tutorin-id/tutorin-academic-service/internal/usecase"
-	"github.com/tutorin-id/tutorin-academic-service/pkg/database"
-	"github.com/tutorin-id/tutorin-academic-service/pkg/grpcclient"
+	_ "github.com/kelolakelas/kelolakelas-academic-service/docs"
+	"github.com/kelolakelas/kelolakelas-academic-service/internal/config"
+	"github.com/kelolakelas/kelolakelas-academic-service/internal/delivery/http/handler"
+	"github.com/kelolakelas/kelolakelas-academic-service/internal/domain"
+	"github.com/kelolakelas/kelolakelas-academic-service/internal/repository"
+	"github.com/kelolakelas/kelolakelas-academic-service/internal/usecase"
+	"github.com/kelolakelas/kelolakelas-academic-service/pkg/billing"
+	"github.com/kelolakelas/kelolakelas-academic-service/pkg/database"
+	"github.com/kelolakelas/kelolakelas-academic-service/pkg/grpcclient"
 )
 
-// @title Tutorin Academic Service API
+// @title KelolaKelas Academic Service API
 // @version 1.0
-// @description Academic Management Service for Tutorin Platform
+// @description Academic Management Service for KelolaKelas Platform
 // @BasePath /
 // @securityDefinitions.apikey BearerAuth
 // @in header
@@ -74,16 +75,20 @@ func main() {
 	scheduleRepo := repository.NewScheduleRepository(db)
 	sessionRepo := repository.NewSessionRepository(db)
 	enrollmentRepo := repository.NewEnrollmentRepository(db)
+	studentRepo := repository.NewStudentRepository(db)
+	billingClient := billing.NewClient(cfg.BillingServiceURL)
 
 	// Initialize Usecases
 	categoryUsecase := usecase.NewCategoryUsecase(categoryRepo, tenantClient)
 	classUsecase := usecase.NewClassUsecase(classRepo, tenantClient)
 	scheduleUsecase := usecase.NewScheduleUsecase(txManager, classRepo, scheduleRepo, sessionRepo, enrollmentRepo)
+	enrollmentUsecase := usecase.NewEnrollmentUsecase(enrollmentRepo, studentRepo, classRepo, billingClient)
 
 	// Initialize Handlers
 	categoryHandler := handler.NewCategoryHandler(categoryUsecase)
 	classHandler := handler.NewClassHandler(classUsecase)
 	scheduleHandler := handler.NewScheduleHandler(scheduleUsecase)
+	enrollmentHandler := handler.NewEnrollmentHandler(enrollmentUsecase)
 
 	// Initialize Router
 	r := gin.New()
@@ -105,6 +110,10 @@ func main() {
 	{
 		apiV1.POST("/categories", categoryHandler.Create)
 		apiV1.POST("/classes", classHandler.Create)
+		apiV1.POST("/tenants/:tenant_id/enrollments", enrollmentHandler.Create)
+
+		// Enrollment Routes
+		apiV1.PUT("/enrollments/:id/status", enrollmentHandler.UpdateStatus)
 
 		// Schedule Routes
 		apiV1.POST("/schedules", scheduleHandler.CreateInitialSchedules)

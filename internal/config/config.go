@@ -9,13 +9,14 @@ import (
 )
 
 type Config struct {
-	DBHost           string `mapstructure:"DB_HOST"`
-	DBPort           string `mapstructure:"DB_PORT"`
-	DBUser           string `mapstructure:"DB_USER"`
-	DBPassword       string `mapstructure:"DB_PASSWORD"`
-	DBName           string `mapstructure:"DB_NAME"`
-	IdentityGRPCHost string `mapstructure:"IDENTITY_GRPC_HOST"`
-	Port             string `mapstructure:"PORT"`
+	DBHost            string `mapstructure:"DB_HOST"`
+	DBPort            string `mapstructure:"DB_PORT"`
+	DBUser            string `mapstructure:"DB_USER"`
+	DBPassword        string `mapstructure:"DB_PASSWORD"`
+	DBName            string `mapstructure:"DB_NAME"`
+	IdentityGRPCHost  string `mapstructure:"IDENTITY_GRPC_HOST"`
+	BillingServiceURL string `mapstructure:"BILLING_SERVICE_URL"`
+	Port              string `mapstructure:"PORT"`
 }
 
 func LoadConfig() (Config, error) {
@@ -52,13 +53,16 @@ func LoadConfig() (Config, error) {
 		config.DBPassword = "postgres"
 	}
 	if config.DBName == "" {
-		config.DBName = "tutorin_academic"
+		config.DBName = "kelolakelas_academic"
 	}
 	if config.IdentityGRPCHost == "" {
 		config.IdentityGRPCHost = "localhost:50051"
 	}
 	if config.Port == "" {
 		config.Port = "8081"
+	}
+	if config.BillingServiceURL == "" {
+		config.BillingServiceURL = "http://localhost:8082"
 	}
 
 	return config, nil
