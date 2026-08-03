@@ -11,16 +11,19 @@ import (
 
 type CategoryRepository interface {
 	Create(ctx context.Context, category *domain.Category) error
+	ListByTenant(ctx context.Context, tenantID uuid.UUID, query domain.ListQuery) ([]domain.Category, int64, error)
 	GetByID(ctx context.Context, id uuid.UUID) (*domain.Category, error)
 	Update(ctx context.Context, category *domain.Category) error
-	Delete(ctx context.Context, id uuid.UUID) error
+	CountActiveClasses(ctx context.Context, categoryID uuid.UUID) (int64, error)
+	DeleteByTenant(ctx context.Context, tenantID, id uuid.UUID) error
 }
 
 type ClassRepository interface {
 	Create(ctx context.Context, class *domain.Class) error
+	ListByTenant(ctx context.Context, tenantID uuid.UUID, query domain.ListQuery) ([]domain.Class, int64, error)
 	GetByID(ctx context.Context, id uuid.UUID) (*domain.Class, error)
 	Update(ctx context.Context, class *domain.Class) error
-	Delete(ctx context.Context, id uuid.UUID) error
+	DeleteByTenant(ctx context.Context, tenantID, id uuid.UUID) error
 }
 
 type ClassTeacherRepository interface {
@@ -30,10 +33,12 @@ type ClassTeacherRepository interface {
 
 type ClassScheduleRepository interface {
 	Create(ctx context.Context, schedule *domain.ClassSchedule) error
+	ListByTenant(ctx context.Context, tenantID uuid.UUID, query domain.ListQuery) ([]domain.ClassSchedule, int64, error)
 	BatchCreate(ctx context.Context, schedules []*domain.ClassSchedule) error
 	GetByID(ctx context.Context, id uuid.UUID) (*domain.ClassSchedule, error)
 	Update(ctx context.Context, schedule *domain.ClassSchedule) error
-	Delete(ctx context.Context, id uuid.UUID) error
+	DeleteByTenant(ctx context.Context, tenantID, id uuid.UUID) error
+	DeleteByClass(ctx context.Context, tenantID, classID uuid.UUID) error
 }
 
 type ScheduleRepository = ClassScheduleRepository
@@ -42,8 +47,13 @@ type SessionRepository interface {
 	Create(ctx context.Context, session *domain.ClassSession) error
 	BatchCreate(ctx context.Context, sessions []*domain.ClassSession) error
 	GetByID(ctx context.Context, id uuid.UUID) (*domain.ClassSession, error)
+	GetByIDForTenant(ctx context.Context, tenantID, id uuid.UUID) (*domain.ClassSession, error)
+	FindForAttendance(ctx context.Context, tenantID, scheduleID, enrollmentID uuid.UUID, date time.Time) (*domain.ClassSession, error)
+	IsTutorForSession(ctx context.Context, tenantID, sessionID, memberID uuid.UUID) (bool, error)
+	ListByTenant(ctx context.Context, tenantID uuid.UUID, query domain.SessionQuery) ([]domain.ClassSession, int64, error)
 	Update(ctx context.Context, session *domain.ClassSession) error
-	DeleteFutureSessionsBySchedule(ctx context.Context, scheduleID uuid.UUID, fromDate time.Time) error
+	CancelFutureSessionsBySchedule(ctx context.Context, scheduleID uuid.UUID, fromDate time.Time) error
+	CancelFutureSessionsByClass(ctx context.Context, classID uuid.UUID, fromDate time.Time) error
 	UpdateFutureSessionsTutor(ctx context.Context, scheduleID uuid.UUID, newTutorID uuid.UUID, newScheduleID uuid.UUID, fromDate time.Time) error
 }
 
@@ -54,6 +64,9 @@ type TransactionManager interface {
 type StudentRepository interface {
 	Create(ctx context.Context, student *domain.Student) error
 	GetByID(ctx context.Context, id uuid.UUID) (*domain.Student, error)
+	GetByIDForAccess(ctx context.Context, id uuid.UUID, tenantID, parentID *uuid.UUID) (*domain.Student, error)
+	List(ctx context.Context, tenantID, parentID *uuid.UUID, query domain.StudentQuery) ([]domain.Student, int64, error)
+	CountActiveEnrollments(ctx context.Context, studentID uuid.UUID) (int64, error)
 	Update(ctx context.Context, student *domain.Student) error
 	Delete(ctx context.Context, id uuid.UUID) error
 }
@@ -68,6 +81,10 @@ type StudentNoteRepository interface {
 type EnrollmentRepository interface {
 	Create(ctx context.Context, enrollment *domain.Enrollment) error
 	GetByID(ctx context.Context, id uuid.UUID) (*domain.Enrollment, error)
+	GetByIDForAccess(ctx context.Context, tenantID, parentID *uuid.UUID, id uuid.UUID) (*domain.Enrollment, error)
+	List(ctx context.Context, tenantID, parentID *uuid.UUID, query domain.EnrollmentQuery) ([]*domain.Enrollment, int64, error)
+	ExistsActive(ctx context.Context, studentID, classID uuid.UUID) (bool, error)
+	IsTutorForEnrollment(ctx context.Context, enrollmentID, memberID uuid.UUID) (bool, error)
 	GetActiveByClassID(ctx context.Context, classID uuid.UUID) ([]*domain.Enrollment, error)
 	Update(ctx context.Context, enrollment *domain.Enrollment) error
 	Delete(ctx context.Context, id uuid.UUID) error
@@ -76,12 +93,17 @@ type EnrollmentRepository interface {
 type AttendanceRepository interface {
 	Create(ctx context.Context, attendance *domain.Attendance) error
 	GetByID(ctx context.Context, id uuid.UUID) (*domain.Attendance, error)
+	GetByIDForTenant(ctx context.Context, tenantID, id uuid.UUID) (*domain.Attendance, error)
+	List(ctx context.Context, tenantID uuid.UUID, query domain.AttendanceQuery) ([]domain.Attendance, int64, error)
+	GetByUnique(ctx context.Context, enrollmentID, sessionID uuid.UUID, date time.Time) (*domain.Attendance, error)
 	Update(ctx context.Context, attendance *domain.Attendance) error
 }
 
 type ReportRepository interface {
 	Create(ctx context.Context, report *domain.Report) error
 	GetByID(ctx context.Context, id uuid.UUID) (*domain.Report, error)
+	GetByIDForTenant(ctx context.Context, tenantID, id uuid.UUID) (*domain.Report, error)
+	List(ctx context.Context, tenantID uuid.UUID, query domain.ReportQuery) ([]domain.Report, int64, error)
 	Update(ctx context.Context, report *domain.Report) error
 	Delete(ctx context.Context, id uuid.UUID) error
 }

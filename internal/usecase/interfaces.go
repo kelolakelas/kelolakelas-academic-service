@@ -34,6 +34,10 @@ type AcademicUsecase interface {
 }
 
 type ScheduleUsecase interface {
+	ListSchedules(ctx context.Context, tenantID uuid.UUID, query domain.ListQuery) (*domain.ScheduleListResponse, error)
+	DeleteSchedule(ctx context.Context, tenantID, id uuid.UUID) error
+	ListSessions(ctx context.Context, tenantID uuid.UUID, query domain.SessionQuery) (*domain.SessionListResponse, error)
+	GetSession(ctx context.Context, tenantID, sessionID uuid.UUID) (*domain.ClassSession, error)
 	// Scenario 1: Create Initial Schedules for an Existing Class
 	CreateInitialSchedules(ctx context.Context, req *domain.CreateInitialSchedulesRequest) (*domain.CreateInitialSchedulesResponse, error)
 
@@ -51,4 +55,8 @@ type ScheduleUsecase interface {
 
 	// Attendance/Session Read Logic
 	GetSessionAttendees(ctx context.Context, sessionID uuid.UUID) ([]*domain.Enrollment, error)
+}
+
+type ClassCreationUsecase interface {
+	CreateClassWithCategory(ctx context.Context, tenantID uuid.UUID, req *domain.CreateClassWithCategoryRequest) (*domain.CreateClassWithCategoryResponse, error)
 }

@@ -3,12 +3,14 @@ package usecase
 import (
 	"context"
 	"errors"
+	"math"
 	"time"
 
 	"github.com/google/uuid"
 
 	"github.com/kelolakelas/kelolakelas-academic-service/internal/domain"
 	"github.com/kelolakelas/kelolakelas-academic-service/internal/repository"
+	"gorm.io/gorm"
 )
 
 var (
@@ -27,6 +29,45 @@ type scheduleUsecase struct {
 	scheduleRepo   repository.ScheduleRepository
 	sessionRepo    repository.SessionRepository
 	enrollmentRepo repository.EnrollmentRepository
+}
+
+func (u *scheduleUsecase) ListSchedules(ctx context.Context, tenantID uuid.UUID, query domain.ListQuery) (*domain.ScheduleListResponse, error) {
+	items, total, err := u.scheduleRepo.ListByTenant(ctx, tenantID, query)
+	if err != nil {
+		return nil, err
+	}
+	return &domain.ScheduleListResponse{Items: items, Pagination: domain.Pagination{Page: query.Page, PageSize: query.PageSize, TotalItems: total, TotalPages: int(math.Ceil(float64(total) / float64(query.PageSize)))}}, nil
+}
+
+func (u *scheduleUsecase) DeleteSchedule(ctx context.Context, tenantID, id uuid.UUID) error {
+	return u.txManager.WithTransaction(ctx, func(txCtx context.Context) error {
+		schedule, err := u.scheduleRepo.GetByID(txCtx, id)
+		if errors.Is(err, gorm.ErrRecordNotFound) || schedule == nil {
+			return ErrScheduleNotFound
+		}
+		if err != nil {
+			return err
+		}
+		if schedule.Class == nil || schedule.Class.TenantID != tenantID {
+			return domain.ErrScheduleForbidden
+		}
+		if err := u.scheduleRepo.DeleteByTenant(txCtx, tenantID, id); err != nil {
+			return err
+		}
+		return u.sessionRepo.CancelFutureSessionsBySchedule(txCtx, id, normalizeDate(time.Now()))
+	})
+}
+
+func (u *scheduleUsecase) ListSessions(ctx context.Context, tenantID uuid.UUID, query domain.SessionQuery) (*domain.SessionListResponse, error) {
+	items, total, err := u.sessionRepo.ListByTenant(ctx, tenantID, query)
+	if err != nil {
+		return nil, err
+	}
+	return &domain.SessionListResponse{Items: items, Pagination: domain.Pagination{Page: query.Page, PageSize: query.PageSize, TotalItems: total, TotalPages: int(math.Ceil(float64(total) / float64(query.PageSize)))}}, nil
+}
+
+func (u *scheduleUsecase) GetSession(ctx context.Context, tenantID, sessionID uuid.UUID) (*domain.ClassSession, error) {
+	return u.sessionRepo.GetByIDForTenant(ctx, tenantID, sessionID)
 }
 
 func NewScheduleUsecase(
@@ -282,7 +323,7 @@ func (u *scheduleUsecase) ChangeSchedulePermanent(
 		}
 
 		// 3. Delete all future Class_Sessions linked to old schedule (from effective date onwards)
-		if err := u.sessionRepo.DeleteFutureSessionsBySchedule(txCtx, oldSchedule.ID, effectiveDate); err != nil {
+		if err := u.sessionRepo.CancelFutureSessionsBySchedule(txCtx, oldSchedule.ID, effectiveDate); err != nil {
 			return err
 		}
 

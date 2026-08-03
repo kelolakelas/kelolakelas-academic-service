@@ -1,6 +1,37 @@
 basePath: /
 definitions:
-  github_com_kelolakelas-id_kelolakelas-academic-service_internal_domain.Category:
+  github_com_kelolakelas_kelolakelas-academic-service_internal_domain.Attendance:
+    properties:
+      created_at:
+        type: string
+      date:
+        type: string
+      enrollment:
+        $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.Enrollment'
+      enrollment_id:
+        type: string
+      id:
+        type: string
+      session:
+        $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ClassSession'
+      session_id:
+        type: string
+      status:
+        description: '''present'', ''absent'', ''late'', ''excused'''
+        type: string
+      updated_at:
+        type: string
+    type: object
+  github_com_kelolakelas_kelolakelas-academic-service_internal_domain.AttendanceListResponse:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.Attendance'
+        type: array
+      pagination:
+        $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.Pagination'
+    type: object
+  github_com_kelolakelas_kelolakelas-academic-service_internal_domain.Category:
     properties:
       created_at:
         type: string
@@ -19,7 +50,16 @@ definitions:
       updated_at:
         type: string
     type: object
-  github_com_kelolakelas-id_kelolakelas-academic-service_internal_domain.CategoryResponse:
+  github_com_kelolakelas_kelolakelas-academic-service_internal_domain.CategoryListResponse:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.CategoryResponse'
+        type: array
+      pagination:
+        $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.Pagination'
+    type: object
+  github_com_kelolakelas_kelolakelas-academic-service_internal_domain.CategoryResponse:
     properties:
       created_at:
         type: string
@@ -34,12 +74,12 @@ definitions:
       tenant_id:
         type: string
     type: object
-  github_com_kelolakelas-id_kelolakelas-academic-service_internal_domain.Class:
+  github_com_kelolakelas_kelolakelas-academic-service_internal_domain.Class:
     properties:
       capacity:
         type: integer
       category:
-        $ref: '#/definitions/github_com_kelolakelas-id_kelolakelas-academic-service_internal_domain.Category'
+        $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.Category'
       category_id:
         type: string
       created_at:
@@ -66,7 +106,16 @@ definitions:
       updated_at:
         type: string
     type: object
-  github_com_kelolakelas-id_kelolakelas-academic-service_internal_domain.ClassResponse:
+  github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ClassListResponse:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ClassResponse'
+        type: array
+      pagination:
+        $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.Pagination'
+    type: object
+  github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ClassResponse:
     properties:
       capacity:
         type: integer
@@ -89,20 +138,22 @@ definitions:
       type:
         type: string
     type: object
-  github_com_kelolakelas-id_kelolakelas-academic-service_internal_domain.ClassSchedule:
+  github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ClassSchedule:
     properties:
       class:
-        $ref: '#/definitions/github_com_kelolakelas-id_kelolakelas-academic-service_internal_domain.Class'
+        $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.Class'
       class_id:
         type: string
       day_of_week:
         description: 1 = Senin, 7 = Minggu (ISO 8601)
         type: integer
+      deleted_at:
+        $ref: '#/definitions/gorm.DeletedAt'
       end_time:
         description: standard HH:MM:SS for time column
         type: string
       enrollment:
-        $ref: '#/definitions/github_com_kelolakelas-id_kelolakelas-academic-service_internal_domain.Enrollment'
+        $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.Enrollment'
       enrollment_id:
         type: string
       id:
@@ -119,22 +170,22 @@ definitions:
       valid_until:
         type: string
     type: object
-  github_com_kelolakelas-id_kelolakelas-academic-service_internal_domain.ClassSession:
+  github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ClassSession:
     properties:
       class:
-        $ref: '#/definitions/github_com_kelolakelas-id_kelolakelas-academic-service_internal_domain.Class'
+        $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.Class'
       class_id:
         type: string
       end_time:
         type: string
       enrollment:
-        $ref: '#/definitions/github_com_kelolakelas-id_kelolakelas-academic-service_internal_domain.Enrollment'
+        $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.Enrollment'
       enrollment_id:
         type: string
       id:
         type: string
       schedule:
-        $ref: '#/definitions/github_com_kelolakelas-id_kelolakelas-academic-service_internal_domain.ClassSchedule'
+        $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ClassSchedule'
       schedule_id:
         type: string
       session_date:
@@ -147,7 +198,28 @@ definitions:
       tutor_id:
         type: string
     type: object
-  github_com_kelolakelas-id_kelolakelas-academic-service_internal_domain.CreateCategoryRequest:
+  github_com_kelolakelas_kelolakelas-academic-service_internal_domain.CreateAttendanceRequest:
+    properties:
+      date:
+        type: string
+      enrollment_id:
+        type: string
+      schedule_id:
+        type: string
+      status:
+        enum:
+        - present
+        - absent
+        - late
+        - excused
+        type: string
+    required:
+    - date
+    - enrollment_id
+    - schedule_id
+    - status
+    type: object
+  github_com_kelolakelas_kelolakelas-academic-service_internal_domain.CreateCategoryRequest:
     properties:
       description:
         items:
@@ -158,7 +230,29 @@ definitions:
     required:
     - name
     type: object
-  github_com_kelolakelas-id_kelolakelas-academic-service_internal_domain.CreateClassRequest:
+  github_com_kelolakelas_kelolakelas-academic-service_internal_domain.CreateClassPayload:
+    properties:
+      capacity:
+        type: integer
+      description:
+        items:
+          type: integer
+        type: array
+      name:
+        type: string
+      price:
+        minimum: 0
+        type: integer
+      type:
+        enum:
+        - private
+        - group
+        type: string
+    required:
+    - name
+    - type
+    type: object
+  github_com_kelolakelas_kelolakelas-academic-service_internal_domain.CreateClassRequest:
     properties:
       capacity:
         type: integer
@@ -184,31 +278,89 @@ definitions:
     - price
     - type
     type: object
-  github_com_kelolakelas-id_kelolakelas-academic-service_internal_domain.CreateInitialSchedulesRequest:
+  github_com_kelolakelas_kelolakelas-academic-service_internal_domain.CreateClassWithCategoryRequest:
+    properties:
+      category:
+        $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.CreateCategoryRequest'
+      class:
+        $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.CreateClassPayload'
+      schedules:
+        items:
+          $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ScheduleItemRequest'
+        type: array
+    required:
+    - category
+    - class
+    type: object
+  github_com_kelolakelas_kelolakelas-academic-service_internal_domain.CreateClassWithCategoryResponse:
+    properties:
+      category:
+        $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.Category'
+      class:
+        $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.Class'
+      schedules:
+        items:
+          $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ClassSchedule'
+        type: array
+      sessions:
+        items:
+          $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ClassSession'
+        type: array
+    type: object
+  github_com_kelolakelas_kelolakelas-academic-service_internal_domain.CreateInitialSchedulesRequest:
     properties:
       class_id:
         type: string
       schedules:
         items:
-          $ref: '#/definitions/github_com_kelolakelas-id_kelolakelas-academic-service_internal_domain.ScheduleItemRequest'
+          $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ScheduleItemRequest'
         minItems: 1
         type: array
     required:
     - class_id
     - schedules
     type: object
-  github_com_kelolakelas-id_kelolakelas-academic-service_internal_domain.CreateInitialSchedulesResponse:
+  github_com_kelolakelas_kelolakelas-academic-service_internal_domain.CreateInitialSchedulesResponse:
     properties:
       schedules:
         items:
-          $ref: '#/definitions/github_com_kelolakelas-id_kelolakelas-academic-service_internal_domain.ClassSchedule'
+          $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ClassSchedule'
         type: array
       sessions:
         items:
-          $ref: '#/definitions/github_com_kelolakelas-id_kelolakelas-academic-service_internal_domain.ClassSession'
+          $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ClassSession'
         type: array
     type: object
-  github_com_kelolakelas-id_kelolakelas-academic-service_internal_domain.EnrollStudentRequest:
+  github_com_kelolakelas_kelolakelas-academic-service_internal_domain.CreateReportRequest:
+    properties:
+      enrollment_id:
+        type: string
+      evaluation_notes:
+        type: string
+      score:
+        maximum: 100
+        minimum: 0
+        type: number
+      title:
+        type: string
+    required:
+    - enrollment_id
+    - title
+    type: object
+  github_com_kelolakelas_kelolakelas-academic-service_internal_domain.CreateStudentRequest:
+    properties:
+      date_of_birth:
+        type: string
+      full_name:
+        type: string
+      parent_id:
+        type: string
+    required:
+    - date_of_birth
+    - full_name
+    - parent_id
+    type: object
+  github_com_kelolakelas_kelolakelas-academic-service_internal_domain.EnrollStudentRequest:
     properties:
       billing_cycle:
         enum:
@@ -228,10 +380,10 @@ definitions:
     - class_id
     - student_id
     type: object
-  github_com_kelolakelas-id_kelolakelas-academic-service_internal_domain.Enrollment:
+  github_com_kelolakelas_kelolakelas-academic-service_internal_domain.Enrollment:
     properties:
       class:
-        $ref: '#/definitions/github_com_kelolakelas-id_kelolakelas-academic-service_internal_domain.Class'
+        $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.Class'
       class_id:
         type: string
       deleted_at:
@@ -244,7 +396,7 @@ definitions:
         description: '''pending'', ''active'', ''completed'', ''dropped'''
         type: string
       student:
-        $ref: '#/definitions/github_com_kelolakelas-id_kelolakelas-academic-service_internal_domain.Student'
+        $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.Student'
       student_id:
         type: string
       tenant_id:
@@ -253,8 +405,21 @@ definitions:
       updated_at:
         type: string
     type: object
-  github_com_kelolakelas-id_kelolakelas-academic-service_internal_domain.EnrollmentResponse:
+  github_com_kelolakelas_kelolakelas-academic-service_internal_domain.EnrollmentListResponse:
     properties:
+      items:
+        items:
+          $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.EnrollmentResponse'
+        type: array
+      pagination:
+        $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.Pagination'
+    type: object
+  github_com_kelolakelas_kelolakelas-academic-service_internal_domain.EnrollmentResponse:
+    properties:
+      billing_cycle:
+        type: string
+      class:
+        $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.Class'
       class_id:
         type: string
       id:
@@ -263,6 +428,8 @@ definitions:
         type: string
       status:
         type: string
+      student:
+        $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.Student'
       student_id:
         type: string
       tenant_id:
@@ -270,7 +437,7 @@ definitions:
       updated_at:
         type: string
     type: object
-  github_com_kelolakelas-id_kelolakelas-academic-service_internal_domain.ErrorResponse:
+  github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse:
     properties:
       data: {}
       message:
@@ -280,7 +447,7 @@ definitions:
         example: error
         type: string
     type: object
-  github_com_kelolakelas-id_kelolakelas-academic-service_internal_domain.HTTPResponse:
+  github_com_kelolakelas_kelolakelas-academic-service_internal_domain.HTTPResponse:
     properties:
       data: {}
       message:
@@ -290,7 +457,18 @@ definitions:
         example: success
         type: string
     type: object
-  github_com_kelolakelas-id_kelolakelas-academic-service_internal_domain.PermanentScheduleChangeRequest:
+  github_com_kelolakelas_kelolakelas-academic-service_internal_domain.Pagination:
+    properties:
+      page:
+        type: integer
+      page_size:
+        type: integer
+      total_items:
+        type: integer
+      total_pages:
+        type: integer
+    type: object
+  github_com_kelolakelas_kelolakelas-academic-service_internal_domain.PermanentScheduleChangeRequest:
     properties:
       effective_date:
         type: string
@@ -311,18 +489,18 @@ definitions:
     - new_start_time
     - old_schedule_id
     type: object
-  github_com_kelolakelas-id_kelolakelas-academic-service_internal_domain.PermanentScheduleChangeResponse:
+  github_com_kelolakelas_kelolakelas-academic-service_internal_domain.PermanentScheduleChangeResponse:
     properties:
       new_schedule:
-        $ref: '#/definitions/github_com_kelolakelas-id_kelolakelas-academic-service_internal_domain.ClassSchedule'
+        $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ClassSchedule'
       new_sessions:
         items:
-          $ref: '#/definitions/github_com_kelolakelas-id_kelolakelas-academic-service_internal_domain.ClassSession'
+          $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ClassSession'
         type: array
       old_schedule:
-        $ref: '#/definitions/github_com_kelolakelas-id_kelolakelas-academic-service_internal_domain.ClassSchedule'
+        $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ClassSchedule'
     type: object
-  github_com_kelolakelas-id_kelolakelas-academic-service_internal_domain.PermanentTutorChangeRequest:
+  github_com_kelolakelas_kelolakelas-academic-service_internal_domain.PermanentTutorChangeRequest:
     properties:
       effective_date:
         type: string
@@ -335,14 +513,52 @@ definitions:
     - new_tutor_id
     - schedule_id
     type: object
-  github_com_kelolakelas-id_kelolakelas-academic-service_internal_domain.PermanentTutorChangeResponse:
+  github_com_kelolakelas_kelolakelas-academic-service_internal_domain.PermanentTutorChangeResponse:
     properties:
       new_schedule:
-        $ref: '#/definitions/github_com_kelolakelas-id_kelolakelas-academic-service_internal_domain.ClassSchedule'
+        $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ClassSchedule'
       old_schedule:
-        $ref: '#/definitions/github_com_kelolakelas-id_kelolakelas-academic-service_internal_domain.ClassSchedule'
+        $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ClassSchedule'
     type: object
-  github_com_kelolakelas-id_kelolakelas-academic-service_internal_domain.RescheduleSessionRequest:
+  github_com_kelolakelas_kelolakelas-academic-service_internal_domain.Report:
+    properties:
+      created_at:
+        type: string
+      deleted_at:
+        $ref: '#/definitions/gorm.DeletedAt'
+      enrollment:
+        $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.Enrollment'
+      enrollment_id:
+        description: Relation to Enrollment
+        type: string
+      evaluation_notes:
+        type: string
+      id:
+        type: string
+      reporter_id:
+        description: Cross-service, ordinary UUID
+        type: string
+      score:
+        description: Decimal using float64
+        type: number
+      tenant_id:
+        description: Cross-service, ordinary UUID
+        type: string
+      title:
+        type: string
+      updated_at:
+        type: string
+    type: object
+  github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ReportListResponse:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.Report'
+        type: array
+      pagination:
+        $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.Pagination'
+    type: object
+  github_com_kelolakelas_kelolakelas-academic-service_internal_domain.RescheduleSessionRequest:
     properties:
       new_end_time:
         type: string
@@ -360,14 +576,14 @@ definitions:
     - new_start_time
     - session_id
     type: object
-  github_com_kelolakelas-id_kelolakelas-academic-service_internal_domain.RescheduleSessionResponse:
+  github_com_kelolakelas_kelolakelas-academic-service_internal_domain.RescheduleSessionResponse:
     properties:
       new_session:
-        $ref: '#/definitions/github_com_kelolakelas-id_kelolakelas-academic-service_internal_domain.ClassSession'
+        $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ClassSession'
       original_session:
-        $ref: '#/definitions/github_com_kelolakelas-id_kelolakelas-academic-service_internal_domain.ClassSession'
+        $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ClassSession'
     type: object
-  github_com_kelolakelas-id_kelolakelas-academic-service_internal_domain.ScheduleItemRequest:
+  github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ScheduleItemRequest:
     properties:
       day_of_week:
         description: 1=Monday, ..., 7=Sunday
@@ -393,18 +609,36 @@ definitions:
     - end_time
     - start_time
     type: object
-  github_com_kelolakelas-id_kelolakelas-academic-service_internal_domain.SessionAttendeesResponse:
+  github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ScheduleListResponse:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ClassSchedule'
+        type: array
+      pagination:
+        $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.Pagination'
+    type: object
+  github_com_kelolakelas_kelolakelas-academic-service_internal_domain.SessionAttendeesResponse:
     properties:
       attendees:
         items:
-          $ref: '#/definitions/github_com_kelolakelas-id_kelolakelas-academic-service_internal_domain.Enrollment'
+          $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.Enrollment'
         type: array
       class_id:
         type: string
       session_id:
         type: string
     type: object
-  github_com_kelolakelas-id_kelolakelas-academic-service_internal_domain.Student:
+  github_com_kelolakelas_kelolakelas-academic-service_internal_domain.SessionListResponse:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ClassSession'
+        type: array
+      pagination:
+        $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.Pagination'
+    type: object
+  github_com_kelolakelas_kelolakelas-academic-service_internal_domain.Student:
     properties:
       created_at:
         type: string
@@ -422,7 +656,16 @@ definitions:
       updated_at:
         type: string
     type: object
-  github_com_kelolakelas-id_kelolakelas-academic-service_internal_domain.SubstituteTutorRequest:
+  github_com_kelolakelas_kelolakelas-academic-service_internal_domain.StudentListResponse:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.Student'
+        type: array
+      pagination:
+        $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.Pagination'
+    type: object
+  github_com_kelolakelas_kelolakelas-academic-service_internal_domain.SubstituteTutorRequest:
     properties:
       session_id:
         type: string
@@ -432,17 +675,52 @@ definitions:
     - session_id
     - substitute_tutor_id
     type: object
-  github_com_kelolakelas-id_kelolakelas-academic-service_internal_domain.SubstituteTutorResponse:
+  github_com_kelolakelas_kelolakelas-academic-service_internal_domain.SubstituteTutorResponse:
     properties:
       session:
-        $ref: '#/definitions/github_com_kelolakelas-id_kelolakelas-academic-service_internal_domain.ClassSession'
+        $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ClassSession'
     type: object
-  github_com_kelolakelas-id_kelolakelas-academic-service_internal_domain.UpdateEnrollmentStatusRequest:
+  github_com_kelolakelas_kelolakelas-academic-service_internal_domain.UpdateAttendanceRequest:
+    properties:
+      status:
+        enum:
+        - present
+        - absent
+        - late
+        - excused
+        type: string
+    required:
+    - status
+    type: object
+  github_com_kelolakelas_kelolakelas-academic-service_internal_domain.UpdateEnrollmentStatusRequest:
     properties:
       status:
         type: string
     required:
     - status
+    type: object
+  github_com_kelolakelas_kelolakelas-academic-service_internal_domain.UpdateReportRequest:
+    properties:
+      evaluation_notes:
+        type: string
+      score:
+        maximum: 100
+        minimum: 0
+        type: number
+      title:
+        type: string
+    required:
+    - title
+    type: object
+  github_com_kelolakelas_kelolakelas-academic-service_internal_domain.UpdateStudentRequest:
+    properties:
+      date_of_birth:
+        type: string
+      full_name:
+        type: string
+    required:
+    - date_of_birth
+    - full_name
     type: object
   gorm.DeletedAt:
     properties:
@@ -458,7 +736,155 @@ info:
   title: KelolaKelas Academic Service API
   version: "1.0"
 paths:
+  /api/v1/attendance:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.HTTPResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.AttendanceListResponse'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: List attendance
+      tags:
+      - Attendance
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Attendance payload
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.CreateAttendanceRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.HTTPResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.Attendance'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: Create attendance
+      tags:
+      - Attendance
+  /api/v1/attendance/{id}:
+    get:
+      parameters:
+      - description: Attendance UUID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.HTTPResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.Attendance'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: Get attendance
+      tags:
+      - Attendance
+    patch:
+      consumes:
+      - application/json
+      parameters:
+      - description: Attendance UUID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Attendance payload
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.UpdateAttendanceRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.HTTPResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.Attendance'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: Update attendance
+      tags:
+      - Attendance
   /api/v1/categories:
+    get:
+      parameters:
+      - default: 1
+        description: Page number
+        in: query
+        name: page
+        type: integer
+      - default: 20
+        description: Items per page
+        in: query
+        name: page_size
+        type: integer
+      - description: Search category name
+        in: query
+        name: search
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.HTTPResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.CategoryListResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: List tenant categories
+      tags:
+      - Categories
     post:
       consumes:
       - application/json
@@ -474,7 +900,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/github_com_kelolakelas-id_kelolakelas-academic-service_internal_domain.CreateCategoryRequest'
+          $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.CreateCategoryRequest'
       produces:
       - application/json
       responses:
@@ -482,33 +908,130 @@ paths:
           description: Created
           schema:
             allOf:
-            - $ref: '#/definitions/github_com_kelolakelas-id_kelolakelas-academic-service_internal_domain.HTTPResponse'
+            - $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.HTTPResponse'
             - properties:
                 data:
-                  $ref: '#/definitions/github_com_kelolakelas-id_kelolakelas-academic-service_internal_domain.CategoryResponse'
+                  $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.CategoryResponse'
               type: object
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/github_com_kelolakelas-id_kelolakelas-academic-service_internal_domain.ErrorResponse'
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/github_com_kelolakelas-id_kelolakelas-academic-service_internal_domain.ErrorResponse'
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
         "403":
           description: Forbidden
           schema:
-            $ref: '#/definitions/github_com_kelolakelas-id_kelolakelas-academic-service_internal_domain.ErrorResponse'
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/github_com_kelolakelas-id_kelolakelas-academic-service_internal_domain.ErrorResponse'
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Create academic category
       tags:
       - Categories
+  /api/v1/categories/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: Soft-delete a tenant-owned category when it has no active classes
+      parameters:
+      - description: Tenant ID dalam format UUID
+        in: header
+        name: X-Tenant-ID
+        required: true
+        type: string
+      - description: Category ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.HTTPResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Delete academic category
+      tags:
+      - Categories
   /api/v1/classes:
+    get:
+      parameters:
+      - default: 1
+        description: Page number
+        in: query
+        name: page
+        type: integer
+      - default: 20
+        description: Items per page
+        in: query
+        name: page_size
+        type: integer
+      - description: Search class name
+        in: query
+        name: search
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.HTTPResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ClassListResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: List tenant classes
+      tags:
+      - Classes
     post:
       consumes:
       - application/json
@@ -524,7 +1047,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/github_com_kelolakelas-id_kelolakelas-academic-service_internal_domain.CreateClassRequest'
+          $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.CreateClassRequest'
       produces:
       - application/json
       responses:
@@ -532,32 +1055,180 @@ paths:
           description: Created
           schema:
             allOf:
-            - $ref: '#/definitions/github_com_kelolakelas-id_kelolakelas-academic-service_internal_domain.HTTPResponse'
+            - $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.HTTPResponse'
             - properties:
                 data:
-                  $ref: '#/definitions/github_com_kelolakelas-id_kelolakelas-academic-service_internal_domain.ClassResponse'
+                  $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ClassResponse'
               type: object
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/github_com_kelolakelas-id_kelolakelas-academic-service_internal_domain.ErrorResponse'
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/github_com_kelolakelas-id_kelolakelas-academic-service_internal_domain.ErrorResponse'
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
         "403":
           description: Forbidden
           schema:
-            $ref: '#/definitions/github_com_kelolakelas-id_kelolakelas-academic-service_internal_domain.ErrorResponse'
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/github_com_kelolakelas-id_kelolakelas-academic-service_internal_domain.ErrorResponse'
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Create academic class
       tags:
       - Classes
+  /api/v1/classes/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: Soft-delete a tenant-owned class, cancel future sessions, and disable
+        its active schedules
+      parameters:
+      - description: Tenant ID dalam format UUID
+        in: header
+        name: X-Tenant-ID
+        required: true
+        type: string
+      - description: Class ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.HTTPResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Delete academic class
+      tags:
+      - Classes
+  /api/v1/classes/with-category:
+    post:
+      consumes:
+      - application/json
+      description: Atomically creates a category and class, plus initial schedules
+        and sessions for group classes. Private classes must omit schedules.
+      parameters:
+      - description: Tenant ID dalam format UUID
+        in: header
+        name: X-Tenant-ID
+        required: true
+        type: string
+      - description: Create category and class payload
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.CreateClassWithCategoryRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.HTTPResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.CreateClassWithCategoryResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Create category, class, and initial schedules
+      tags:
+      - Classes
+  /api/v1/enrollments:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.HTTPResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.EnrollmentListResponse'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: List enrollments
+      tags:
+      - Enrollments
+  /api/v1/enrollments/{id}:
+    get:
+      parameters:
+      - description: Enrollment UUID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.HTTPResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.EnrollmentResponse'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: Get enrollment
+      tags:
+      - Enrollments
   /api/v1/enrollments/{id}/status:
     put:
       consumes:
@@ -575,7 +1246,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/github_com_kelolakelas-id_kelolakelas-academic-service_internal_domain.UpdateEnrollmentStatusRequest'
+          $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.UpdateEnrollmentStatusRequest'
       produces:
       - application/json
       responses:
@@ -583,27 +1254,190 @@ paths:
           description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/github_com_kelolakelas-id_kelolakelas-academic-service_internal_domain.HTTPResponse'
+            - $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.HTTPResponse'
             - properties:
                 data:
-                  $ref: '#/definitions/github_com_kelolakelas-id_kelolakelas-academic-service_internal_domain.EnrollmentResponse'
+                  $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.EnrollmentResponse'
               type: object
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/github_com_kelolakelas-id_kelolakelas-academic-service_internal_domain.ErrorResponse'
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/github_com_kelolakelas-id_kelolakelas-academic-service_internal_domain.ErrorResponse'
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/github_com_kelolakelas-id_kelolakelas-academic-service_internal_domain.ErrorResponse'
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
       summary: Update enrollment status
       tags:
       - Enrollments
+  /api/v1/reports:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.HTTPResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ReportListResponse'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: List reports
+      tags:
+      - Reports
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Report payload
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.CreateReportRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.HTTPResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.Report'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: Create report
+      tags:
+      - Reports
+  /api/v1/reports/{id}:
+    delete:
+      parameters:
+      - description: Report UUID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.HTTPResponse'
+      security:
+      - BearerAuth: []
+      summary: Delete report
+      tags:
+      - Reports
+    get:
+      parameters:
+      - description: Report UUID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.HTTPResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.Report'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: Get report
+      tags:
+      - Reports
+    patch:
+      consumes:
+      - application/json
+      parameters:
+      - description: Report UUID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Report payload
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.UpdateReportRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.HTTPResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.Report'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: Update report
+      tags:
+      - Reports
   /api/v1/schedules:
+    get:
+      parameters:
+      - default: 1
+        description: Page number
+        in: query
+        name: page
+        type: integer
+      - default: 20
+        description: Items per page
+        in: query
+        name: page_size
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.HTTPResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ScheduleListResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: List tenant schedules
+      tags:
+      - Schedules
     post:
       consumes:
       - application/json
@@ -620,7 +1454,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/github_com_kelolakelas-id_kelolakelas-academic-service_internal_domain.CreateInitialSchedulesRequest'
+          $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.CreateInitialSchedulesRequest'
       produces:
       - application/json
       responses:
@@ -628,30 +1462,79 @@ paths:
           description: Created
           schema:
             allOf:
-            - $ref: '#/definitions/github_com_kelolakelas-id_kelolakelas-academic-service_internal_domain.HTTPResponse'
+            - $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.HTTPResponse'
             - properties:
                 data:
-                  $ref: '#/definitions/github_com_kelolakelas-id_kelolakelas-academic-service_internal_domain.CreateInitialSchedulesResponse'
+                  $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.CreateInitialSchedulesResponse'
               type: object
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/github_com_kelolakelas-id_kelolakelas-academic-service_internal_domain.ErrorResponse'
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/github_com_kelolakelas-id_kelolakelas-academic-service_internal_domain.ErrorResponse'
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/github_com_kelolakelas-id_kelolakelas-academic-service_internal_domain.ErrorResponse'
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/github_com_kelolakelas-id_kelolakelas-academic-service_internal_domain.ErrorResponse'
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Create initial schedules for a class
+      tags:
+      - Schedules
+  /api/v1/schedules/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: Soft-delete a tenant-owned schedule and cancel its future scheduled
+        sessions
+      parameters:
+      - description: Tenant ID dalam format UUID
+        in: header
+        name: X-Tenant-ID
+        required: true
+        type: string
+      - description: Schedule ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.HTTPResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Delete class schedule
       tags:
       - Schedules
   /api/v1/schedules/{id}/permanent:
@@ -676,7 +1559,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/github_com_kelolakelas-id_kelolakelas-academic-service_internal_domain.PermanentScheduleChangeRequest'
+          $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.PermanentScheduleChangeRequest'
       produces:
       - application/json
       responses:
@@ -684,27 +1567,27 @@ paths:
           description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/github_com_kelolakelas-id_kelolakelas-academic-service_internal_domain.HTTPResponse'
+            - $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.HTTPResponse'
             - properties:
                 data:
-                  $ref: '#/definitions/github_com_kelolakelas-id_kelolakelas-academic-service_internal_domain.PermanentScheduleChangeResponse'
+                  $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.PermanentScheduleChangeResponse'
               type: object
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/github_com_kelolakelas-id_kelolakelas-academic-service_internal_domain.ErrorResponse'
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/github_com_kelolakelas-id_kelolakelas-academic-service_internal_domain.ErrorResponse'
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/github_com_kelolakelas-id_kelolakelas-academic-service_internal_domain.ErrorResponse'
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/github_com_kelolakelas-id_kelolakelas-academic-service_internal_domain.ErrorResponse'
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Permanently change schedule
@@ -731,7 +1614,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/github_com_kelolakelas-id_kelolakelas-academic-service_internal_domain.PermanentTutorChangeRequest'
+          $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.PermanentTutorChangeRequest'
       produces:
       - application/json
       responses:
@@ -739,32 +1622,106 @@ paths:
           description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/github_com_kelolakelas-id_kelolakelas-academic-service_internal_domain.HTTPResponse'
+            - $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.HTTPResponse'
             - properties:
                 data:
-                  $ref: '#/definitions/github_com_kelolakelas-id_kelolakelas-academic-service_internal_domain.PermanentTutorChangeResponse'
+                  $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.PermanentTutorChangeResponse'
               type: object
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/github_com_kelolakelas-id_kelolakelas-academic-service_internal_domain.ErrorResponse'
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/github_com_kelolakelas-id_kelolakelas-academic-service_internal_domain.ErrorResponse'
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/github_com_kelolakelas-id_kelolakelas-academic-service_internal_domain.ErrorResponse'
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/github_com_kelolakelas-id_kelolakelas-academic-service_internal_domain.ErrorResponse'
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Permanently change tutor
       tags:
       - Schedules
+  /api/v1/sessions:
+    get:
+      description: List class sessions scoped to the active tenant
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.HTTPResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.SessionListResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: List tenant sessions
+      tags:
+      - Sessions
+  /api/v1/sessions/{id}:
+    get:
+      description: Get one session scoped to the active tenant
+      parameters:
+      - description: Session UUID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.HTTPResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ClassSession'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get tenant session
+      tags:
+      - Sessions
   /api/v1/sessions/{id}/attendees:
     get:
       consumes:
@@ -788,27 +1745,27 @@ paths:
           description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/github_com_kelolakelas-id_kelolakelas-academic-service_internal_domain.HTTPResponse'
+            - $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.HTTPResponse'
             - properties:
                 data:
-                  $ref: '#/definitions/github_com_kelolakelas-id_kelolakelas-academic-service_internal_domain.SessionAttendeesResponse'
+                  $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.SessionAttendeesResponse'
               type: object
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/github_com_kelolakelas-id_kelolakelas-academic-service_internal_domain.ErrorResponse'
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/github_com_kelolakelas-id_kelolakelas-academic-service_internal_domain.ErrorResponse'
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/github_com_kelolakelas-id_kelolakelas-academic-service_internal_domain.ErrorResponse'
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/github_com_kelolakelas-id_kelolakelas-academic-service_internal_domain.ErrorResponse'
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Get session attendees
@@ -835,7 +1792,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/github_com_kelolakelas-id_kelolakelas-academic-service_internal_domain.RescheduleSessionRequest'
+          $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.RescheduleSessionRequest'
       produces:
       - application/json
       responses:
@@ -843,27 +1800,27 @@ paths:
           description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/github_com_kelolakelas-id_kelolakelas-academic-service_internal_domain.HTTPResponse'
+            - $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.HTTPResponse'
             - properties:
                 data:
-                  $ref: '#/definitions/github_com_kelolakelas-id_kelolakelas-academic-service_internal_domain.RescheduleSessionResponse'
+                  $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.RescheduleSessionResponse'
               type: object
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/github_com_kelolakelas-id_kelolakelas-academic-service_internal_domain.ErrorResponse'
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/github_com_kelolakelas-id_kelolakelas-academic-service_internal_domain.ErrorResponse'
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/github_com_kelolakelas-id_kelolakelas-academic-service_internal_domain.ErrorResponse'
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/github_com_kelolakelas-id_kelolakelas-academic-service_internal_domain.ErrorResponse'
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Reschedule a specific session
@@ -890,7 +1847,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/github_com_kelolakelas-id_kelolakelas-academic-service_internal_domain.SubstituteTutorRequest'
+          $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.SubstituteTutorRequest'
       produces:
       - application/json
       responses:
@@ -898,32 +1855,159 @@ paths:
           description: OK
           schema:
             allOf:
-            - $ref: '#/definitions/github_com_kelolakelas-id_kelolakelas-academic-service_internal_domain.HTTPResponse'
+            - $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.HTTPResponse'
             - properties:
                 data:
-                  $ref: '#/definitions/github_com_kelolakelas-id_kelolakelas-academic-service_internal_domain.SubstituteTutorResponse'
+                  $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.SubstituteTutorResponse'
               type: object
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/github_com_kelolakelas-id_kelolakelas-academic-service_internal_domain.ErrorResponse'
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/github_com_kelolakelas-id_kelolakelas-academic-service_internal_domain.ErrorResponse'
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
         "404":
           description: Not Found
           schema:
-            $ref: '#/definitions/github_com_kelolakelas-id_kelolakelas-academic-service_internal_domain.ErrorResponse'
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
-            $ref: '#/definitions/github_com_kelolakelas-id_kelolakelas-academic-service_internal_domain.ErrorResponse'
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Assign substitute tutor
       tags:
       - Sessions
+  /api/v1/students:
+    get:
+      description: List students scoped to the authenticated parent or tenant enrollments
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.HTTPResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.StudentListResponse'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: List students
+      tags:
+      - Students
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Student payload
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.CreateStudentRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.HTTPResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.Student'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: Create student
+      tags:
+      - Students
+  /api/v1/students/{id}:
+    delete:
+      parameters:
+      - description: Student UUID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.HTTPResponse'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Delete student
+      tags:
+      - Students
+    get:
+      parameters:
+      - description: Student UUID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.HTTPResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.Student'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: Get student
+      tags:
+      - Students
+    patch:
+      consumes:
+      - application/json
+      parameters:
+      - description: Student UUID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Student payload
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.UpdateStudentRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.HTTPResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.Student'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: Update student
+      tags:
+      - Students
   /api/v1/tenants/{tenant_id}/enrollments:
     post:
       consumes:
@@ -939,7 +2023,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/github_com_kelolakelas-id_kelolakelas-academic-service_internal_domain.EnrollStudentRequest'
+          $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.EnrollStudentRequest'
       produces:
       - application/json
       responses:
@@ -947,10 +2031,10 @@ paths:
           description: Created
           schema:
             allOf:
-            - $ref: '#/definitions/github_com_kelolakelas-id_kelolakelas-academic-service_internal_domain.HTTPResponse'
+            - $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.HTTPResponse'
             - properties:
                 data:
-                  $ref: '#/definitions/github_com_kelolakelas-id_kelolakelas-academic-service_internal_domain.EnrollmentResponse'
+                  $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.EnrollmentResponse'
               type: object
       summary: Enroll a student in a class
       tags:

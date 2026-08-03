@@ -2,10 +2,17 @@ package domain
 
 import (
 	"encoding/json"
+	"errors"
 	"time"
 
 	"github.com/google/uuid"
 	"gorm.io/gorm"
+)
+
+var (
+	ErrCategoryNotFound      = errors.New("category not found")
+	ErrCategoryForbidden     = errors.New("category access forbidden")
+	ErrCategoryActiveClasses = errors.New("category has active classes")
 )
 
 type HTTPResponse struct {
@@ -41,4 +48,32 @@ type CategoryResponse struct {
 	Name        string           `json:"name"`
 	Description *json.RawMessage `json:"description,omitempty"`
 	CreatedAt   time.Time        `json:"created_at"`
+}
+
+type ListQuery struct {
+	Page     int
+	PageSize int
+	Search   string
+}
+
+type Pagination struct {
+	Page       int   `json:"page"`
+	PageSize   int   `json:"page_size"`
+	TotalItems int64 `json:"total_items"`
+	TotalPages int   `json:"total_pages"`
+}
+
+type CategoryListResponse struct {
+	Items      []CategoryResponse `json:"items"`
+	Pagination Pagination         `json:"pagination"`
+}
+
+type ClassListResponse struct {
+	Items      []ClassResponse `json:"items"`
+	Pagination Pagination      `json:"pagination"`
+}
+
+type ScheduleListResponse struct {
+	Items      []ClassSchedule `json:"items"`
+	Pagination Pagination      `json:"pagination"`
 }

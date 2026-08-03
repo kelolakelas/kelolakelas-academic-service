@@ -2,28 +2,83 @@ package usecase
 
 import (
 	"context"
+	"errors"
+	"math"
+	"time"
 
 	"github.com/google/uuid"
 
 	"github.com/kelolakelas/kelolakelas-academic-service/internal/domain"
 	"github.com/kelolakelas/kelolakelas-academic-service/internal/repository"
 	"github.com/kelolakelas/kelolakelas-academic-service/pkg/grpcclient"
+	"gorm.io/gorm"
 )
 
 type ClassUsecase interface {
 	CreateClass(ctx context.Context, tenantID uuid.UUID, req *domain.CreateClassRequest) (*domain.ClassResponse, error)
+	ListClasses(ctx context.Context, tenantID uuid.UUID, query domain.ListQuery) (*domain.ClassListResponse, error)
+	DeleteClass(ctx context.Context, tenantID, id uuid.UUID) error
+}
+
+func (u *classUsecase) ListClasses(ctx context.Context, tenantID uuid.UUID, query domain.ListQuery) (*domain.ClassListResponse, error) {
+	items, total, err := u.classRepo.ListByTenant(ctx, tenantID, query)
+	if err != nil {
+		return nil, err
+	}
+	responses := make([]domain.ClassResponse, 0, len(items))
+	for _, item := range items {
+		responses = append(responses, domain.ClassResponse{ID: item.ID, TenantID: item.TenantID, CategoryID: item.CategoryID, Name: item.Name, Description: item.Description, Type: item.Type, Price: item.Price, Capacity: item.Capacity, CreatedAt: item.CreatedAt})
+	}
+	return &domain.ClassListResponse{Items: responses, Pagination: domain.Pagination{Page: query.Page, PageSize: query.PageSize, TotalItems: total, TotalPages: int(math.Ceil(float64(total) / float64(query.PageSize)))}}, nil
 }
 
 type classUsecase struct {
-	classRepo    repository.ClassRepository
-	tenantClient grpcclient.TenantClient
+	classRepo      repository.ClassRepository
+	scheduleRepo   repository.ScheduleRepository
+	sessionRepo    repository.SessionRepository
+	enrollmentRepo repository.EnrollmentRepository
+	tenantClient   grpcclient.TenantClient
+	txManager      repository.TransactionManager
 }
 
-func NewClassUsecase(classRepo repository.ClassRepository, tenantClient grpcclient.TenantClient) ClassUsecase {
+func NewClassUsecase(classRepo repository.ClassRepository, scheduleRepo repository.ScheduleRepository, sessionRepo repository.SessionRepository, enrollmentRepo repository.EnrollmentRepository, tenantClient grpcclient.TenantClient, txManager repository.TransactionManager) ClassUsecase {
 	return &classUsecase{
-		classRepo:    classRepo,
-		tenantClient: tenantClient,
+		classRepo:      classRepo,
+		scheduleRepo:   scheduleRepo,
+		sessionRepo:    sessionRepo,
+		enrollmentRepo: enrollmentRepo,
+		tenantClient:   tenantClient,
+		txManager:      txManager,
 	}
+}
+
+func (u *classUsecase) DeleteClass(ctx context.Context, tenantID, id uuid.UUID) error {
+	return u.txManager.WithTransaction(ctx, func(txCtx context.Context) error {
+		class, err := u.classRepo.GetByID(txCtx, id)
+		if errors.Is(err, gorm.ErrRecordNotFound) || class == nil {
+			return domain.ErrClassNotFound
+		}
+		if err != nil {
+			return err
+		}
+		if class.TenantID != tenantID {
+			return domain.ErrClassForbidden
+		}
+		enrollments, err := u.enrollmentRepo.GetActiveByClassID(txCtx, id)
+		if err != nil {
+			return err
+		}
+		if len(enrollments) > 0 {
+			return domain.ErrClassActiveEnrollments
+		}
+		if err := u.scheduleRepo.DeleteByClass(txCtx, tenantID, id); err != nil {
+			return err
+		}
+		if err := u.sessionRepo.CancelFutureSessionsByClass(txCtx, id, normalizeDate(time.Now())); err != nil {
+			return err
+		}
+		return u.classRepo.DeleteByTenant(txCtx, tenantID, id)
+	})
 }
 
 func (u *classUsecase) CreateClass(ctx context.Context, tenantID uuid.UUID, req *domain.CreateClassRequest) (*domain.ClassResponse, error) {

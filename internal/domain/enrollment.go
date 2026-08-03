@@ -1,11 +1,14 @@
 package domain
 
 import (
+	"errors"
 	"time"
 
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
+
+var ErrInvalidEnrollmentStatus = errors.New("invalid enrollment status")
 
 type Enrollment struct {
 	ID        uuid.UUID      `gorm:"type:uuid;primaryKey;default:gen_random_uuid()" json:"id"`
@@ -33,11 +36,30 @@ type EnrollStudentRequest struct {
 }
 
 type EnrollmentResponse struct {
-	ID        uuid.UUID `json:"id"`
-	TenantID  uuid.UUID `json:"tenant_id"`
-	StudentID uuid.UUID `json:"student_id"`
-	ClassID   uuid.UUID `json:"class_id"`
-	Status    string    `json:"status"`
-	JoinedAt  time.Time `json:"joined_at"`
-	UpdatedAt time.Time `json:"updated_at"`
+	ID           uuid.UUID `json:"id"`
+	TenantID     uuid.UUID `json:"tenant_id"`
+	StudentID    uuid.UUID `json:"student_id"`
+	ClassID      uuid.UUID `json:"class_id"`
+	Status       string    `json:"status"`
+	JoinedAt     time.Time `json:"joined_at"`
+	UpdatedAt    time.Time `json:"updated_at"`
+	Class        *Class    `json:"class,omitempty"`
+	Student      *Student  `json:"student,omitempty"`
+	BillingCycle string    `json:"billing_cycle"`
+}
+
+type EnrollmentQuery struct {
+	Page      int
+	PageSize  int
+	Status    string
+	ClassID   *uuid.UUID
+	StudentID *uuid.UUID
+	Search    string
+	DateFrom  *time.Time
+	DateTo    *time.Time
+}
+
+type EnrollmentListResponse struct {
+	Items      []*EnrollmentResponse `json:"items"`
+	Pagination Pagination            `json:"pagination"`
 }

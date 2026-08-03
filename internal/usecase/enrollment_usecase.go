@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math"
 	"time"
 
 	"github.com/google/uuid"
@@ -17,6 +18,8 @@ import (
 type EnrollmentUsecase interface {
 	EnrollStudent(ctx context.Context, tenantID uuid.UUID, req *domain.EnrollStudentRequest) (*domain.EnrollmentResponse, error)
 	UpdateEnrollmentStatus(ctx context.Context, enrollmentID uuid.UUID, status string) (*domain.EnrollmentResponse, error)
+	List(ctx context.Context, tenantID, parentID *uuid.UUID, query domain.EnrollmentQuery) (*domain.EnrollmentListResponse, error)
+	GetByID(ctx context.Context, tenantID, parentID *uuid.UUID, id uuid.UUID) (*domain.EnrollmentResponse, error)
 }
 
 type enrollmentUsecase struct {
@@ -45,6 +48,13 @@ func (u *enrollmentUsecase) EnrollStudent(ctx context.Context, tenantID uuid.UUI
 	if class.TenantID != tenantID {
 		return nil, fmt.Errorf("class does not belong to tenant")
 	}
+	duplicate, err := u.enrollmentRepo.ExistsActive(ctx, req.StudentID, req.ClassID)
+	if err != nil {
+		return nil, fmt.Errorf("check enrollment: %w", err)
+	}
+	if duplicate {
+		return nil, fmt.Errorf("active enrollment already exists")
+	}
 	enrollment := &domain.Enrollment{ID: uuid.New(), TenantID: tenantID, StudentID: req.StudentID, ClassID: req.ClassID, Status: "pending"}
 	if err := u.enrollmentRepo.Create(ctx, enrollment); err != nil {
 		return nil, fmt.Errorf("create enrollment: %w", err)
@@ -57,7 +67,7 @@ func (u *enrollmentUsecase) EnrollStudent(ctx context.Context, tenantID uuid.UUI
 
 func (u *enrollmentUsecase) UpdateEnrollmentStatus(ctx context.Context, enrollmentID uuid.UUID, status string) (*domain.EnrollmentResponse, error) {
 	if status != "pending" && status != "active" && status != "completed" && status != "dropped" {
-		return nil, fmt.Errorf("invalid enrollment status %q", status)
+		return nil, domain.ErrInvalidEnrollmentStatus
 	}
 	enrollment, err := u.enrollmentRepo.GetByID(ctx, enrollmentID)
 	if err != nil {
@@ -77,6 +87,44 @@ func (u *enrollmentUsecase) UpdateEnrollmentStatus(ctx context.Context, enrollme
 	return enrollmentResponse(enrollment), nil
 }
 
+func (u *enrollmentUsecase) List(ctx context.Context, tenantID, parentID *uuid.UUID, query domain.EnrollmentQuery) (*domain.EnrollmentListResponse, error) {
+	if query.Page < 1 {
+		query.Page = 1
+	}
+	if query.PageSize < 1 || query.PageSize > 100 {
+		query.PageSize = 20
+	}
+	items, total, err := u.enrollmentRepo.List(ctx, tenantID, parentID, query)
+	if err != nil {
+		return nil, err
+	}
+	responses := make([]*domain.EnrollmentResponse, 0, len(items))
+	for _, item := range items {
+		responses = append(responses, enrollmentResponse(item))
+	}
+	return &domain.EnrollmentListResponse{
+		Items: responses,
+		Pagination: domain.Pagination{
+			Page:       query.Page,
+			PageSize:   query.PageSize,
+			TotalItems: total,
+			TotalPages: int(math.Ceil(float64(total) / float64(query.PageSize))),
+		},
+	}, nil
+}
+
+func (u *enrollmentUsecase) GetByID(ctx context.Context, tenantID, parentID *uuid.UUID, id uuid.UUID) (*domain.EnrollmentResponse, error) {
+	item, err := u.enrollmentRepo.GetByIDForAccess(ctx, tenantID, parentID, id)
+	if err != nil {
+		return nil, err
+	}
+	return enrollmentResponse(item), nil
+}
+
 func enrollmentResponse(enrollment *domain.Enrollment) *domain.EnrollmentResponse {
-	return &domain.EnrollmentResponse{ID: enrollment.ID, TenantID: enrollment.TenantID, StudentID: enrollment.StudentID, ClassID: enrollment.ClassID, Status: enrollment.Status, JoinedAt: enrollment.JoinedAt, UpdatedAt: enrollment.UpdatedAt}
+	return &domain.EnrollmentResponse{
+		ID: enrollment.ID, TenantID: enrollment.TenantID, StudentID: enrollment.StudentID,
+		ClassID: enrollment.ClassID, Status: enrollment.Status, JoinedAt: enrollment.JoinedAt,
+		UpdatedAt: enrollment.UpdatedAt, Class: enrollment.Class, Student: enrollment.Student,
+	}
 }

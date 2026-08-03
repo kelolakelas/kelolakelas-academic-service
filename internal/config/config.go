@@ -17,6 +17,7 @@ type Config struct {
 	IdentityGRPCHost  string `mapstructure:"IDENTITY_GRPC_HOST"`
 	BillingServiceURL string `mapstructure:"BILLING_SERVICE_URL"`
 	Port              string `mapstructure:"PORT"`
+	JWTSecret         string `mapstructure:"JWT_SECRET"`
 }
 
 func LoadConfig() (Config, error) {
@@ -60,6 +61,9 @@ func LoadConfig() (Config, error) {
 	}
 	if config.Port == "" {
 		config.Port = "8081"
+	}
+	if config.JWTSecret == "" {
+		config.JWTSecret = "supersecretjwtkey123!"
 	}
 	if config.BillingServiceURL == "" {
 		config.BillingServiceURL = "http://localhost:8082"

@@ -21,3 +21,21 @@ type ClassSession struct {
 	Schedule   *ClassSchedule `gorm:"foreignKey:ScheduleID" json:"schedule,omitempty"`
 	Enrollment *Enrollment    `gorm:"foreignKey:EnrollmentID" json:"enrollment,omitempty"`
 }
+
+type SessionQuery struct {
+	Page         int
+	PageSize     int
+	ClassID      *uuid.UUID
+	ScheduleID   *uuid.UUID
+	EnrollmentID *uuid.UUID
+	TutorID      *uuid.UUID
+	Status       string
+	DateFrom     *time.Time
+	DateTo       *time.Time
+	Search       string
+}
+
+type SessionListResponse struct {
+	Items      []ClassSession `json:"items"`
+	Pagination Pagination     `json:"pagination"`
+}

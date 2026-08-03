@@ -21,6 +21,47 @@ func NewScheduleHandler(scheduleUsecase usecase.ScheduleUsecase) *ScheduleHandle
 	}
 }
 
+// Delete godoc
+// @Summary Delete class schedule
+// @Description Soft-delete a tenant-owned schedule and cancel its future scheduled sessions
+// @Tags Schedules
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param X-Tenant-ID header string true "Tenant ID dalam format UUID"
+// @Param id path string true "Schedule ID (UUID)"
+// @Success 200 {object} domain.HTTPResponse
+// @Failure 400 {object} domain.ErrorResponse
+// @Failure 401 {object} domain.ErrorResponse
+// @Failure 403 {object} domain.ErrorResponse
+// @Failure 404 {object} domain.ErrorResponse
+// @Failure 500 {object} domain.ErrorResponse
+// @Router /api/v1/schedules/{id} [delete]
+func (h *ScheduleHandler) Delete(c *gin.Context) {
+	tenantID, err := tenantIDFromContext(c)
+	if err != nil {
+		writeTenantError(c, err)
+		return
+	}
+	id, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"status": "error", "message": "Invalid schedule ID format", "data": nil})
+		return
+	}
+	if err := h.scheduleUsecase.DeleteSchedule(c.Request.Context(), tenantID, id); err != nil {
+		switch {
+		case errors.Is(err, domain.ErrScheduleForbidden):
+			c.JSON(http.StatusForbidden, gin.H{"status": "error", "message": err.Error(), "data": nil})
+		case errors.Is(err, usecase.ErrScheduleNotFound):
+			c.JSON(http.StatusNotFound, gin.H{"status": "error", "message": err.Error(), "data": nil})
+		default:
+			c.JSON(http.StatusInternalServerError, gin.H{"status": "error", "message": "Failed to delete schedule", "data": nil})
+		}
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"status": "success", "message": "Schedule deleted successfully", "data": nil})
+}
+
 // 1. Create Initial Schedules for an Existing Class
 // CreateInitialSchedules godoc
 // @Summary Create initial schedules for a class

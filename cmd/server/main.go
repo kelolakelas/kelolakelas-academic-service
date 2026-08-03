@@ -12,6 +12,7 @@ import (
 	_ "github.com/kelolakelas/kelolakelas-academic-service/docs"
 	"github.com/kelolakelas/kelolakelas-academic-service/internal/config"
 	"github.com/kelolakelas/kelolakelas-academic-service/internal/delivery/http/handler"
+	"github.com/kelolakelas/kelolakelas-academic-service/internal/delivery/http/middleware"
 	"github.com/kelolakelas/kelolakelas-academic-service/internal/domain"
 	"github.com/kelolakelas/kelolakelas-academic-service/internal/repository"
 	"github.com/kelolakelas/kelolakelas-academic-service/internal/usecase"
@@ -55,6 +56,8 @@ func main() {
 		&domain.Enrollment{},
 		&domain.ClassSchedule{},
 		&domain.ClassSession{},
+		&domain.Attendance{},
+		&domain.Report{},
 	); err != nil {
 		slog.Error("Auto-migration failed", "error", err)
 		os.Exit(1)
@@ -79,16 +82,22 @@ func main() {
 	billingClient := billing.NewClient(cfg.BillingServiceURL)
 
 	// Initialize Usecases
-	categoryUsecase := usecase.NewCategoryUsecase(categoryRepo, tenantClient)
-	classUsecase := usecase.NewClassUsecase(classRepo, tenantClient)
+	categoryUsecase := usecase.NewCategoryUsecase(categoryRepo, tenantClient, txManager)
+	classUsecase := usecase.NewClassUsecase(classRepo, scheduleRepo, sessionRepo, enrollmentRepo, tenantClient, txManager)
+	classCreationUsecase := usecase.NewClassCreationUsecase(txManager, categoryRepo, classRepo, scheduleRepo, sessionRepo, tenantClient)
 	scheduleUsecase := usecase.NewScheduleUsecase(txManager, classRepo, scheduleRepo, sessionRepo, enrollmentRepo)
 	enrollmentUsecase := usecase.NewEnrollmentUsecase(enrollmentRepo, studentRepo, classRepo, billingClient)
 
 	// Initialize Handlers
 	categoryHandler := handler.NewCategoryHandler(categoryUsecase)
-	classHandler := handler.NewClassHandler(classUsecase)
+	classHandler := handler.NewClassHandler(classUsecase, classCreationUsecase)
 	scheduleHandler := handler.NewScheduleHandler(scheduleUsecase)
+	listHandler := handler.NewListHandler(categoryUsecase, classUsecase, scheduleUsecase)
 	enrollmentHandler := handler.NewEnrollmentHandler(enrollmentUsecase)
+	sessionHandler := handler.NewSessionHandler(scheduleUsecase)
+	studentHandler := handler.NewStudentHandler(usecase.NewStudentUsecase(studentRepo))
+	attendanceHandler := handler.NewAttendanceHandler(usecase.NewAttendanceUsecase(repository.NewAttendanceRepository(db), sessionRepo))
+	reportHandler := handler.NewReportHandler(usecase.NewReportUsecase(repository.NewReportRepository(db), enrollmentRepo))
 
 	// Initialize Router
 	r := gin.New()
@@ -107,16 +116,40 @@ func main() {
 
 	// Routes
 	apiV1 := r.Group("/api/v1")
+	apiV1.Use(middleware.AuthMiddleware(cfg.JWTSecret))
 	{
+		apiV1.GET("/categories", listHandler.ListCategories)
 		apiV1.POST("/categories", categoryHandler.Create)
+		apiV1.DELETE("/categories/:id", categoryHandler.Delete)
+		apiV1.GET("/classes", listHandler.ListClasses)
 		apiV1.POST("/classes", classHandler.Create)
+		apiV1.POST("/classes/with-category", classHandler.CreateWithCategory)
+		apiV1.DELETE("/classes/:id", classHandler.Delete)
+		apiV1.GET("/schedules", listHandler.ListSchedules)
+		apiV1.GET("/students", studentHandler.List)
+		apiV1.POST("/students", studentHandler.Create)
+		apiV1.GET("/students/:id", studentHandler.Get)
+		apiV1.PATCH("/students/:id", studentHandler.Update)
+		apiV1.DELETE("/students/:id", studentHandler.Delete)
+		apiV1.GET("/attendance", attendanceHandler.List)
+		apiV1.POST("/attendance", attendanceHandler.Create)
+		apiV1.GET("/attendance/:id", attendanceHandler.Get)
+		apiV1.PATCH("/attendance/:id", attendanceHandler.Update)
+		apiV1.GET("/reports", reportHandler.List)
+		apiV1.POST("/reports", reportHandler.Create)
+		apiV1.GET("/reports/:id", reportHandler.Get)
+		apiV1.PATCH("/reports/:id", reportHandler.Update)
+		apiV1.DELETE("/reports/:id", reportHandler.Delete)
 		apiV1.POST("/tenants/:tenant_id/enrollments", enrollmentHandler.Create)
+		apiV1.GET("/enrollments", enrollmentHandler.ListQuery)
+		apiV1.GET("/enrollments/:id", enrollmentHandler.GetQuery)
 
 		// Enrollment Routes
 		apiV1.PUT("/enrollments/:id/status", enrollmentHandler.UpdateStatus)
 
 		// Schedule Routes
 		apiV1.POST("/schedules", scheduleHandler.CreateInitialSchedules)
+		apiV1.DELETE("/schedules/:id", scheduleHandler.Delete)
 		apiV1.PUT("/schedules/permanent", scheduleHandler.ChangeSchedulePermanent)
 		apiV1.PUT("/schedules/:id/permanent", scheduleHandler.ChangeSchedulePermanent)
 		apiV1.PATCH("/schedules/tutor-permanent", scheduleHandler.ChangeTutorPermanent)
@@ -125,6 +158,8 @@ func main() {
 		apiV1.PUT("/schedules/:id/tutor-permanent", scheduleHandler.ChangeTutorPermanent)
 
 		// Session Routes
+		apiV1.GET("/sessions", sessionHandler.ListSessions)
+		apiV1.GET("/sessions/:id", sessionHandler.GetSession)
 		apiV1.POST("/sessions/reschedule", scheduleHandler.RescheduleSession)
 		apiV1.POST("/sessions/:id/reschedule", scheduleHandler.RescheduleSession)
 		apiV1.PATCH("/sessions/substitute-tutor", scheduleHandler.ChangeTutorTemporary)

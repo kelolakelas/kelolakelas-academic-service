@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"errors"
 
 	"github.com/google/uuid"
 	"gorm.io/gorm"
@@ -31,6 +32,76 @@ func (r *enrollmentRepository) GetByID(ctx context.Context, id uuid.UUID) (*doma
 		return nil, err
 	}
 	return &enrollment, nil
+}
+
+func (r *enrollmentRepository) GetByIDForAccess(ctx context.Context, tenantID, parentID *uuid.UUID, id uuid.UUID) (*domain.Enrollment, error) {
+	db := r.getDB(ctx).Preload("Student").Preload("Class").Where("enrollments.id = ?", id)
+	if tenantID != nil {
+		db = db.Where("enrollments.tenant_id = ?", *tenantID)
+	}
+	if parentID != nil {
+		db = db.Joins("JOIN students s ON s.id = enrollments.student_id").Where("s.parent_id = ?", *parentID)
+	}
+	var enrollment domain.Enrollment
+	err := db.First(&enrollment).Error
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, gorm.ErrRecordNotFound
+	}
+	return &enrollment, err
+}
+
+func (r *enrollmentRepository) List(ctx context.Context, tenantID, parentID *uuid.UUID, query domain.EnrollmentQuery) ([]*domain.Enrollment, int64, error) {
+	db := r.getDB(ctx).Model(&domain.Enrollment{}).Preload("Student").Preload("Class")
+	if tenantID != nil {
+		db = db.Where("enrollments.tenant_id = ?", *tenantID)
+	}
+	if parentID != nil {
+		db = db.Joins("JOIN students s ON s.id = enrollments.student_id").Where("s.parent_id = ?", *parentID)
+	}
+	if query.Status != "" {
+		db = db.Where("enrollments.status = ?", query.Status)
+	}
+	if query.ClassID != nil {
+		db = db.Where("enrollments.class_id = ?", *query.ClassID)
+	}
+	if query.StudentID != nil {
+		db = db.Where("enrollments.student_id = ?", *query.StudentID)
+	}
+	if query.DateFrom != nil {
+		db = db.Where("enrollments.joined_at >= ?", *query.DateFrom)
+	}
+	if query.DateTo != nil {
+		db = db.Where("enrollments.joined_at <= ?", *query.DateTo)
+	}
+	if query.Search != "" {
+		db = db.Joins("JOIN students ss ON ss.id = enrollments.student_id").
+			Joins("JOIN classes cc ON cc.id = enrollments.class_id").
+			Where("ss.full_name ILIKE ? OR cc.name ILIKE ?", "%"+query.Search+"%", "%"+query.Search+"%")
+	}
+	var total int64
+	if err := db.Session(&gorm.Session{}).Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+	var items []*domain.Enrollment
+	err := db.Order("enrollments.joined_at DESC").
+		Limit(query.PageSize).
+		Offset((query.Page - 1) * query.PageSize).
+		Find(&items).Error
+	return items, total, err
+}
+
+func (r *enrollmentRepository) ExistsActive(ctx context.Context, studentID, classID uuid.UUID) (bool, error) {
+	var count int64
+	err := r.getDB(ctx).Model(&domain.Enrollment{}).
+		Where("student_id = ? AND class_id = ? AND status = ?", studentID, classID, "active").
+		Count(&count).Error
+	return count > 0, err
+}
+
+func (r *enrollmentRepository) IsTutorForEnrollment(ctx context.Context, enrollmentID, memberID uuid.UUID) (bool, error) {
+	var count int64
+	err := r.getDB(ctx).Table("enrollments e").Joins("JOIN class_teachers ct ON ct.class_id = e.class_id").Where("e.id = ? AND ct.teacher_id = ?", enrollmentID, memberID).Count(&count).Error
+	return count > 0, err
 }
 
 func (r *enrollmentRepository) GetActiveByClassID(ctx context.Context, classID uuid.UUID) ([]*domain.Enrollment, error) {

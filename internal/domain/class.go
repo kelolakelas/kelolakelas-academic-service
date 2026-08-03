@@ -2,10 +2,17 @@ package domain
 
 import (
 	"encoding/json"
+	"errors"
 	"time"
 
 	"github.com/google/uuid"
 	"gorm.io/gorm"
+)
+
+var (
+	ErrClassNotFound          = errors.New("class not found")
+	ErrClassForbidden         = errors.New("class access forbidden")
+	ErrClassActiveEnrollments = errors.New("class has active enrollments")
 )
 
 type Class struct {
@@ -31,6 +38,27 @@ type CreateClassRequest struct {
 	Type        string           `json:"type" binding:"required,oneof=private group"`
 	Price       int64            `json:"price" binding:"required,min=0"`
 	Capacity    *int             `json:"capacity,omitempty"`
+}
+
+type CreateClassWithCategoryRequest struct {
+	Category  CreateCategoryRequest `json:"category" binding:"required"`
+	Class     CreateClassPayload    `json:"class" binding:"required"`
+	Schedules []ScheduleItemRequest `json:"schedules,omitempty"`
+}
+
+type CreateClassPayload struct {
+	Name        string           `json:"name" binding:"required"`
+	Description *json.RawMessage `json:"description,omitempty"`
+	Type        string           `json:"type" binding:"required,oneof=private group"`
+	Price       int64            `json:"price" binding:"min=0"`
+	Capacity    *int             `json:"capacity,omitempty"`
+}
+
+type CreateClassWithCategoryResponse struct {
+	Category  *Category        `json:"category"`
+	Class     *Class           `json:"class"`
+	Schedules []*ClassSchedule `json:"schedules"`
+	Sessions  []*ClassSession  `json:"sessions"`
 }
 
 type ClassResponse struct {
