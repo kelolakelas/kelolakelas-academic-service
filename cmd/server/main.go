@@ -165,7 +165,7 @@ func main() {
 	}
 
 	slog.Info("Starting academic service", "port", cfg.Port)
-	if err := r.Run(":" + cfg.Port); err != nil {
+	if err := r.Run("0.0.0.0:" + cfg.Port); err != nil {
 		slog.Error("Failed to start academic service", "error", err)
 		os.Exit(1)
 	}
