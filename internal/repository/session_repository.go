@@ -52,6 +52,10 @@ func (r *sessionRepository) GetByIDForTenant(ctx context.Context, tenantID, id u
 	return &session, nil
 }
 
+func (r *sessionRepository) DeleteByTenant(ctx context.Context, tenantID, id uuid.UUID) error {
+	return r.getDB(ctx).Where("id = ? AND class_id IN (SELECT id FROM classes WHERE tenant_id = ?)", id, tenantID).Delete(&domain.ClassSession{}).Error
+}
+
 func (r *sessionRepository) FindForAttendance(ctx context.Context, tenantID, scheduleID, enrollmentID uuid.UUID, date time.Time) (*domain.ClassSession, error) {
 	var session domain.ClassSession
 	err := r.getDB(ctx).Joins("JOIN classes c ON c.id = class_sessions.class_id").

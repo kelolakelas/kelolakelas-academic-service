@@ -115,6 +115,9 @@ func (m *deleteSessionRepoMock) GetByID(context.Context, uuid.UUID) (*domain.Cla
 func (m *deleteSessionRepoMock) GetByIDForTenant(context.Context, uuid.UUID, uuid.UUID) (*domain.ClassSession, error) {
 	return nil, nil
 }
+func (m *deleteSessionRepoMock) DeleteByTenant(context.Context, uuid.UUID, uuid.UUID) error {
+	return nil
+}
 func (m *deleteSessionRepoMock) FindForAttendance(context.Context, uuid.UUID, uuid.UUID, uuid.UUID, time.Time) (*domain.ClassSession, error) {
 	return nil, nil
 }

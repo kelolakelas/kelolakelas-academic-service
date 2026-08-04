@@ -598,7 +598,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Atomically creates a category and class, plus initial schedules and sessions for group classes. Private classes must omit schedules.",
+                "description": "Atomically creates a category and class, assigns one or more teachers, plus initial schedules and sessions for group classes. Private classes must omit schedules.",
                 "consumes": [
                     "application/json"
                 ],
@@ -618,7 +618,7 @@ const docTemplate = `{
                         "required": true
                     },
                     {
-                        "description": "Create category and class payload",
+                        "description": "Create category, class, teacher assignments, and schedules payload",
                         "name": "request",
                         "in": "body",
                         "required": true,
@@ -1645,6 +1645,78 @@ const docTemplate = `{
                         }
                     }
                 }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Soft-delete a tenant-owned class session by ID",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Sessions"
+                ],
+                "summary": "Delete class session",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Tenant ID dalam format UUID",
+                        "name": "X-Tenant-ID",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Session ID (UUID)",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.HTTPResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
+                        }
+                    }
+                }
             }
         },
         "/api/v1/sessions/{id}/attendees": {
@@ -2445,6 +2517,9 @@ const docTemplate = `{
                 "class_id": {
                     "type": "string"
                 },
+                "deleted_at": {
+                    "$ref": "#/definitions/gorm.DeletedAt"
+                },
                 "end_time": {
                     "type": "string"
                 },
@@ -2597,7 +2672,8 @@ const docTemplate = `{
             "type": "object",
             "required": [
                 "category",
-                "class"
+                "class",
+                "teacher_ids"
             ],
             "properties": {
                 "category": {
@@ -2610,6 +2686,13 @@ const docTemplate = `{
                     "type": "array",
                     "items": {
                         "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ScheduleItemRequest"
+                    }
+                },
+                "teacher_ids": {
+                    "type": "array",
+                    "minItems": 1,
+                    "items": {
+                        "type": "string"
                     }
                 }
             }

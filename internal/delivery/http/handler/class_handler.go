@@ -25,13 +25,13 @@ func NewClassHandler(classUsecase usecase.ClassUsecase, creationUsecase usecase.
 
 // CreateWithCategory godoc
 // @Summary Create category, class, and initial schedules
-// @Description Atomically creates a category and class, plus initial schedules and sessions for group classes. Private classes must omit schedules.
+// @Description Atomically creates a category and class, assigns one or more teachers, plus initial schedules and sessions for group classes. Private classes must omit schedules.
 // @Tags Classes
 // @Accept json
 // @Produce json
 // @Security BearerAuth
 // @Param X-Tenant-ID header string true "Tenant ID dalam format UUID"
-// @Param request body domain.CreateClassWithCategoryRequest true "Create category and class payload"
+// @Param request body domain.CreateClassWithCategoryRequest true "Create category, class, teacher assignments, and schedules payload"
 // @Success 201 {object} domain.HTTPResponse{data=domain.CreateClassWithCategoryResponse}
 // @Failure 400 {object} domain.ErrorResponse
 // @Failure 401 {object} domain.ErrorResponse

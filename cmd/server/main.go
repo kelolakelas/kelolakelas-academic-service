@@ -2,7 +2,6 @@ package main
 
 import (
 	"log/slog"
-	"net/http"
 	"os"
 
 	"github.com/gin-gonic/gin"
@@ -41,7 +40,7 @@ func main() {
 	}
 
 	// Initialize DB Connection
-	db, err := database.NewPostgresDB(cfg.DBHost, cfg.DBPort, cfg.DBUser, cfg.DBPassword, cfg.DBName)
+	db, err := database.NewPostgresDB(cfg.DBHost, cfg.DBPort, cfg.DBUser, cfg.DBPassword, cfg.DBName, cfg.DBSSLMode)
 	if err != nil {
 		slog.Error("Database connection failed", "error", err)
 		os.Exit(1)
@@ -56,6 +55,7 @@ func main() {
 		&domain.Enrollment{},
 		&domain.ClassSchedule{},
 		&domain.ClassSession{},
+		&domain.ClassTeacher{},
 		&domain.Attendance{},
 		&domain.Report{},
 	); err != nil {
@@ -75,6 +75,7 @@ func main() {
 	txManager := repository.NewTransactionManager(db)
 	categoryRepo := repository.NewCategoryRepository(db)
 	classRepo := repository.NewClassRepository(db)
+	classTeacherRepo := repository.NewClassTeacherRepository(db)
 	scheduleRepo := repository.NewScheduleRepository(db)
 	sessionRepo := repository.NewSessionRepository(db)
 	enrollmentRepo := repository.NewEnrollmentRepository(db)
@@ -84,7 +85,7 @@ func main() {
 	// Initialize Usecases
 	categoryUsecase := usecase.NewCategoryUsecase(categoryRepo, tenantClient, txManager)
 	classUsecase := usecase.NewClassUsecase(classRepo, scheduleRepo, sessionRepo, enrollmentRepo, tenantClient, txManager)
-	classCreationUsecase := usecase.NewClassCreationUsecase(txManager, categoryRepo, classRepo, scheduleRepo, sessionRepo, tenantClient)
+	classCreationUsecase := usecase.NewClassCreationUsecase(txManager, categoryRepo, classRepo, classTeacherRepo, scheduleRepo, sessionRepo, tenantClient)
 	scheduleUsecase := usecase.NewScheduleUsecase(txManager, classRepo, scheduleRepo, sessionRepo, enrollmentRepo)
 	enrollmentUsecase := usecase.NewEnrollmentUsecase(enrollmentRepo, studentRepo, classRepo, billingClient)
 
@@ -104,12 +105,7 @@ func main() {
 	r.Use(gin.Recovery())
 
 	// Health check endpoint
-	r.GET("/health", func(c *gin.Context) {
-		c.JSON(http.StatusOK, gin.H{
-			"status":  "healthy",
-			"service": "academic-service",
-		})
-	})
+	r.GET("/health", healthHandler("academic-service"))
 
 	// Swagger UI
 	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
@@ -160,6 +156,7 @@ func main() {
 		// Session Routes
 		apiV1.GET("/sessions", sessionHandler.ListSessions)
 		apiV1.GET("/sessions/:id", sessionHandler.GetSession)
+		apiV1.DELETE("/sessions/:id", sessionHandler.DeleteSession)
 		apiV1.POST("/sessions/reschedule", scheduleHandler.RescheduleSession)
 		apiV1.POST("/sessions/:id/reschedule", scheduleHandler.RescheduleSession)
 		apiV1.PATCH("/sessions/substitute-tutor", scheduleHandler.ChangeTutorTemporary)

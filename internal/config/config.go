@@ -11,6 +11,7 @@ import (
 type Config struct {
 	DBHost            string `mapstructure:"DB_HOST"`
 	DBPort            string `mapstructure:"DB_PORT"`
+	DBSSLMode         string `mapstructure:"DB_SSLMODE"`
 	DBUser            string `mapstructure:"DB_USER"`
 	DBPassword        string `mapstructure:"DB_PASSWORD"`
 	DBName            string `mapstructure:"DB_NAME"`
@@ -34,6 +35,9 @@ func LoadConfig() (Config, error) {
 	}
 
 	viper.AutomaticEnv()
+	if err := viper.BindEnv("DB_SSLMODE"); err != nil {
+		return Config{}, err
+	}
 
 	var config Config
 	if err := viper.Unmarshal(&config); err != nil {
@@ -46,6 +50,9 @@ func LoadConfig() (Config, error) {
 	}
 	if config.DBPort == "" {
 		config.DBPort = "5432"
+	}
+	if config.DBSSLMode == "" {
+		config.DBSSLMode = "disable"
 	}
 	if config.DBUser == "" {
 		config.DBUser = "postgres"

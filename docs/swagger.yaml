@@ -176,6 +176,8 @@ definitions:
         $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.Class'
       class_id:
         type: string
+      deleted_at:
+        $ref: '#/definitions/gorm.DeletedAt'
       end_time:
         type: string
       enrollment:
@@ -288,9 +290,15 @@ definitions:
         items:
           $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ScheduleItemRequest'
         type: array
+      teacher_ids:
+        items:
+          type: string
+        minItems: 1
+        type: array
     required:
     - category
     - class
+    - teacher_ids
     type: object
   github_com_kelolakelas_kelolakelas-academic-service_internal_domain.CreateClassWithCategoryResponse:
     properties:
@@ -1138,15 +1146,16 @@ paths:
     post:
       consumes:
       - application/json
-      description: Atomically creates a category and class, plus initial schedules
-        and sessions for group classes. Private classes must omit schedules.
+      description: Atomically creates a category and class, assigns one or more teachers,
+        plus initial schedules and sessions for group classes. Private classes must
+        omit schedules.
       parameters:
       - description: Tenant ID dalam format UUID
         in: header
         name: X-Tenant-ID
         required: true
         type: string
-      - description: Create category and class payload
+      - description: Create category, class, teacher assignments, and schedules payload
         in: body
         name: request
         required: true
@@ -1681,6 +1690,53 @@ paths:
       tags:
       - Sessions
   /api/v1/sessions/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: Soft-delete a tenant-owned class session by ID
+      parameters:
+      - description: Tenant ID dalam format UUID
+        in: header
+        name: X-Tenant-ID
+        required: true
+        type: string
+      - description: Session ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.HTTPResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Delete class session
+      tags:
+      - Sessions
     get:
       description: Get one session scoped to the active tenant
       parameters:

@@ -133,3 +133,44 @@ func (h *SessionHandler) GetSession(c *gin.Context) {
 	}
 	c.JSON(http.StatusOK, gin.H{"status": "success", "message": "Session fetched successfully", "data": session})
 }
+
+// DeleteSession godoc
+// @Summary Delete class session
+// @Description Soft-delete a tenant-owned class session by ID
+// @Tags Sessions
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param X-Tenant-ID header string true "Tenant ID dalam format UUID"
+// @Param id path string true "Session ID (UUID)"
+// @Success 200 {object} domain.HTTPResponse
+// @Failure 400 {object} domain.ErrorResponse
+// @Failure 401 {object} domain.ErrorResponse
+// @Failure 403 {object} domain.ErrorResponse
+// @Failure 404 {object} domain.ErrorResponse
+// @Failure 500 {object} domain.ErrorResponse
+// @Router /api/v1/sessions/{id} [delete]
+func (h *SessionHandler) DeleteSession(c *gin.Context) {
+	id, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"status": "error", "message": "Invalid session ID", "data": nil})
+		return
+	}
+	tenantID, err := sessionTenantID(c)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"status": "error", "message": "Invalid tenant context", "data": nil})
+		return
+	}
+	if err := h.usecase.DeleteSession(c.Request.Context(), tenantID, id); err != nil {
+		switch {
+		case errors.Is(err, domain.ErrSessionForbidden):
+			c.JSON(http.StatusForbidden, gin.H{"status": "error", "message": err.Error(), "data": nil})
+		case errors.Is(err, usecase.ErrSessionNotFound):
+			c.JSON(http.StatusNotFound, gin.H{"status": "error", "message": err.Error(), "data": nil})
+		default:
+			c.JSON(http.StatusInternalServerError, gin.H{"status": "error", "message": "Failed to delete session", "data": nil})
+		}
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"status": "success", "message": "Session deleted successfully", "data": nil})
+}

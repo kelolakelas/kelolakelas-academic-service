@@ -70,6 +70,22 @@ func (u *scheduleUsecase) GetSession(ctx context.Context, tenantID, sessionID uu
 	return u.sessionRepo.GetByIDForTenant(ctx, tenantID, sessionID)
 }
 
+func (u *scheduleUsecase) DeleteSession(ctx context.Context, tenantID, sessionID uuid.UUID) error {
+	return u.txManager.WithTransaction(ctx, func(txCtx context.Context) error {
+		session, err := u.sessionRepo.GetByID(txCtx, sessionID)
+		if errors.Is(err, gorm.ErrRecordNotFound) || session == nil {
+			return ErrSessionNotFound
+		}
+		if err != nil {
+			return err
+		}
+		if session.Class == nil || session.Class.TenantID != tenantID {
+			return domain.ErrSessionForbidden
+		}
+		return u.sessionRepo.DeleteByTenant(txCtx, tenantID, sessionID)
+	})
+}
+
 func NewScheduleUsecase(
 	txManager repository.TransactionManager,
 	classRepo repository.ClassRepository,

@@ -48,6 +48,7 @@ type SessionRepository interface {
 	BatchCreate(ctx context.Context, sessions []*domain.ClassSession) error
 	GetByID(ctx context.Context, id uuid.UUID) (*domain.ClassSession, error)
 	GetByIDForTenant(ctx context.Context, tenantID, id uuid.UUID) (*domain.ClassSession, error)
+	DeleteByTenant(ctx context.Context, tenantID, id uuid.UUID) error
 	FindForAttendance(ctx context.Context, tenantID, scheduleID, enrollmentID uuid.UUID, date time.Time) (*domain.ClassSession, error)
 	IsTutorForSession(ctx context.Context, tenantID, sessionID, memberID uuid.UUID) (bool, error)
 	ListByTenant(ctx context.Context, tenantID uuid.UUID, query domain.SessionQuery) ([]domain.ClassSession, int64, error)

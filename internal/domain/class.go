@@ -41,9 +41,10 @@ type CreateClassRequest struct {
 }
 
 type CreateClassWithCategoryRequest struct {
-	Category  CreateCategoryRequest `json:"category" binding:"required"`
-	Class     CreateClassPayload    `json:"class" binding:"required"`
-	Schedules []ScheduleItemRequest `json:"schedules,omitempty"`
+	Category   CreateCategoryRequest `json:"category" binding:"required"`
+	Class      CreateClassPayload    `json:"class" binding:"required"`
+	TeacherIDs []uuid.UUID           `json:"teacher_ids" binding:"required,min=1"`
+	Schedules  []ScheduleItemRequest `json:"schedules,omitempty"`
 }
 
 type CreateClassPayload struct {

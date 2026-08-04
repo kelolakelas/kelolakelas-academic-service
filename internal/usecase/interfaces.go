@@ -38,6 +38,7 @@ type ScheduleUsecase interface {
 	DeleteSchedule(ctx context.Context, tenantID, id uuid.UUID) error
 	ListSessions(ctx context.Context, tenantID uuid.UUID, query domain.SessionQuery) (*domain.SessionListResponse, error)
 	GetSession(ctx context.Context, tenantID, sessionID uuid.UUID) (*domain.ClassSession, error)
+	DeleteSession(ctx context.Context, tenantID, sessionID uuid.UUID) error
 	// Scenario 1: Create Initial Schedules for an Existing Class
 	CreateInitialSchedules(ctx context.Context, req *domain.CreateInitialSchedulesRequest) (*domain.CreateInitialSchedulesResponse, error)
 

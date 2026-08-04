@@ -15,25 +15,28 @@ import (
 var ErrPrivateSchedulesNotAllowed = errors.New("private classes cannot include initial schedules")
 
 type classCreationUsecase struct {
-	txManager    repository.TransactionManager
-	categoryRepo repository.CategoryRepository
-	classRepo    repository.ClassRepository
-	scheduleRepo repository.ScheduleRepository
-	sessionRepo  repository.SessionRepository
-	tenantClient grpcclient.TenantClient
+	txManager        repository.TransactionManager
+	categoryRepo     repository.CategoryRepository
+	classRepo        repository.ClassRepository
+	classTeacherRepo repository.ClassTeacherRepository
+	scheduleRepo     repository.ScheduleRepository
+	sessionRepo      repository.SessionRepository
+	tenantClient     grpcclient.TenantClient
 }
 
 func NewClassCreationUsecase(
 	txManager repository.TransactionManager,
 	categoryRepo repository.CategoryRepository,
 	classRepo repository.ClassRepository,
+	classTeacherRepo repository.ClassTeacherRepository,
 	scheduleRepo repository.ScheduleRepository,
 	sessionRepo repository.SessionRepository,
 	tenantClient grpcclient.TenantClient,
 ) ClassCreationUsecase {
 	return &classCreationUsecase{
 		txManager: txManager, categoryRepo: categoryRepo, classRepo: classRepo,
-		scheduleRepo: scheduleRepo, sessionRepo: sessionRepo, tenantClient: tenantClient,
+		classTeacherRepo: classTeacherRepo,
+		scheduleRepo:     scheduleRepo, sessionRepo: sessionRepo, tenantClient: tenantClient,
 	}
 }
 
@@ -63,6 +66,11 @@ func (u *classCreationUsecase) CreateClassWithCategory(
 		class := &domain.Class{ID: uuid.New(), TenantID: tenantID, CategoryID: category.ID, Name: req.Class.Name, Description: req.Class.Description, Type: req.Class.Type, Price: req.Class.Price, Capacity: req.Class.Capacity}
 		if err := u.classRepo.Create(txCtx, class); err != nil {
 			return err
+		}
+		for _, teacherID := range req.TeacherIDs {
+			if err := u.classTeacherRepo.Assign(txCtx, &domain.ClassTeacher{ClassID: class.ID, TeacherID: teacherID}); err != nil {
+				return err
+			}
 		}
 
 		response.Category = category
