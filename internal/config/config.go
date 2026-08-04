@@ -16,6 +16,7 @@ type Config struct {
 	DBHost            string `mapstructure:"DB_HOST"`
 	DBPort            string `mapstructure:"DB_PORT"`
 	DBSSLMode         string `mapstructure:"DB_SSLMODE"`
+	DBChannelBinding  string `mapstructure:"DB_CHANNEL_BINDING"`
 	DBUser            string `mapstructure:"DB_USER"`
 	DBPassword        string `mapstructure:"DB_PASSWORD"`
 	DBName            string `mapstructure:"DB_NAME"`
@@ -40,7 +41,7 @@ func LoadConfig() (Config, error) {
 
 	viper.AutomaticEnv()
 	for _, key := range []string{
-		"DATABASE_URL", "DB_HOST", "DB_PORT", "DB_SSLMODE", "DB_USER", "DB_PASSWORD", "DB_NAME",
+		"DATABASE_URL", "DB_HOST", "DB_PORT", "DB_SSLMODE", "DB_CHANNEL_BINDING", "DB_USER", "DB_PASSWORD", "DB_NAME",
 		"IDENTITY_GRPC_HOST", "BILLING_SERVICE_URL", "PORT", "JWT_SECRET",
 	} {
 		if err := viper.BindEnv(key); err != nil {
@@ -65,6 +66,9 @@ func LoadConfig() (Config, error) {
 	}
 	if config.DBSSLMode == "" {
 		config.DBSSLMode = "disable"
+	}
+	if config.DBChannelBinding == "" {
+		config.DBChannelBinding = "disable"
 	}
 	if config.DBUser == "" {
 		config.DBUser = "postgres"
@@ -119,6 +123,9 @@ func applyDatabaseURL(config *Config) error {
 	}
 	if config.DBSSLMode == "" {
 		config.DBSSLMode = databaseURL.Query().Get("sslmode")
+	}
+	if config.DBChannelBinding == "" {
+		config.DBChannelBinding = databaseURL.Query().Get("channel_binding")
 	}
 	return nil
 }
