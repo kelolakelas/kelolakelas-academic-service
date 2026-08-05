@@ -35,12 +35,86 @@ func (h *EnrollmentHandler) Create(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"status": "error", "message": err.Error()})
 		return
 	}
+	if c.GetBool("is_parent") {
+		parentID, parseErr := uuid.Parse(c.GetString("user_id"))
+		if parseErr != nil {
+			c.JSON(http.StatusUnauthorized, gin.H{"status": "error", "message": "Invalid parent context", "data": nil})
+			return
+		}
+		key := c.GetHeader("Idempotency-Key")
+		result, enrollErr := h.enrollmentUsecase.EnrollPublic(c.Request.Context(), parentID, req.ClassID, &domain.PublicEnrollmentRequest{StudentID: req.StudentID, BillingCycle: req.BillingCycle}, key)
+		if enrollErr != nil {
+			c.JSON(http.StatusUnprocessableEntity, gin.H{"status": "error", "message": enrollErr.Error(), "data": nil})
+			return
+		}
+		c.JSON(http.StatusCreated, gin.H{"status": "success", "message": "Enrollment created and invoice generated", "data": result})
+		return
+	}
 	res, err := h.enrollmentUsecase.EnrollStudent(c.Request.Context(), tenantID, &req)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"status": "error", "message": err.Error()})
 		return
 	}
 	c.JSON(http.StatusCreated, gin.H{"status": "success", "message": "Enrollment created and invoice generated", "data": res})
+}
+
+// CreateCatalogEnrollment godoc
+// @Summary Enroll a parent-owned student in a public class
+// @Description Creates a pending enrollment and generates a billing invoice. The tenant is resolved from the selected class.
+// @Tags Enrollments
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param class_id path string true "Class UUID"
+// @Param Idempotency-Key header string true "Unique request key"
+// @Param request body domain.PublicEnrollmentRequest true "Enrollment request"
+// @Success 201 {object} domain.HTTPResponse{data=domain.PublicEnrollmentResponse}
+// @Failure 400 {object} domain.ErrorResponse
+// @Failure 401 {object} domain.ErrorResponse
+// @Failure 403 {object} domain.ErrorResponse
+// @Failure 404 {object} domain.ErrorResponse
+// @Failure 409 {object} domain.ErrorResponse
+// @Failure 422 {object} domain.ErrorResponse
+// @Failure 500 {object} domain.ErrorResponse
+// @Router /api/v1/catalog/classes/{class_id}/enrollments [post]
+func (h *EnrollmentHandler) CreateCatalogEnrollment(c *gin.Context) {
+	parentID, err := uuid.Parse(c.GetString("user_id"))
+	if err != nil || !c.GetBool("is_parent") {
+		c.JSON(http.StatusForbidden, gin.H{"status": "error", "message": "Parent authentication is required", "data": nil})
+		return
+	}
+	classID, err := uuid.Parse(c.Param("class_id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"status": "error", "message": "Invalid class ID", "data": nil})
+		return
+	}
+	key := c.GetHeader("Idempotency-Key")
+	if key == "" || len(key) > 255 {
+		c.JSON(http.StatusBadRequest, gin.H{"status": "error", "message": "Idempotency-Key is required", "data": nil})
+		return
+	}
+	var req domain.PublicEnrollmentRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"status": "error", "message": "Invalid enrollment request", "data": nil})
+		return
+	}
+	result, err := h.enrollmentUsecase.EnrollPublic(c.Request.Context(), parentID, classID, &req, key)
+	if err != nil {
+		status := http.StatusInternalServerError
+		switch {
+		case errors.Is(err, domain.ErrIdempotencyConflict):
+			status = http.StatusConflict
+		case errors.Is(err, domain.ErrStudentOwnership), errors.Is(err, domain.ErrClassNotEnrollable):
+			status = http.StatusUnprocessableEntity
+		case errors.Is(err, domain.ErrClassNotFound), errors.Is(err, domain.ErrStudentNotFound):
+			status = http.StatusNotFound
+		case errors.Is(err, domain.ErrParentRequired):
+			status = http.StatusUnauthorized
+		}
+		c.JSON(status, gin.H{"status": "error", "message": err.Error(), "data": nil})
+		return
+	}
+	c.JSON(http.StatusCreated, gin.H{"status": "success", "message": "Enrollment created and invoice generated", "data": result})
 }
 
 func NewEnrollmentHandler(enrollmentUsecase usecase.EnrollmentUsecase) *EnrollmentHandler {

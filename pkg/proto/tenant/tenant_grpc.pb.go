@@ -2,7 +2,7 @@
 // versions:
 // - protoc-gen-go-grpc v1.5.1
 // - protoc             v7.35.1
-// source: api/proto/tenant.proto
+// source: tenant.proto
 
 package tenant
 
@@ -20,6 +20,7 @@ const _ = grpc.SupportPackageIsVersion9
 
 const (
 	TenantService_ValidateTenantStatus_FullMethodName = "/tenant.TenantService/ValidateTenantStatus"
+	TenantService_GetTenantPublicInfo_FullMethodName  = "/tenant.TenantService/GetTenantPublicInfo"
 )
 
 // TenantServiceClient is the client API for TenantService service.
@@ -27,6 +28,7 @@ const (
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type TenantServiceClient interface {
 	ValidateTenantStatus(ctx context.Context, in *ValidateTenantRequest, opts ...grpc.CallOption) (*ValidateTenantResponse, error)
+	GetTenantPublicInfo(ctx context.Context, in *TenantPublicInfoRequest, opts ...grpc.CallOption) (*TenantPublicInfoResponse, error)
 }
 
 type tenantServiceClient struct {
@@ -47,11 +49,22 @@ func (c *tenantServiceClient) ValidateTenantStatus(ctx context.Context, in *Vali
 	return out, nil
 }
 
+func (c *tenantServiceClient) GetTenantPublicInfo(ctx context.Context, in *TenantPublicInfoRequest, opts ...grpc.CallOption) (*TenantPublicInfoResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(TenantPublicInfoResponse)
+	err := c.cc.Invoke(ctx, TenantService_GetTenantPublicInfo_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // TenantServiceServer is the server API for TenantService service.
 // All implementations must embed UnimplementedTenantServiceServer
 // for forward compatibility.
 type TenantServiceServer interface {
 	ValidateTenantStatus(context.Context, *ValidateTenantRequest) (*ValidateTenantResponse, error)
+	GetTenantPublicInfo(context.Context, *TenantPublicInfoRequest) (*TenantPublicInfoResponse, error)
 	mustEmbedUnimplementedTenantServiceServer()
 }
 
@@ -64,6 +77,9 @@ type UnimplementedTenantServiceServer struct{}
 
 func (UnimplementedTenantServiceServer) ValidateTenantStatus(context.Context, *ValidateTenantRequest) (*ValidateTenantResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ValidateTenantStatus not implemented")
+}
+func (UnimplementedTenantServiceServer) GetTenantPublicInfo(context.Context, *TenantPublicInfoRequest) (*TenantPublicInfoResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetTenantPublicInfo not implemented")
 }
 func (UnimplementedTenantServiceServer) mustEmbedUnimplementedTenantServiceServer() {}
 func (UnimplementedTenantServiceServer) testEmbeddedByValue()                       {}
@@ -104,6 +120,24 @@ func _TenantService_ValidateTenantStatus_Handler(srv interface{}, ctx context.Co
 	return interceptor(ctx, in, info, handler)
 }
 
+func _TenantService_GetTenantPublicInfo_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(TenantPublicInfoRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(TenantServiceServer).GetTenantPublicInfo(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: TenantService_GetTenantPublicInfo_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(TenantServiceServer).GetTenantPublicInfo(ctx, req.(*TenantPublicInfoRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // TenantService_ServiceDesc is the grpc.ServiceDesc for TenantService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -115,7 +149,11 @@ var TenantService_ServiceDesc = grpc.ServiceDesc{
 			MethodName: "ValidateTenantStatus",
 			Handler:    _TenantService_ValidateTenantStatus_Handler,
 		},
+		{
+			MethodName: "GetTenantPublicInfo",
+			Handler:    _TenantService_GetTenantPublicInfo_Handler,
+		},
 	},
 	Streams:  []grpc.StreamDesc{},
-	Metadata: "api/proto/tenant.proto",
+	Metadata: "tenant.proto",
 }

@@ -18,6 +18,7 @@ type ClassUsecase interface {
 	CreateClass(ctx context.Context, tenantID uuid.UUID, req *domain.CreateClassRequest) (*domain.ClassResponse, error)
 	ListClasses(ctx context.Context, tenantID uuid.UUID, query domain.ListQuery) (*domain.ClassListResponse, error)
 	DeleteClass(ctx context.Context, tenantID, id uuid.UUID) error
+	UpdateClassPublication(ctx context.Context, tenantID, id uuid.UUID, req *domain.UpdateClassPublicationRequest) (*domain.ClassResponse, error)
 }
 
 func (u *classUsecase) ListClasses(ctx context.Context, tenantID uuid.UUID, query domain.ListQuery) (*domain.ClassListResponse, error) {
@@ -28,6 +29,8 @@ func (u *classUsecase) ListClasses(ctx context.Context, tenantID uuid.UUID, quer
 	responses := make([]domain.ClassResponse, 0, len(items))
 	for _, item := range items {
 		responses = append(responses, domain.ClassResponse{ID: item.ID, TenantID: item.TenantID, CategoryID: item.CategoryID, Name: item.Name, Description: item.Description, Type: item.Type, Price: item.Price, Capacity: item.Capacity, CreatedAt: item.CreatedAt})
+		responses[len(responses)-1].IsPublished = item.IsPublished
+		responses[len(responses)-1].EnrollmentStatus = item.EnrollmentStatus
 	}
 	return &domain.ClassListResponse{Items: responses, Pagination: domain.Pagination{Page: query.Page, PageSize: query.PageSize, TotalItems: total, TotalPages: int(math.Ceil(float64(total) / float64(query.PageSize)))}}, nil
 }
@@ -81,6 +84,32 @@ func (u *classUsecase) DeleteClass(ctx context.Context, tenantID, id uuid.UUID) 
 	})
 }
 
+func (u *classUsecase) UpdateClassPublication(ctx context.Context, tenantID, id uuid.UUID, req *domain.UpdateClassPublicationRequest) (*domain.ClassResponse, error) {
+	class, err := u.classRepo.UpdatePublicationStatus(ctx, id, tenantID, *req.IsPublished)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, domain.ErrClassNotFound
+		}
+		return nil, err
+	}
+	if class == nil {
+		return nil, domain.ErrClassNotFound
+	}
+	return &domain.ClassResponse{
+		ID:               class.ID,
+		TenantID:         class.TenantID,
+		CategoryID:       class.CategoryID,
+		Name:             class.Name,
+		Description:      class.Description,
+		Type:             class.Type,
+		Price:            class.Price,
+		Capacity:         class.Capacity,
+		CreatedAt:        class.CreatedAt,
+		IsPublished:      class.IsPublished,
+		EnrollmentStatus: class.EnrollmentStatus,
+	}, nil
+}
+
 func (u *classUsecase) CreateClass(ctx context.Context, tenantID uuid.UUID, req *domain.CreateClassRequest) (*domain.ClassResponse, error) {
 	// 1. Validate tenant status via gRPC
 	isActive, _, err := u.tenantClient.ValidateTenantStatus(ctx, tenantID.String())
@@ -90,14 +119,19 @@ func (u *classUsecase) CreateClass(ctx context.Context, tenantID uuid.UUID, req 
 
 	// 2. Create Class
 	class := &domain.Class{
-		ID:          uuid.New(),
-		TenantID:    tenantID,
-		CategoryID:  req.CategoryID,
-		Name:        req.Name,
-		Description: req.Description,
-		Type:        req.Type,
-		Price:       req.Price,
-		Capacity:    req.Capacity,
+		ID:               uuid.New(),
+		TenantID:         tenantID,
+		CategoryID:       req.CategoryID,
+		Name:             req.Name,
+		Description:      req.Description,
+		Type:             req.Type,
+		Price:            req.Price,
+		Capacity:         req.Capacity,
+		IsPublished:      req.IsPublished,
+		EnrollmentStatus: req.EnrollmentStatus,
+	}
+	if class.EnrollmentStatus == "" {
+		class.EnrollmentStatus = "open"
 	}
 
 	if err := u.classRepo.Create(ctx, class); err != nil {
@@ -105,14 +139,16 @@ func (u *classUsecase) CreateClass(ctx context.Context, tenantID uuid.UUID, req 
 	}
 
 	return &domain.ClassResponse{
-		ID:          class.ID,
-		TenantID:    class.TenantID,
-		CategoryID:  class.CategoryID,
-		Name:        class.Name,
-		Description: class.Description,
-		Type:        class.Type,
-		Price:       class.Price,
-		Capacity:    class.Capacity,
-		CreatedAt:   class.CreatedAt,
+		ID:               class.ID,
+		TenantID:         class.TenantID,
+		CategoryID:       class.CategoryID,
+		Name:             class.Name,
+		Description:      class.Description,
+		Type:             class.Type,
+		Price:            class.Price,
+		Capacity:         class.Capacity,
+		IsPublished:      class.IsPublished,
+		EnrollmentStatus: class.EnrollmentStatus,
+		CreatedAt:        class.CreatedAt,
 	}, nil
 }

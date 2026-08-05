@@ -187,3 +187,47 @@ func (h *ClassHandler) Delete(c *gin.Context) {
 	}
 	c.JSON(http.StatusOK, gin.H{"status": "success", "message": "Class deleted successfully", "data": nil})
 }
+
+// UpdatePublication godoc
+// @Summary Publish or unpublish an academic class
+// @Description Updates only the publication status of a tenant-owned class.
+// @Tags Classes
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param X-Tenant-ID header string true "Tenant ID dalam format UUID"
+// @Param id path string true "Class ID (UUID)"
+// @Param request body domain.UpdateClassPublicationRequest true "Class publication status payload"
+// @Success 200 {object} domain.HTTPResponse{data=domain.ClassResponse}
+// @Failure 400 {object} domain.ErrorResponse
+// @Failure 401 {object} domain.ErrorResponse
+// @Failure 404 {object} domain.ErrorResponse
+// @Failure 500 {object} domain.ErrorResponse
+// @Router /api/v1/classes/{id}/published [patch]
+func (h *ClassHandler) UpdatePublication(c *gin.Context) {
+	tenantID, err := tenantIDFromContext(c)
+	if err != nil {
+		writeTenantError(c, err)
+		return
+	}
+	id, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"status": "error", "message": "Invalid class ID format", "data": nil})
+		return
+	}
+	var req domain.UpdateClassPublicationRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"status": "error", "message": err.Error(), "data": nil})
+		return
+	}
+	res, err := h.classUsecase.UpdateClassPublication(c.Request.Context(), tenantID, id, &req)
+	if err != nil {
+		if errors.Is(err, domain.ErrClassNotFound) {
+			c.JSON(http.StatusNotFound, gin.H{"status": "error", "message": err.Error(), "data": nil})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"status": "error", "message": "Failed to update class publication status", "data": nil})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"status": "success", "message": "Class publication status updated successfully", "data": res})
+}

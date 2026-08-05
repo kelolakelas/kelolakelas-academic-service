@@ -17,6 +17,7 @@ import (
 
 type EnrollmentUsecase interface {
 	EnrollStudent(ctx context.Context, tenantID uuid.UUID, req *domain.EnrollStudentRequest) (*domain.EnrollmentResponse, error)
+	EnrollPublic(ctx context.Context, parentID, classID uuid.UUID, req *domain.PublicEnrollmentRequest, idempotencyKey string) (*domain.PublicEnrollmentResponse, error)
 	UpdateEnrollmentStatus(ctx context.Context, enrollmentID uuid.UUID, status string) (*domain.EnrollmentResponse, error)
 	List(ctx context.Context, tenantID, parentID *uuid.UUID, query domain.EnrollmentQuery) (*domain.EnrollmentListResponse, error)
 	GetByID(ctx context.Context, tenantID, parentID *uuid.UUID, id uuid.UUID) (*domain.EnrollmentResponse, error)
@@ -27,13 +28,100 @@ type enrollmentUsecase struct {
 	studentRepo    repository.StudentRepository
 	classRepo      repository.ClassRepository
 	billingClient  billing.Client
+	txManager      repository.TransactionManager
 }
 
-func NewEnrollmentUsecase(enrollmentRepo repository.EnrollmentRepository, studentRepo repository.StudentRepository, classRepo repository.ClassRepository, billingClient billing.Client) EnrollmentUsecase {
+func NewEnrollmentUsecase(enrollmentRepo repository.EnrollmentRepository, studentRepo repository.StudentRepository, classRepo repository.ClassRepository, billingClient billing.Client, txManagers ...repository.TransactionManager) EnrollmentUsecase {
+	var txManager repository.TransactionManager
+	if len(txManagers) > 0 {
+		txManager = txManagers[0]
+	}
 	return &enrollmentUsecase{
 		enrollmentRepo: enrollmentRepo,
-		studentRepo:    studentRepo, classRepo: classRepo, billingClient: billingClient,
+		studentRepo:    studentRepo, classRepo: classRepo, billingClient: billingClient, txManager: txManager,
 	}
+}
+
+func (u *enrollmentUsecase) EnrollPublic(ctx context.Context, parentID, classID uuid.UUID, req *domain.PublicEnrollmentRequest, idempotencyKey string) (*domain.PublicEnrollmentResponse, error) {
+	if parentID == uuid.Nil {
+		return nil, domain.ErrParentRequired
+	}
+	if idempotencyKey == "" {
+		return nil, errors.New("idempotency key is required")
+	}
+	if existing, err := u.enrollmentRepo.GetByIdempotencyKey(ctx, parentID, idempotencyKey); err == nil {
+		if existing.ClassID != classID || existing.StudentID != req.StudentID || existing.BillingCycle != req.BillingCycle {
+			return nil, domain.ErrIdempotencyConflict
+		}
+		if existing.PaymentTransactionID == nil {
+			_, studentErr := u.studentRepo.GetByID(ctx, existing.StudentID)
+			class, classErr := u.classRepo.GetByID(ctx, existing.ClassID)
+			if studentErr != nil || classErr != nil {
+				return nil, fmt.Errorf("recover enrollment dependencies")
+			}
+			invoice, invoiceErr := u.billingClient.GenerateInvoice(ctx, billing.InvoiceRequest{TenantID: existing.TenantID, StudentID: existing.StudentID, ClassID: existing.ClassID, EnrollmentID: existing.ID, ParentID: parentID, BillingCycle: existing.BillingCycle, SubtotalAmount: class.Price, IdempotencyKey: idempotencyKey, Title: class.Name})
+			if invoiceErr != nil {
+				return nil, fmt.Errorf("generate enrollment invoice: %w", invoiceErr)
+			}
+			existing.PaymentTransactionID = &invoice.TransactionID
+			existing.CheckoutSessionURL = &invoice.CheckoutSessionURL
+			existing.PaymentStatus = "pending"
+			if updateErr := u.enrollmentRepo.Update(ctx, existing); updateErr != nil {
+				return nil, updateErr
+			}
+		}
+		return u.publicEnrollmentResponse(existing)
+	} else if !errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, err
+	}
+	student, err := u.studentRepo.GetByID(ctx, req.StudentID)
+	if err != nil {
+		return nil, domain.ErrStudentNotFound
+	}
+	if student.ParentID != parentID {
+		return nil, domain.ErrStudentOwnership
+	}
+	class, err := u.classRepo.GetByID(ctx, classID)
+	if err != nil {
+		return nil, domain.ErrClassNotFound
+	}
+	if !class.IsPublished || class.EnrollmentStatus != "open" {
+		return nil, domain.ErrClassNotEnrollable
+	}
+	key := idempotencyKey
+	enrollment := &domain.Enrollment{ID: uuid.New(), TenantID: class.TenantID, StudentID: student.ID, ClassID: class.ID, Status: "pending", BillingCycle: req.BillingCycle, IdempotencyKey: &key, PaymentStatus: "pending", GrossAmount: class.Price}
+	create := func(txCtx context.Context) error {
+		return u.enrollmentRepo.CreateIfCapacityAvailable(txCtx, enrollment)
+	}
+	if u.txManager != nil {
+		if err := u.txManager.WithTransaction(ctx, create); err != nil {
+			return nil, err
+		}
+	} else if err := create(ctx); err != nil {
+		return nil, err
+	}
+	invoice, err := u.billingClient.GenerateInvoice(ctx, billing.InvoiceRequest{TenantID: class.TenantID, StudentID: student.ID, ClassID: class.ID, EnrollmentID: enrollment.ID, ParentID: parentID, BillingCycle: req.BillingCycle, SubtotalAmount: class.Price, IdempotencyKey: idempotencyKey, Title: class.Name})
+	if err != nil {
+		return nil, fmt.Errorf("generate enrollment invoice: %w", err)
+	}
+	enrollment.PaymentTransactionID = &invoice.TransactionID
+	enrollment.CheckoutSessionURL = &invoice.CheckoutSessionURL
+	enrollment.PaymentStatus = "pending"
+	if err := u.enrollmentRepo.Update(ctx, enrollment); err != nil {
+		return nil, err
+	}
+	return u.publicEnrollmentResponse(enrollment)
+}
+
+func (u *enrollmentUsecase) publicEnrollmentResponse(enrollment *domain.Enrollment) (*domain.PublicEnrollmentResponse, error) {
+	response := &domain.PublicEnrollmentResponse{Enrollment: enrollmentResponse(enrollment), Payment: &domain.PaymentResponse{GrossAmount: enrollment.GrossAmount, Status: enrollment.PaymentStatus}}
+	if enrollment.PaymentTransactionID != nil {
+		response.Payment.TransactionID = *enrollment.PaymentTransactionID
+	}
+	if enrollment.CheckoutSessionURL != nil {
+		response.Payment.CheckoutSessionURL = *enrollment.CheckoutSessionURL
+	}
+	return response, nil
 }
 
 func (u *enrollmentUsecase) EnrollStudent(ctx context.Context, tenantID uuid.UUID, req *domain.EnrollStudentRequest) (*domain.EnrollmentResponse, error) {
@@ -48,6 +136,9 @@ func (u *enrollmentUsecase) EnrollStudent(ctx context.Context, tenantID uuid.UUI
 	if class.TenantID != tenantID {
 		return nil, fmt.Errorf("class does not belong to tenant")
 	}
+	if !class.IsPublished || class.EnrollmentStatus != "open" {
+		return nil, domain.ErrClassNotEnrollable
+	}
 	duplicate, err := u.enrollmentRepo.ExistsActive(ctx, req.StudentID, req.ClassID)
 	if err != nil {
 		return nil, fmt.Errorf("check enrollment: %w", err)
@@ -55,11 +146,11 @@ func (u *enrollmentUsecase) EnrollStudent(ctx context.Context, tenantID uuid.UUI
 	if duplicate {
 		return nil, fmt.Errorf("active enrollment already exists")
 	}
-	enrollment := &domain.Enrollment{ID: uuid.New(), TenantID: tenantID, StudentID: req.StudentID, ClassID: req.ClassID, Status: "pending"}
+	enrollment := &domain.Enrollment{ID: uuid.New(), TenantID: tenantID, StudentID: req.StudentID, ClassID: req.ClassID, Status: "pending", BillingCycle: req.BillingCycle, GrossAmount: class.Price, PaymentStatus: "pending"}
 	if err := u.enrollmentRepo.Create(ctx, enrollment); err != nil {
 		return nil, fmt.Errorf("create enrollment: %w", err)
 	}
-	if _, err := u.billingClient.GenerateInvoice(ctx, billing.InvoiceRequest{TenantID: tenantID, StudentID: req.StudentID, ClassID: req.ClassID, EnrollmentID: enrollment.ID, ParentID: student.ParentID, BillingCycle: req.BillingCycle, SubtotalAmount: class.Price, PlatformFee: req.PlatformFee, Title: class.Name}); err != nil {
+	if _, err := u.billingClient.GenerateInvoice(ctx, billing.InvoiceRequest{TenantID: tenantID, StudentID: req.StudentID, ClassID: req.ClassID, EnrollmentID: enrollment.ID, ParentID: student.ParentID, BillingCycle: req.BillingCycle, SubtotalAmount: class.Price, Title: class.Name}); err != nil {
 		return nil, fmt.Errorf("generate enrollment invoice: %w", err)
 	}
 	return enrollmentResponse(enrollment), nil
@@ -126,5 +217,6 @@ func enrollmentResponse(enrollment *domain.Enrollment) *domain.EnrollmentRespons
 		ID: enrollment.ID, TenantID: enrollment.TenantID, StudentID: enrollment.StudentID,
 		ClassID: enrollment.ClassID, Status: enrollment.Status, JoinedAt: enrollment.JoinedAt,
 		UpdatedAt: enrollment.UpdatedAt, Class: enrollment.Class, Student: enrollment.Student,
+		BillingCycle: enrollment.BillingCycle,
 	}
 }

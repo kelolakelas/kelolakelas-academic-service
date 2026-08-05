@@ -32,7 +32,7 @@ func AuthMiddleware(secret string) gin.HandlerFunc {
 			}
 			return []byte(secret), nil
 		})
-		if err != nil || !token.Valid || claims.TenantID == "" {
+		if err != nil || !token.Valid || claims.UserID == "" || (!claims.IsParent && claims.TenantID == "") {
 			c.JSON(http.StatusUnauthorized, gin.H{"status": "error", "message": "Invalid or expired token", "data": nil})
 			c.Abort()
 			return

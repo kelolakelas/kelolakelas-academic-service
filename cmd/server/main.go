@@ -52,15 +52,27 @@ func main() {
 		&domain.Category{},
 		&domain.Class{},
 		&domain.Student{},
+		&domain.StudentNote{},
 		&domain.Enrollment{},
 		&domain.ClassSchedule{},
 		&domain.ClassSession{},
 		&domain.ClassTeacher{},
 		&domain.Attendance{},
 		&domain.Report{},
+		&domain.TenantLocationSnapshot{},
 	); err != nil {
 		slog.Error("Auto-migration failed", "error", err)
 		os.Exit(1)
+	}
+	for _, statement := range []string{
+		`CREATE INDEX IF NOT EXISTS idx_classes_catalog_filters ON classes (is_published, enrollment_status, type, price, created_at) WHERE deleted_at IS NULL`,
+		`DROP INDEX IF EXISTS idx_student_class`,
+		`CREATE UNIQUE INDEX IF NOT EXISTS idx_student_class_active ON enrollments (student_id, class_id) WHERE status IN ('pending', 'active') AND deleted_at IS NULL`,
+	} {
+		if err := db.Exec(statement).Error; err != nil {
+			slog.Error("Marketplace migration failed", "error", err)
+			os.Exit(1)
+		}
 	}
 
 	// Initialize gRPC Client
@@ -80,6 +92,7 @@ func main() {
 	sessionRepo := repository.NewSessionRepository(db)
 	enrollmentRepo := repository.NewEnrollmentRepository(db)
 	studentRepo := repository.NewStudentRepository(db)
+	studentNoteRepo := repository.NewStudentNoteRepository(db)
 	billingClient := billing.NewClient(cfg.BillingServiceURL)
 
 	// Initialize Usecases
@@ -87,7 +100,7 @@ func main() {
 	classUsecase := usecase.NewClassUsecase(classRepo, scheduleRepo, sessionRepo, enrollmentRepo, tenantClient, txManager)
 	classCreationUsecase := usecase.NewClassCreationUsecase(txManager, categoryRepo, classRepo, classTeacherRepo, scheduleRepo, sessionRepo, tenantClient)
 	scheduleUsecase := usecase.NewScheduleUsecase(txManager, classRepo, scheduleRepo, sessionRepo, enrollmentRepo)
-	enrollmentUsecase := usecase.NewEnrollmentUsecase(enrollmentRepo, studentRepo, classRepo, billingClient)
+	enrollmentUsecase := usecase.NewEnrollmentUsecase(enrollmentRepo, studentRepo, classRepo, billingClient, txManager)
 
 	// Initialize Handlers
 	categoryHandler := handler.NewCategoryHandler(categoryUsecase)
@@ -96,9 +109,10 @@ func main() {
 	listHandler := handler.NewListHandler(categoryUsecase, classUsecase, scheduleUsecase)
 	enrollmentHandler := handler.NewEnrollmentHandler(enrollmentUsecase)
 	sessionHandler := handler.NewSessionHandler(scheduleUsecase)
-	studentHandler := handler.NewStudentHandler(usecase.NewStudentUsecase(studentRepo))
+	studentHandler := handler.NewStudentHandler(usecase.NewStudentUsecase(studentRepo, studentNoteRepo, txManager))
 	attendanceHandler := handler.NewAttendanceHandler(usecase.NewAttendanceUsecase(repository.NewAttendanceRepository(db), sessionRepo))
 	reportHandler := handler.NewReportHandler(usecase.NewReportUsecase(repository.NewReportRepository(db), enrollmentRepo))
+	catalogHandler := handler.NewCatalogHandler(usecase.NewCatalogUsecase(repository.NewCatalogRepository(db), tenantClient))
 
 	// Initialize Router
 	r := gin.New()
@@ -112,6 +126,8 @@ func main() {
 
 	// Routes
 	apiV1 := r.Group("/api/v1")
+	apiV1.GET("/catalog/classes", catalogHandler.ListClasses)
+	apiV1.GET("/catalog/classes/:id", catalogHandler.GetClass)
 	apiV1.Use(middleware.AuthMiddleware(cfg.JWTSecret))
 	{
 		apiV1.GET("/categories", listHandler.ListCategories)
@@ -121,6 +137,7 @@ func main() {
 		apiV1.POST("/classes", classHandler.Create)
 		apiV1.POST("/classes/with-category", classHandler.CreateWithCategory)
 		apiV1.DELETE("/classes/:id", classHandler.Delete)
+		apiV1.PATCH("/classes/:id/published", classHandler.UpdatePublication)
 		apiV1.GET("/schedules", listHandler.ListSchedules)
 		apiV1.GET("/students", studentHandler.List)
 		apiV1.POST("/students", studentHandler.Create)
@@ -137,6 +154,7 @@ func main() {
 		apiV1.PATCH("/reports/:id", reportHandler.Update)
 		apiV1.DELETE("/reports/:id", reportHandler.Delete)
 		apiV1.POST("/tenants/:tenant_id/enrollments", enrollmentHandler.Create)
+		apiV1.POST("/catalog/classes/:class_id/enrollments", enrollmentHandler.CreateCatalogEnrollment)
 		apiV1.GET("/enrollments", enrollmentHandler.ListQuery)
 		apiV1.GET("/enrollments/:id", enrollmentHandler.GetQuery)
 

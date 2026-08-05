@@ -26,6 +26,31 @@ func (r *enrollmentRepository) Create(ctx context.Context, enrollment *domain.En
 	return r.getDB(ctx).Create(enrollment).Error
 }
 
+func (r *enrollmentRepository) GetByIdempotencyKey(ctx context.Context, parentID uuid.UUID, key string) (*domain.Enrollment, error) {
+	var enrollment domain.Enrollment
+	err := r.getDB(ctx).Joins("JOIN students s ON s.id = enrollments.student_id").Where("enrollments.idempotency_key = ? AND s.parent_id = ?", key, parentID).First(&enrollment).Error
+	return &enrollment, err
+}
+
+func (r *enrollmentRepository) CreateIfCapacityAvailable(ctx context.Context, enrollment *domain.Enrollment) error {
+	result := r.getDB(ctx).Exec(`
+		INSERT INTO enrollments (id, tenant_id, student_id, class_id, status, billing_cycle, idempotency_key, gross_amount, joined_at, updated_at)
+		SELECT ?, ?, ?, c.id, 'pending', ?, ?, ?, NOW(), NOW()
+		FROM classes c
+		WHERE c.id = ? AND c.deleted_at IS NULL AND c.is_published = TRUE AND c.enrollment_status = 'open'
+		AND (c.type <> 'group' OR c.capacity IS NULL OR (
+			SELECT COUNT(*) FROM enrollments e WHERE e.class_id = c.id AND e.status IN ('pending', 'active') AND e.deleted_at IS NULL
+		) < c.capacity)
+	`, enrollment.ID, enrollment.TenantID, enrollment.StudentID, enrollment.BillingCycle, enrollment.IdempotencyKey, enrollment.GrossAmount, enrollment.ClassID)
+	if result.Error != nil {
+		return result.Error
+	}
+	if result.RowsAffected == 0 {
+		return domain.ErrClassNotEnrollable
+	}
+	return nil
+}
+
 func (r *enrollmentRepository) GetByID(ctx context.Context, id uuid.UUID) (*domain.Enrollment, error) {
 	var enrollment domain.Enrollment
 	if err := r.getDB(ctx).Preload("Student").Preload("Class").First(&enrollment, "id = ?", id).Error; err != nil {
@@ -76,7 +101,7 @@ func (r *enrollmentRepository) List(ctx context.Context, tenantID, parentID *uui
 	if query.Search != "" {
 		db = db.Joins("JOIN students ss ON ss.id = enrollments.student_id").
 			Joins("JOIN classes cc ON cc.id = enrollments.class_id").
-			Where("ss.full_name ILIKE ? OR cc.name ILIKE ?", "%"+query.Search+"%", "%"+query.Search+"%")
+			Where("COALESCE(ss.first_name, '') ILIKE ? OR COALESCE(ss.last_name, '') ILIKE ? OR COALESCE(ss.nickname, '') ILIKE ? OR cc.name ILIKE ?", "%"+query.Search+"%", "%"+query.Search+"%", "%"+query.Search+"%", "%"+query.Search+"%")
 	}
 	var total int64
 	if err := db.Session(&gorm.Session{}).Count(&total).Error; err != nil {

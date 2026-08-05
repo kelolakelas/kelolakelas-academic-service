@@ -63,7 +63,11 @@ func (u *classCreationUsecase) CreateClassWithCategory(
 			return err
 		}
 
-		class := &domain.Class{ID: uuid.New(), TenantID: tenantID, CategoryID: category.ID, Name: req.Class.Name, Description: req.Class.Description, Type: req.Class.Type, Price: req.Class.Price, Capacity: req.Class.Capacity}
+		status := req.Class.EnrollmentStatus
+		if status == "" {
+			status = "open"
+		}
+		class := &domain.Class{ID: uuid.New(), TenantID: tenantID, CategoryID: category.ID, Name: req.Class.Name, Description: req.Class.Description, Type: req.Class.Type, Price: req.Class.Price, Capacity: req.Class.Capacity, IsPublished: req.Class.IsPublished, EnrollmentStatus: status}
 		if err := u.classRepo.Create(txCtx, class); err != nil {
 			return err
 		}

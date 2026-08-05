@@ -63,6 +63,9 @@ func (m *deleteClassRepoMock) ListByTenant(context.Context, uuid.UUID, domain.Li
 func (m *deleteClassRepoMock) GetByID(context.Context, uuid.UUID) (*domain.Class, error) {
 	return m.class, m.getErr
 }
+func (m *deleteClassRepoMock) UpdatePublicationStatus(context.Context, uuid.UUID, uuid.UUID, bool) (*domain.Class, error) {
+	return m.class, m.getErr
+}
 func (m *deleteClassRepoMock) Update(context.Context, *domain.Class) error { return nil }
 func (m *deleteClassRepoMock) DeleteByTenant(context.Context, uuid.UUID, uuid.UUID) error {
 	m.deleted = true
@@ -157,6 +160,12 @@ func (m *deleteEnrollmentRepoMock) List(context.Context, *uuid.UUID, *uuid.UUID,
 }
 func (m *deleteEnrollmentRepoMock) ExistsActive(context.Context, uuid.UUID, uuid.UUID) (bool, error) {
 	return false, nil
+}
+func (m *deleteEnrollmentRepoMock) GetByIdempotencyKey(context.Context, uuid.UUID, string) (*domain.Enrollment, error) {
+	return nil, gorm.ErrRecordNotFound
+}
+func (m *deleteEnrollmentRepoMock) CreateIfCapacityAvailable(context.Context, *domain.Enrollment) error {
+	return nil
 }
 func (m *deleteEnrollmentRepoMock) IsTutorForEnrollment(context.Context, uuid.UUID, uuid.UUID) (bool, error) {
 	return false, nil

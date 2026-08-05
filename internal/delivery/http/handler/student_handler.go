@@ -4,6 +4,7 @@ import (
 	"errors"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -17,7 +18,7 @@ type StudentHandler struct{ usecase usecase.StudentUsecase }
 func NewStudentHandler(u usecase.StudentUsecase) *StudentHandler { return &StudentHandler{usecase: u} }
 
 func studentScope(c *gin.Context) (*uuid.UUID, *uuid.UUID, error) {
-	userID, err := uuid.Parse(c.GetString("user_id"))
+	userID, err := authenticatedUserID(c)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -26,7 +27,26 @@ func studentScope(c *gin.Context) (*uuid.UUID, *uuid.UUID, error) {
 	if tenantErr == nil && tenantID != uuid.Nil {
 		return &tenantID, nil, nil
 	}
-	return nil, &userID, nil
+	return nil, userID, nil
+}
+
+func authenticatedUserID(c *gin.Context) (*uuid.UUID, error) {
+	userID, err := uuid.Parse(c.GetString("user_id"))
+	if err != nil || userID == uuid.Nil {
+		return nil, errors.New("invalid authenticated user")
+	}
+	return &userID, nil
+}
+
+func isStudentInputError(err error) bool {
+	if errors.Is(err, domain.ErrStudentFirstNameRequired) ||
+		errors.Is(err, domain.ErrStudentNoteInvalid) ||
+		errors.Is(err, domain.ErrStudentNoteTenantRequired) ||
+		errors.Is(err, domain.ErrStudentNoteContentRequired) {
+		return true
+	}
+	var parseErr *time.ParseError
+	return errors.As(err, &parseErr)
 }
 
 // @Summary List students
@@ -64,20 +84,28 @@ func (h *StudentHandler) List(c *gin.Context) {
 }
 
 // @Summary Create student
+// @Description Create a student and optionally an initial student note. Notes require an authenticated tenant context.
 // @Tags Students
 // @Accept json
 // @Produce json
 // @Security BearerAuth
 // @Param request body domain.CreateStudentRequest true "Student payload"
 // @Success 201 {object} domain.HTTPResponse{data=domain.Student}
+// @Failure 400 {object} domain.ErrorResponse
+// @Failure 403 {object} domain.ErrorResponse
+// @Failure 500 {object} domain.ErrorResponse
 // @Router /api/v1/students [post]
 func (h *StudentHandler) Create(c *gin.Context) {
-	tenantID, parentID, err := studentScope(c)
+	tenantID, _, err := studentScope(c)
 	if err != nil {
 		c.JSON(http.StatusUnauthorized, gin.H{"status": "error", "message": "Invalid user context", "data": nil})
 		return
 	}
-	userID := parentID
+	userID, err := authenticatedUserID(c)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"status": "error", "message": "Invalid user context", "data": nil})
+		return
+	}
 	var req domain.CreateStudentRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"status": "error", "message": err.Error(), "data": nil})
@@ -89,7 +117,11 @@ func (h *StudentHandler) Create(c *gin.Context) {
 		return
 	}
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"status": "error", "message": "Invalid student payload", "data": nil})
+		status := http.StatusInternalServerError
+		if isStudentInputError(err) {
+			status = http.StatusBadRequest
+		}
+		c.JSON(status, gin.H{"status": "error", "message": "Invalid student payload", "data": nil})
 		return
 	}
 	c.JSON(http.StatusCreated, gin.H{"status": "success", "message": "Student created successfully", "data": student})
@@ -105,6 +137,7 @@ func (h *StudentHandler) Create(c *gin.Context) {
 func (h *StudentHandler) Get(c *gin.Context) { h.mutate(c, false) }
 
 // @Summary Update student
+// @Description Update a student and optionally append a new student note. Existing notes are not overwritten.
 // @Tags Students
 // @Accept json
 // @Produce json
@@ -112,6 +145,9 @@ func (h *StudentHandler) Get(c *gin.Context) { h.mutate(c, false) }
 // @Param id path string true "Student UUID"
 // @Param request body domain.UpdateStudentRequest true "Student payload"
 // @Success 200 {object} domain.HTTPResponse{data=domain.Student}
+// @Failure 400 {object} domain.ErrorResponse
+// @Failure 404 {object} domain.ErrorResponse
+// @Failure 500 {object} domain.ErrorResponse
 // @Router /api/v1/students/{id} [patch]
 func (h *StudentHandler) Update(c *gin.Context) { h.mutate(c, true) }
 func (h *StudentHandler) mutate(c *gin.Context, update bool) {
@@ -143,13 +179,22 @@ func (h *StudentHandler) mutate(c *gin.Context, update bool) {
 		c.JSON(http.StatusBadRequest, gin.H{"status": "error", "message": err.Error(), "data": nil})
 		return
 	}
-	student, err := h.usecase.Update(c.Request.Context(), tenantID, parentID, id, &req)
+	authorID, err := authenticatedUserID(c)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"status": "error", "message": "Invalid user context", "data": nil})
+		return
+	}
+	student, err := h.usecase.Update(c.Request.Context(), tenantID, parentID, authorID, id, &req)
 	if errors.Is(err, domain.ErrStudentNotFound) {
 		c.JSON(http.StatusNotFound, gin.H{"status": "error", "message": "Student not found", "data": nil})
 		return
 	}
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"status": "error", "message": "Invalid student payload", "data": nil})
+		status := http.StatusInternalServerError
+		if isStudentInputError(err) {
+			status = http.StatusBadRequest
+		}
+		c.JSON(status, gin.H{"status": "error", "message": "Invalid student payload", "data": nil})
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"status": "success", "message": "Student updated successfully", "data": student})

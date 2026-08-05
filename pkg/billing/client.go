@@ -26,6 +26,7 @@ type InvoiceRequest struct {
 	SubtotalAmount int64     `json:"subtotal_amount"`
 	DiscountAmount int64     `json:"discount_amount"`
 	PlatformFee    int64     `json:"platform_fee"`
+	IdempotencyKey string    `json:"idempotency_key,omitempty"`
 	Title          string    `json:"title"`
 }
 
@@ -54,6 +55,9 @@ func (c *client) GenerateInvoice(ctx context.Context, request InvoiceRequest) (*
 		return nil, fmt.Errorf("create billing request: %w", err)
 	}
 	req.Header.Set("Content-Type", "application/json")
+	if request.IdempotencyKey != "" {
+		req.Header.Set("Idempotency-Key", request.IdempotencyKey)
+	}
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("call billing service: %w", err)

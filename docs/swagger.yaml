@@ -31,6 +31,54 @@ definitions:
       pagination:
         $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.Pagination'
     type: object
+  github_com_kelolakelas_kelolakelas-academic-service_internal_domain.CatalogItem:
+    properties:
+      available_slots:
+        type: integer
+      capacity:
+        type: integer
+      category_id:
+        type: string
+      category_name:
+        type: string
+      created_at:
+        type: string
+      description:
+        items:
+          type: integer
+        type: array
+      distance_km:
+        type: number
+      id:
+        type: string
+      is_enrollable:
+        type: boolean
+      latitude:
+        type: number
+      longitude:
+        type: number
+      name:
+        type: string
+      price:
+        type: integer
+      tenant_address:
+        type: string
+      tenant_id:
+        type: string
+      tenant_name:
+        type: string
+      type:
+        type: string
+    type: object
+  github_com_kelolakelas_kelolakelas-academic-service_internal_domain.CatalogListResponse:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.CatalogItem'
+        type: array
+      pagination:
+        $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.Pagination'
+    type: object
   github_com_kelolakelas_kelolakelas-academic-service_internal_domain.Category:
     properties:
       created_at:
@@ -90,8 +138,12 @@ definitions:
         items:
           type: integer
         type: array
+      enrollment_status:
+        type: string
       id:
         type: string
+      is_published:
+        type: boolean
       name:
         type: string
       price:
@@ -127,8 +179,12 @@ definitions:
         items:
           type: integer
         type: array
+      enrollment_status:
+        type: string
       id:
         type: string
+      is_published:
+        type: boolean
       name:
         type: string
       price:
@@ -240,6 +296,15 @@ definitions:
         items:
           type: integer
         type: array
+      enrollment_status:
+        enum:
+        - open
+        - closed
+        - full
+        - archived
+        type: string
+      is_published:
+        type: boolean
       name:
         type: string
       price:
@@ -264,6 +329,15 @@ definitions:
         items:
           type: integer
         type: array
+      enrollment_status:
+        enum:
+        - open
+        - closed
+        - full
+        - archived
+        type: string
+      is_published:
+        type: boolean
       name:
         type: string
       price:
@@ -359,13 +433,27 @@ definitions:
     properties:
       date_of_birth:
         type: string
-      full_name:
+      first_name:
+        maxLength: 255
+        type: string
+      gender:
+        enum:
+        - male
+        - female
+        type: string
+      last_name:
+        maxLength: 255
+        type: string
+      nickname:
+        maxLength: 100
         type: string
       parent_id:
         type: string
+      student_note:
+        $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.StudentNoteRequest'
     required:
     - date_of_birth
-    - full_name
+    - first_name
     - parent_id
     type: object
   github_com_kelolakelas_kelolakelas-academic-service_internal_domain.EnrollStudentRequest:
@@ -378,9 +466,6 @@ definitions:
         type: string
       class_id:
         type: string
-      platform_fee:
-        minimum: 0
-        type: integer
       student_id:
         type: string
     required:
@@ -390,6 +475,8 @@ definitions:
     type: object
   github_com_kelolakelas_kelolakelas-academic-service_internal_domain.Enrollment:
     properties:
+      billing_cycle:
+        type: string
       class:
         $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.Class'
       class_id:
@@ -476,6 +563,17 @@ definitions:
       total_pages:
         type: integer
     type: object
+  github_com_kelolakelas_kelolakelas-academic-service_internal_domain.PaymentResponse:
+    properties:
+      checkout_session_url:
+        type: string
+      gross_amount:
+        type: integer
+      status:
+        type: string
+      transaction_id:
+        type: string
+    type: object
   github_com_kelolakelas_kelolakelas-academic-service_internal_domain.PermanentScheduleChangeRequest:
     properties:
       effective_date:
@@ -527,6 +625,27 @@ definitions:
         $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ClassSchedule'
       old_schedule:
         $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ClassSchedule'
+    type: object
+  github_com_kelolakelas_kelolakelas-academic-service_internal_domain.PublicEnrollmentRequest:
+    properties:
+      billing_cycle:
+        enum:
+        - monthly
+        - quarterly
+        - yearly
+        type: string
+      student_id:
+        type: string
+    required:
+    - billing_cycle
+    - student_id
+    type: object
+  github_com_kelolakelas_kelolakelas-academic-service_internal_domain.PublicEnrollmentResponse:
+    properties:
+      enrollment:
+        $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.EnrollmentResponse'
+      payment:
+        $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.PaymentResponse'
     type: object
   github_com_kelolakelas_kelolakelas-academic-service_internal_domain.Report:
     properties:
@@ -654,7 +773,13 @@ definitions:
         type: string
       deleted_at:
         $ref: '#/definitions/gorm.DeletedAt'
-      full_name:
+      first_name:
+        type: string
+      gender:
+        type: string
+      last_name:
+        type: string
+      nickname:
         type: string
       id:
         type: string
@@ -663,6 +788,21 @@ definitions:
         type: string
       updated_at:
         type: string
+    type: object
+  github_com_kelolakelas_kelolakelas-academic-service_internal_domain.StudentNoteRequest:
+    properties:
+      content:
+        maxLength: 5000
+        type: string
+      note_type:
+        enum:
+        - medical
+        - academic
+        - behavioral
+        type: string
+    required:
+    - content
+    - note_type
     type: object
   github_com_kelolakelas_kelolakelas-academic-service_internal_domain.StudentListResponse:
     properties:
@@ -700,6 +840,13 @@ definitions:
     required:
     - status
     type: object
+  github_com_kelolakelas_kelolakelas-academic-service_internal_domain.UpdateClassPublicationRequest:
+    properties:
+      is_published:
+        type: boolean
+    required:
+    - is_published
+    type: object
   github_com_kelolakelas_kelolakelas-academic-service_internal_domain.UpdateEnrollmentStatusRequest:
     properties:
       status:
@@ -724,11 +871,25 @@ definitions:
     properties:
       date_of_birth:
         type: string
-      full_name:
+      first_name:
+        maxLength: 255
         type: string
+      gender:
+        enum:
+        - male
+        - female
+        type: string
+      last_name:
+        maxLength: 255
+        type: string
+      nickname:
+        maxLength: 100
+        type: string
+      student_note:
+        $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.StudentNoteRequest'
     required:
     - date_of_birth
-    - full_name
+    - first_name
     type: object
   gorm.DeletedAt:
     properties:
@@ -847,6 +1008,190 @@ paths:
       summary: Update attendance
       tags:
       - Attendance
+  /api/v1/catalog/classes:
+    get:
+      description: Lists active classes. Coordinates must be supplied together; when
+        supplied, only tenants with a location within radius_km are returned.
+      parameters:
+      - default: 1
+        description: Page number
+        in: query
+        name: page
+        type: integer
+      - default: 20
+        description: Items per page
+        in: query
+        name: page_size
+        type: integer
+      - description: Search class name
+        in: query
+        name: search
+        type: string
+      - description: Category UUID
+        in: query
+        name: category_id
+        type: string
+      - description: Tenant UUID
+        in: query
+        name: tenant_id
+        type: string
+      - description: private|group
+        in: query
+        name: type
+        type: string
+      - description: Minimum price in smallest currency unit
+        in: query
+        name: min_price
+        type: integer
+      - description: Maximum price in smallest currency unit
+        in: query
+        name: max_price
+        type: integer
+      - description: User latitude
+        in: query
+        name: latitude
+        type: number
+      - description: User longitude
+        in: query
+        name: longitude
+        type: number
+      - default: 25
+        description: Search radius in kilometres
+        in: query
+        maximum: 100
+        name: radius_km
+        type: number
+      - default: newest
+        description: distance_asc|name_asc|price_asc|price_desc|newest
+        in: query
+        name: sort
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.HTTPResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.CatalogListResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+        "422":
+          description: Unprocessable Entity
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+      summary: List public catalog classes
+      tags:
+      - Catalog
+  /api/v1/catalog/classes/{class_id}/enrollments:
+    post:
+      consumes:
+      - application/json
+      description: Creates a pending enrollment and generates a billing invoice. The
+        tenant is resolved from the selected class.
+      parameters:
+      - description: Class UUID
+        in: path
+        name: class_id
+        required: true
+        type: string
+      - description: Unique request key
+        in: header
+        name: Idempotency-Key
+        required: true
+        type: string
+      - description: Enrollment request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.PublicEnrollmentRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.HTTPResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.PublicEnrollmentResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+        "422":
+          description: Unprocessable Entity
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Enroll a parent-owned student in a public class
+      tags:
+      - Enrollments
+  /api/v1/catalog/classes/{id}:
+    get:
+      parameters:
+      - description: Class UUID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.HTTPResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.CatalogItem'
+              type: object
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+      summary: Get a public catalog class
+      tags:
+      - Catalog
   /api/v1/categories:
     get:
       parameters:
@@ -1140,6 +1485,61 @@ paths:
       security:
       - BearerAuth: []
       summary: Delete academic class
+      tags:
+      - Classes
+  /api/v1/classes/{id}/published:
+    patch:
+      consumes:
+      - application/json
+      description: Updates only the publication status of a tenant-owned class.
+      parameters:
+      - description: Tenant ID dalam format UUID
+        in: header
+        name: X-Tenant-ID
+        required: true
+        type: string
+      - description: Class ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Class publication status payload
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.UpdateClassPublicationRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.HTTPResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ClassResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Publish or unpublish an academic class
       tags:
       - Classes
   /api/v1/classes/with-category:

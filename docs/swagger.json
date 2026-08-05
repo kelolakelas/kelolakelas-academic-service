@@ -192,6 +192,294 @@
                 }
             }
         },
+        "/api/v1/catalog/classes": {
+            "get": {
+                "description": "Lists active classes. Coordinates must be supplied together; when supplied, only tenants with a location within radius_km are returned.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Catalog"
+                ],
+                "summary": "List public catalog classes",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "default": 1,
+                        "description": "Page number",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "default": 20,
+                        "description": "Items per page",
+                        "name": "page_size",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Search class name",
+                        "name": "search",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Category UUID",
+                        "name": "category_id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Tenant UUID",
+                        "name": "tenant_id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "private|group",
+                        "name": "type",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Minimum price in smallest currency unit",
+                        "name": "min_price",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Maximum price in smallest currency unit",
+                        "name": "max_price",
+                        "in": "query"
+                    },
+                    {
+                        "type": "number",
+                        "description": "User latitude",
+                        "name": "latitude",
+                        "in": "query"
+                    },
+                    {
+                        "type": "number",
+                        "description": "User longitude",
+                        "name": "longitude",
+                        "in": "query"
+                    },
+                    {
+                        "maximum": 100,
+                        "type": "number",
+                        "default": 25,
+                        "description": "Search radius in kilometres",
+                        "name": "radius_km",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "default": "newest",
+                        "description": "distance_asc|name_asc|price_asc|price_desc|newest",
+                        "name": "sort",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.HTTPResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.CatalogListResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
+                        }
+                    },
+                    "422": {
+                        "description": "Unprocessable Entity",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/catalog/classes/{class_id}/enrollments": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Creates a pending enrollment and generates a billing invoice. The tenant is resolved from the selected class.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Enrollments"
+                ],
+                "summary": "Enroll a parent-owned student in a public class",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Class UUID",
+                        "name": "class_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Unique request key",
+                        "name": "Idempotency-Key",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "description": "Enrollment request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.PublicEnrollmentRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.HTTPResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.PublicEnrollmentResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
+                        }
+                    },
+                    "422": {
+                        "description": "Unprocessable Entity",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/catalog/classes/{id}": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Catalog"
+                ],
+                "summary": "Get a public catalog class",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Class UUID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.HTTPResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.CatalogItem"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/categories": {
             "get": {
                 "security": [
@@ -733,6 +1021,95 @@
                     },
                     "409": {
                         "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/classes/{id}/published": {
+            "patch": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Updates only the publication status of a tenant-owned class.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Classes"
+                ],
+                "summary": "Publish or unpublish an academic class",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Tenant ID dalam format UUID",
+                        "name": "X-Tenant-ID",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Class ID (UUID)",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Class publication status payload",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.UpdateClassPublicationRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.HTTPResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ClassResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
                         "schema": {
                             "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
                         }
@@ -2293,6 +2670,79 @@
                 }
             }
         },
+        "github_com_kelolakelas_kelolakelas-academic-service_internal_domain.CatalogItem": {
+            "type": "object",
+            "properties": {
+                "available_slots": {
+                    "type": "integer"
+                },
+                "capacity": {
+                    "type": "integer"
+                },
+                "category_id": {
+                    "type": "string"
+                },
+                "category_name": {
+                    "type": "string"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "distance_km": {
+                    "type": "number"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "is_enrollable": {
+                    "type": "boolean"
+                },
+                "latitude": {
+                    "type": "number"
+                },
+                "longitude": {
+                    "type": "number"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "price": {
+                    "type": "integer"
+                },
+                "tenant_address": {
+                    "type": "string"
+                },
+                "tenant_id": {
+                    "type": "string"
+                },
+                "tenant_name": {
+                    "type": "string"
+                },
+                "type": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_kelolakelas_kelolakelas-academic-service_internal_domain.CatalogListResponse": {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.CatalogItem"
+                    }
+                },
+                "pagination": {
+                    "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.Pagination"
+                }
+            }
+        },
         "github_com_kelolakelas_kelolakelas-academic-service_internal_domain.Category": {
             "type": "object",
             "properties": {
@@ -2383,8 +2833,14 @@
                         "type": "integer"
                     }
                 },
+                "enrollment_status": {
+                    "type": "string"
+                },
                 "id": {
                     "type": "string"
+                },
+                "is_published": {
+                    "type": "boolean"
                 },
                 "name": {
                     "type": "string"
@@ -2437,8 +2893,14 @@
                         "type": "integer"
                     }
                 },
+                "enrollment_status": {
+                    "type": "string"
+                },
                 "id": {
                     "type": "string"
+                },
+                "is_published": {
+                    "type": "boolean"
                 },
                 "name": {
                     "type": "string"
@@ -2608,6 +3070,18 @@
                         "type": "integer"
                     }
                 },
+                "enrollment_status": {
+                    "type": "string",
+                    "enum": [
+                        "open",
+                        "closed",
+                        "full",
+                        "archived"
+                    ]
+                },
+                "is_published": {
+                    "type": "boolean"
+                },
                 "name": {
                     "type": "string"
                 },
@@ -2644,6 +3118,18 @@
                     "items": {
                         "type": "integer"
                     }
+                },
+                "enrollment_status": {
+                    "type": "string",
+                    "enum": [
+                        "open",
+                        "closed",
+                        "full",
+                        "archived"
+                    ]
+                },
+                "is_published": {
+                    "type": "boolean"
                 },
                 "name": {
                     "type": "string"
@@ -2776,18 +3262,37 @@
             "type": "object",
             "required": [
                 "date_of_birth",
-                "full_name",
+                "first_name",
                 "parent_id"
             ],
             "properties": {
                 "date_of_birth": {
                     "type": "string"
                 },
-                "full_name": {
-                    "type": "string"
+                "first_name": {
+                    "type": "string",
+                    "maxLength": 255
+                },
+                "gender": {
+                    "type": "string",
+                    "enum": [
+                        "male",
+                        "female"
+                    ]
+                },
+                "last_name": {
+                    "type": "string",
+                    "maxLength": 255
+                },
+                "nickname": {
+                    "type": "string",
+                    "maxLength": 100
                 },
                 "parent_id": {
                     "type": "string"
+                },
+                "student_note": {
+                    "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.StudentNoteRequest"
                 }
             }
         },
@@ -2810,10 +3315,6 @@
                 "class_id": {
                     "type": "string"
                 },
-                "platform_fee": {
-                    "type": "integer",
-                    "minimum": 0
-                },
                 "student_id": {
                     "type": "string"
                 }
@@ -2822,6 +3323,9 @@
         "github_com_kelolakelas_kelolakelas-academic-service_internal_domain.Enrollment": {
             "type": "object",
             "properties": {
+                "billing_cycle": {
+                    "type": "string"
+                },
                 "class": {
                     "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.Class"
                 },
@@ -2950,6 +3454,23 @@
                 }
             }
         },
+        "github_com_kelolakelas_kelolakelas-academic-service_internal_domain.PaymentResponse": {
+            "type": "object",
+            "properties": {
+                "checkout_session_url": {
+                    "type": "string"
+                },
+                "gross_amount": {
+                    "type": "integer"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "transaction_id": {
+                    "type": "string"
+                }
+            }
+        },
         "github_com_kelolakelas_kelolakelas-academic-service_internal_domain.PermanentScheduleChangeRequest": {
             "type": "object",
             "required": [
@@ -3023,6 +3544,37 @@
                 },
                 "old_schedule": {
                     "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ClassSchedule"
+                }
+            }
+        },
+        "github_com_kelolakelas_kelolakelas-academic-service_internal_domain.PublicEnrollmentRequest": {
+            "type": "object",
+            "required": [
+                "billing_cycle",
+                "student_id"
+            ],
+            "properties": {
+                "billing_cycle": {
+                    "type": "string",
+                    "enum": [
+                        "monthly",
+                        "quarterly",
+                        "yearly"
+                    ]
+                },
+                "student_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_kelolakelas_kelolakelas-academic-service_internal_domain.PublicEnrollmentResponse": {
+            "type": "object",
+            "properties": {
+                "enrollment": {
+                    "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.EnrollmentResponse"
+                },
+                "payment": {
+                    "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.PaymentResponse"
                 }
             }
         },
@@ -3212,7 +3764,16 @@
                 "deleted_at": {
                     "$ref": "#/definitions/gorm.DeletedAt"
                 },
-                "full_name": {
+                "first_name": {
+                    "type": "string"
+                },
+                "gender": {
+                    "type": "string"
+                },
+                "last_name": {
+                    "type": "string"
+                },
+                "nickname": {
                     "type": "string"
                 },
                 "id": {
@@ -3238,6 +3799,27 @@
                 },
                 "pagination": {
                     "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.Pagination"
+                }
+            }
+        },
+        "github_com_kelolakelas_kelolakelas-academic-service_internal_domain.StudentNoteRequest": {
+            "type": "object",
+            "required": [
+                "content",
+                "note_type"
+            ],
+            "properties": {
+                "content": {
+                    "type": "string",
+                    "maxLength": 5000
+                },
+                "note_type": {
+                    "type": "string",
+                    "enum": [
+                        "medical",
+                        "academic",
+                        "behavioral"
+                    ]
                 }
             }
         },
@@ -3281,6 +3863,17 @@
                 }
             }
         },
+        "github_com_kelolakelas_kelolakelas-academic-service_internal_domain.UpdateClassPublicationRequest": {
+            "type": "object",
+            "required": [
+                "is_published"
+            ],
+            "properties": {
+                "is_published": {
+                    "type": "boolean"
+                }
+            }
+        },
         "github_com_kelolakelas_kelolakelas-academic-service_internal_domain.UpdateEnrollmentStatusRequest": {
             "type": "object",
             "required": [
@@ -3315,14 +3908,33 @@
             "type": "object",
             "required": [
                 "date_of_birth",
-                "full_name"
+                "first_name"
             ],
             "properties": {
                 "date_of_birth": {
                     "type": "string"
                 },
-                "full_name": {
-                    "type": "string"
+                "first_name": {
+                    "type": "string",
+                    "maxLength": 255
+                },
+                "gender": {
+                    "type": "string",
+                    "enum": [
+                        "male",
+                        "female"
+                    ]
+                },
+                "last_name": {
+                    "type": "string",
+                    "maxLength": 255
+                },
+                "nickname": {
+                    "type": "string",
+                    "maxLength": 100
+                },
+                "student_note": {
+                    "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.StudentNoteRequest"
                 }
             }
         },

@@ -22,6 +22,7 @@ type ClassRepository interface {
 	Create(ctx context.Context, class *domain.Class) error
 	ListByTenant(ctx context.Context, tenantID uuid.UUID, query domain.ListQuery) ([]domain.Class, int64, error)
 	GetByID(ctx context.Context, id uuid.UUID) (*domain.Class, error)
+	UpdatePublicationStatus(ctx context.Context, classID, tenantID uuid.UUID, isPublished bool) (*domain.Class, error)
 	Update(ctx context.Context, class *domain.Class) error
 	DeleteByTenant(ctx context.Context, tenantID, id uuid.UUID) error
 }
@@ -85,6 +86,8 @@ type EnrollmentRepository interface {
 	GetByIDForAccess(ctx context.Context, tenantID, parentID *uuid.UUID, id uuid.UUID) (*domain.Enrollment, error)
 	List(ctx context.Context, tenantID, parentID *uuid.UUID, query domain.EnrollmentQuery) ([]*domain.Enrollment, int64, error)
 	ExistsActive(ctx context.Context, studentID, classID uuid.UUID) (bool, error)
+	GetByIdempotencyKey(ctx context.Context, parentID uuid.UUID, key string) (*domain.Enrollment, error)
+	CreateIfCapacityAvailable(ctx context.Context, enrollment *domain.Enrollment) error
 	IsTutorForEnrollment(ctx context.Context, enrollmentID, memberID uuid.UUID) (bool, error)
 	GetActiveByClassID(ctx context.Context, classID uuid.UUID) ([]*domain.Enrollment, error)
 	Update(ctx context.Context, enrollment *domain.Enrollment) error

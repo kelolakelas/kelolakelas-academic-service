@@ -49,6 +49,19 @@ func (r *classRepository) GetByID(ctx context.Context, id uuid.UUID) (*domain.Cl
 	return &class, nil
 }
 
+func (r *classRepository) UpdatePublicationStatus(ctx context.Context, classID, tenantID uuid.UUID, isPublished bool) (*domain.Class, error) {
+	db := r.getDB(ctx).Model(&domain.Class{}).
+		Where("id = ? AND tenant_id = ?", classID, tenantID).
+		Update("is_published", isPublished)
+	if db.Error != nil {
+		return nil, db.Error
+	}
+	if db.RowsAffected == 0 {
+		return nil, gorm.ErrRecordNotFound
+	}
+	return r.GetByID(ctx, classID)
+}
+
 func (r *classRepository) Update(ctx context.Context, class *domain.Class) error {
 	return r.getDB(ctx).Save(class).Error
 }
