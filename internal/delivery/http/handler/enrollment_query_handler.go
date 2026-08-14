@@ -19,15 +19,18 @@ func NewEnrollmentQueryHandler(u usecase.EnrollmentUsecase) *EnrollmentHandler {
 }
 
 func enrollmentScope(c *gin.Context) (*uuid.UUID, *uuid.UUID, error) {
-	userID, err := uuid.Parse(c.GetString("user_id"))
+	userID, err := authenticatedUserID(c)
 	if err != nil {
 		return nil, nil, err
+	}
+	if c.GetBool("is_parent") {
+		return nil, userID, nil
 	}
 	tenantID, err := uuid.Parse(c.GetString("tenant_id"))
 	if err == nil && tenantID != uuid.Nil {
 		return &tenantID, nil, nil
 	}
-	return nil, &userID, nil
+	return nil, nil, errors.New("invalid tenant context")
 }
 
 func parseEnrollmentQuery(c *gin.Context) (domain.EnrollmentQuery, error) {

@@ -16,6 +16,7 @@ import (
 
 type studentHandlerUsecaseStub struct {
 	listErr   error
+	createErr error
 	tenantID  *uuid.UUID
 	parentID  *uuid.UUID
 	listQuery domain.StudentQuery
@@ -28,8 +29,8 @@ func (s *studentHandlerUsecaseStub) List(_ context.Context, tenantID, parentID *
 	}
 	return &domain.StudentListResponse{Items: []domain.Student{}, Pagination: domain.Pagination{Page: query.Page, PageSize: query.PageSize}}, nil
 }
-func (*studentHandlerUsecaseStub) Create(context.Context, *uuid.UUID, *uuid.UUID, *domain.CreateStudentRequest) (*domain.Student, error) {
-	return nil, nil
+func (s *studentHandlerUsecaseStub) Create(context.Context, *uuid.UUID, *uuid.UUID, *domain.CreateStudentRequest) (*domain.Student, error) {
+	return nil, s.createErr
 }
 func (*studentHandlerUsecaseStub) GetByID(context.Context, *uuid.UUID, *uuid.UUID, uuid.UUID) (*domain.Student, error) {
 	return nil, nil
@@ -73,10 +74,11 @@ func TestStudentScope(t *testing.T) {
 		{name: "parent without tenant claim", isParent: &parent, user: userID.String(), wantParent: &userID},
 		{name: "parent with nil tenant claim", tenant: uuid.Nil.String(), isParent: &parent, user: userID.String(), wantParent: &userID},
 		{name: "parent with tenant claim", tenant: tenantID.String(), isParent: &parent, user: userID.String(), wantParent: &userID},
-		{name: "admin with valid tenant", tenant: tenantID.String(), isParent: &admin, user: userID.String(), wantTenant: &tenantID},
+		{name: "tenant user with valid tenant", tenant: tenantID.String(), isParent: &admin, user: userID.String(), wantTenant: &tenantID},
 		{name: "invalid user id", tenant: tenantID.String(), isParent: &admin, user: "bad", wantErr: true},
-		{name: "invalid tenant id", tenant: "bad", isParent: &admin, user: userID.String(), wantErr: true},
-		{name: "admin with nil tenant claim", tenant: uuid.Nil.String(), isParent: &admin, user: userID.String(), wantErr: true},
+		{name: "tenant user without tenant claim", isParent: &admin, user: userID.String(), wantErr: true},
+		{name: "tenant user with invalid tenant claim", tenant: "bad", isParent: &admin, user: userID.String(), wantErr: true},
+		{name: "tenant user with nil tenant claim", tenant: uuid.Nil.String(), isParent: &admin, user: userID.String(), wantErr: true},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
@@ -107,6 +109,7 @@ func TestStudentListUsesExpectedScopeAndHidesDatabaseError(t *testing.T) {
 		wantBody   string
 	}{
 		{name: "parent list", isParent: &parent, wantParent: &userID, wantStatus: http.StatusOK},
+		{name: "parent list with zero tenant", isParent: &parent, tenant: uuid.Nil.String(), wantParent: &userID, wantStatus: http.StatusOK},
 		{name: "tenant list", isParent: &admin, tenant: tenantID.String(), wantTenant: &tenantID, wantStatus: http.StatusOK},
 		{name: "database error", isParent: &admin, tenant: tenantID.String(), wantTenant: &tenantID, err: errors.New("database connection failed"), wantStatus: http.StatusInternalServerError, wantBody: "Failed to fetch students"},
 	}
@@ -127,6 +130,32 @@ func TestStudentListUsesExpectedScopeAndHidesDatabaseError(t *testing.T) {
 			}
 			if strings.Contains(recorder.Body.String(), "database connection failed") {
 				t.Fatal("database details must not be returned to the client")
+			}
+		})
+	}
+}
+
+func TestStudentCreateParentScopeAndOwnership(t *testing.T) {
+	userID := uuid.New()
+	parent := true
+	tests := []struct {
+		name       string
+		createErr  error
+		wantStatus int
+	}{
+		{name: "parent with zero tenant", wantStatus: http.StatusCreated},
+		{name: "parent does not own student", createErr: domain.ErrStudentForbidden, wantStatus: http.StatusForbidden},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			stub := &studentHandlerUsecaseStub{createErr: test.createErr}
+			handler := NewStudentHandler(stub)
+			c, recorder := newStudentHandlerContext(userID.String(), uuid.Nil.String(), &parent)
+			c.Request = httptest.NewRequest(http.MethodPost, "/api/v1/students", strings.NewReader(`{"parent_id":"`+userID.String()+`","first_name":"A","date_of_birth":"2015-01-01"}`))
+			c.Request.Header.Set("Content-Type", "application/json")
+			handler.Create(c)
+			if recorder.Code != test.wantStatus {
+				t.Fatalf("status=%d want=%d body=%s", recorder.Code, test.wantStatus, recorder.Body.String())
 			}
 		})
 	}

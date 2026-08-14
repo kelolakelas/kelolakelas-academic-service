@@ -22,10 +22,10 @@ func studentScope(c *gin.Context) (*uuid.UUID, *uuid.UUID, error) {
 	if err != nil {
 		return nil, nil, err
 	}
-	tenantValue := c.GetString("tenant_id")
-	if tenantValue == "" {
+	if c.GetBool("is_parent") {
 		return nil, userID, nil
 	}
+	tenantValue := c.GetString("tenant_id")
 	tenantID, tenantErr := uuid.Parse(tenantValue)
 	if tenantErr == nil && tenantID != uuid.Nil {
 		return &tenantID, nil, nil
