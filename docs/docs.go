@@ -2405,6 +2405,7 @@ const docTemplate = `{
                 "tags": [
                     "Students"
                 ],
+                "description": "Create a student and optionally append multiple student notes. Notes may be created without tenant context only by the parent who owns the student; otherwise they belong to the authenticated tenant.",
                 "summary": "Create student",
                 "parameters": [
                     {
@@ -2535,6 +2536,7 @@ const docTemplate = `{
                 "tags": [
                     "Students"
                 ],
+                "description": "Update a student and optionally append multiple new student notes. Existing notes are not overwritten or deleted.",
                 "summary": "Update student",
                 "parameters": [
                     {
@@ -3298,8 +3300,11 @@ const docTemplate = `{
                 "parent_id": {
                     "type": "string"
                 },
-                "student_note": {
-                    "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.StudentNoteRequest"
+                "student_notes": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.StudentNoteRequest"
+                    }
                 }
             }
         },
@@ -3940,8 +3945,11 @@ const docTemplate = `{
                     "type": "string",
                     "maxLength": 100
                 },
-                "student_note": {
-                    "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.StudentNoteRequest"
+                "student_notes": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.StudentNoteRequest"
+                    }
                 }
             }
         },

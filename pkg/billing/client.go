@@ -38,11 +38,12 @@ type InvoiceResponse struct {
 
 type client struct {
 	baseURL    string
+	credential string
 	httpClient *http.Client
 }
 
-func NewClient(baseURL string) Client {
-	return &client{baseURL: strings.TrimRight(baseURL, "/"), httpClient: &http.Client{Timeout: 10 * time.Second}}
+func NewClient(baseURL, credential string) Client {
+	return &client{baseURL: strings.TrimRight(baseURL, "/"), credential: credential, httpClient: &http.Client{Timeout: 10 * time.Second}}
 }
 
 func (c *client) GenerateInvoice(ctx context.Context, request InvoiceRequest) (*InvoiceResponse, error) {
@@ -55,6 +56,7 @@ func (c *client) GenerateInvoice(ctx context.Context, request InvoiceRequest) (*
 		return nil, fmt.Errorf("create billing request: %w", err)
 	}
 	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("X-Internal-Service-Credential", c.credential)
 	if request.IdempotencyKey != "" {
 		req.Header.Set("Idempotency-Key", request.IdempotencyKey)
 	}

@@ -18,7 +18,7 @@ import (
 type EnrollmentUsecase interface {
 	EnrollStudent(ctx context.Context, tenantID uuid.UUID, req *domain.EnrollStudentRequest) (*domain.EnrollmentResponse, error)
 	EnrollPublic(ctx context.Context, parentID, classID uuid.UUID, req *domain.PublicEnrollmentRequest, idempotencyKey string) (*domain.PublicEnrollmentResponse, error)
-	UpdateEnrollmentStatus(ctx context.Context, enrollmentID uuid.UUID, status string) (*domain.EnrollmentResponse, error)
+	ActivateEnrollment(ctx context.Context, enrollmentID uuid.UUID) (*domain.EnrollmentResponse, error)
 	List(ctx context.Context, tenantID, parentID *uuid.UUID, query domain.EnrollmentQuery) (*domain.EnrollmentListResponse, error)
 	GetByID(ctx context.Context, tenantID, parentID *uuid.UUID, id uuid.UUID) (*domain.EnrollmentResponse, error)
 }
@@ -146,20 +146,25 @@ func (u *enrollmentUsecase) EnrollStudent(ctx context.Context, tenantID uuid.UUI
 	if duplicate {
 		return nil, fmt.Errorf("active enrollment already exists")
 	}
-	enrollment := &domain.Enrollment{ID: uuid.New(), TenantID: tenantID, StudentID: req.StudentID, ClassID: req.ClassID, Status: "pending", BillingCycle: req.BillingCycle, GrossAmount: class.Price, PaymentStatus: "pending"}
+	key := req.IdempotencyKey
+	enrollment := &domain.Enrollment{ID: uuid.New(), TenantID: tenantID, StudentID: req.StudentID, ClassID: req.ClassID, Status: "pending", BillingCycle: req.BillingCycle, IdempotencyKey: &key, GrossAmount: class.Price, PaymentStatus: "pending"}
 	if err := u.enrollmentRepo.Create(ctx, enrollment); err != nil {
 		return nil, fmt.Errorf("create enrollment: %w", err)
 	}
-	if _, err := u.billingClient.GenerateInvoice(ctx, billing.InvoiceRequest{TenantID: tenantID, StudentID: req.StudentID, ClassID: req.ClassID, EnrollmentID: enrollment.ID, ParentID: student.ParentID, BillingCycle: req.BillingCycle, SubtotalAmount: class.Price, Title: class.Name}); err != nil {
+	invoice, err := u.billingClient.GenerateInvoice(ctx, billing.InvoiceRequest{TenantID: tenantID, StudentID: req.StudentID, ClassID: req.ClassID, EnrollmentID: enrollment.ID, ParentID: student.ParentID, BillingCycle: req.BillingCycle, SubtotalAmount: class.Price, IdempotencyKey: req.IdempotencyKey, Title: class.Name})
+	if err != nil {
 		return nil, fmt.Errorf("generate enrollment invoice: %w", err)
+	}
+	enrollment.PaymentTransactionID = &invoice.TransactionID
+	enrollment.CheckoutSessionURL = &invoice.CheckoutSessionURL
+	enrollment.PaymentStatus = "pending"
+	if err := u.enrollmentRepo.Update(ctx, enrollment); err != nil {
+		return nil, fmt.Errorf("save enrollment payment details: %w", err)
 	}
 	return enrollmentResponse(enrollment), nil
 }
 
-func (u *enrollmentUsecase) UpdateEnrollmentStatus(ctx context.Context, enrollmentID uuid.UUID, status string) (*domain.EnrollmentResponse, error) {
-	if status != "pending" && status != "active" && status != "completed" && status != "dropped" {
-		return nil, domain.ErrInvalidEnrollmentStatus
-	}
+func (u *enrollmentUsecase) ActivateEnrollment(ctx context.Context, enrollmentID uuid.UUID) (*domain.EnrollmentResponse, error) {
 	enrollment, err := u.enrollmentRepo.GetByID(ctx, enrollmentID)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -167,8 +172,14 @@ func (u *enrollmentUsecase) UpdateEnrollmentStatus(ctx context.Context, enrollme
 		}
 		return nil, fmt.Errorf("failed to fetch enrollment: %w", err)
 	}
+	if enrollment.Status == "active" {
+		return enrollmentResponse(enrollment), nil
+	}
+	if enrollment.Status != "pending" {
+		return nil, domain.ErrInvalidEnrollmentTransition
+	}
 
-	enrollment.Status = status
+	enrollment.Status = "active"
 	enrollment.UpdatedAt = time.Now()
 
 	if err := u.enrollmentRepo.Update(ctx, enrollment); err != nil {

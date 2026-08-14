@@ -449,8 +449,10 @@ definitions:
         type: string
       parent_id:
         type: string
-      student_note:
-        $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.StudentNoteRequest'
+      student_notes:
+        type: array
+        items:
+          $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.StudentNoteRequest'
     required:
     - date_of_birth
     - first_name
@@ -885,8 +887,10 @@ definitions:
       nickname:
         maxLength: 100
         type: string
-      student_note:
-        $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.StudentNoteRequest'
+      student_notes:
+        type: array
+        items:
+          $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.StudentNoteRequest'
     required:
     - date_of_birth
     - first_name
@@ -927,6 +931,8 @@ paths:
     post:
       consumes:
       - application/json
+      description: Create a student and optionally append multiple student notes.
+        Notes may be created without tenant context only by the parent who owns the student; otherwise they belong to the authenticated tenant.
       parameters:
       - description: Attendance payload
         in: body
@@ -979,6 +985,8 @@ paths:
     patch:
       consumes:
       - application/json
+      description: Update a student and optionally append multiple new student notes.
+        Existing notes are not overwritten or deleted.
       parameters:
       - description: Attendance UUID
         in: path

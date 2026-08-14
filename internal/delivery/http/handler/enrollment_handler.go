@@ -35,6 +35,7 @@ func (h *EnrollmentHandler) Create(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"status": "error", "message": err.Error()})
 		return
 	}
+	req.IdempotencyKey = c.GetHeader("Idempotency-Key")
 	if c.GetBool("is_parent") {
 		parentID, parseErr := uuid.Parse(c.GetString("user_id"))
 		if parseErr != nil {
@@ -123,20 +124,19 @@ func NewEnrollmentHandler(enrollmentUsecase usecase.EnrollmentUsecase) *Enrollme
 	}
 }
 
-// UpdateStatus godoc
-// @Summary Update enrollment status
-// @Description Update status of an enrollment (e.g. from pending to active upon payment)
+// ActivateInternal godoc
+// @Summary Activate enrollment after confirmed payment
+// @Description Internal service-to-service endpoint for payment-confirmed enrollment activation.
 // @Tags Enrollments
 // @Accept json
 // @Produce json
 // @Param id path string true "Enrollment ID (UUID)"
-// @Param request body domain.UpdateEnrollmentStatusRequest true "Status update payload"
 // @Success 200 {object} domain.HTTPResponse{data=domain.EnrollmentResponse}
 // @Failure 400 {object} domain.ErrorResponse
 // @Failure 404 {object} domain.ErrorResponse
 // @Failure 500 {object} domain.ErrorResponse
-// @Router /api/v1/enrollments/{id}/status [put]
-func (h *EnrollmentHandler) UpdateStatus(c *gin.Context) {
+// @Router /internal/enrollments/{id}/activate [post]
+func (h *EnrollmentHandler) ActivateInternal(c *gin.Context) {
 	idParam := c.Param("id")
 	enrollmentID, err := uuid.Parse(idParam)
 	if err != nil {
@@ -148,17 +148,7 @@ func (h *EnrollmentHandler) UpdateStatus(c *gin.Context) {
 		return
 	}
 
-	var req domain.UpdateEnrollmentStatusRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"status":  "error",
-			"message": err.Error(),
-			"data":    nil,
-		})
-		return
-	}
-
-	res, err := h.enrollmentUsecase.UpdateEnrollmentStatus(c.Request.Context(), enrollmentID, req.Status)
+	res, err := h.enrollmentUsecase.ActivateEnrollment(c.Request.Context(), enrollmentID)
 	if err != nil {
 		if errors.Is(err, usecase.ErrEnrollmentNotFound) {
 			c.JSON(http.StatusNotFound, gin.H{
@@ -168,7 +158,11 @@ func (h *EnrollmentHandler) UpdateStatus(c *gin.Context) {
 			})
 			return
 		}
-		c.JSON(http.StatusInternalServerError, gin.H{
+		status := http.StatusInternalServerError
+		if errors.Is(err, domain.ErrInvalidEnrollmentTransition) {
+			status = http.StatusConflict
+		}
+		c.JSON(status, gin.H{
 			"status":  "error",
 			"message": "Failed to update enrollment status: " + err.Error(),
 			"data":    nil,
@@ -178,7 +172,7 @@ func (h *EnrollmentHandler) UpdateStatus(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{
 		"status":  "success",
-		"message": "Enrollment status updated successfully",
+		"message": "Enrollment activated successfully",
 		"data":    res,
 	})
 }

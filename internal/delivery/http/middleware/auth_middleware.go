@@ -8,6 +8,17 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 )
 
+func InternalServiceAuth(credential string) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		if credential == "" || c.GetHeader("X-Internal-Service-Credential") != credential {
+			c.JSON(http.StatusUnauthorized, gin.H{"status": "error", "message": "Invalid internal service credential", "data": nil})
+			c.Abort()
+			return
+		}
+		c.Next()
+	}
+}
+
 type Claims struct {
 	UserID   string `json:"user_id"`
 	TenantID string `json:"tenant_id"`

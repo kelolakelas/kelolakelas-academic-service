@@ -57,7 +57,7 @@ func (u *studentUsecase) Create(ctx context.Context, tenantID, userID *uuid.UUID
 		return nil, domain.ErrStudentFirstNameRequired
 	}
 	student := &domain.Student{ID: uuid.New(), ParentID: req.ParentID, FirstName: firstName, LastName: cleanOptional(req.LastName), Nickname: cleanOptional(req.Nickname), Gender: cleanOptional(req.Gender), DateOfBirth: &dob}
-	note, err := u.buildStudentNote(tenantID, userID, student.ID, req.StudentNote)
+	notes, err := u.buildStudentNotes(tenantID, userID, student, req.StudentNotes)
 	if err != nil {
 		return nil, err
 	}
@@ -65,8 +65,10 @@ func (u *studentUsecase) Create(ctx context.Context, tenantID, userID *uuid.UUID
 		if err := u.repo.Create(txCtx, student); err != nil {
 			return err
 		}
-		if note != nil {
-			return u.noteRepo.Create(txCtx, note)
+		for _, note := range notes {
+			if err := u.noteRepo.Create(txCtx, note); err != nil {
+				return err
+			}
 		}
 		return nil
 	}); err != nil {
@@ -94,7 +96,7 @@ func (u *studentUsecase) Update(ctx context.Context, tenantID, parentID, authorI
 	}
 	student.FirstName, student.LastName, student.Nickname, student.Gender = firstName, cleanOptional(req.LastName), cleanOptional(req.Nickname), cleanOptional(req.Gender)
 	student.DateOfBirth, student.UpdatedAt = &dob, time.Now()
-	note, err := u.buildStudentNote(tenantID, authorID, student.ID, req.StudentNote)
+	notes, err := u.buildStudentNotes(tenantID, authorID, student, req.StudentNotes)
 	if err != nil {
 		return nil, err
 	}
@@ -102,8 +104,10 @@ func (u *studentUsecase) Update(ctx context.Context, tenantID, parentID, authorI
 		if err := u.repo.Update(txCtx, student); err != nil {
 			return err
 		}
-		if note != nil {
-			return u.noteRepo.Create(txCtx, note)
+		for _, note := range notes {
+			if err := u.noteRepo.Create(txCtx, note); err != nil {
+				return err
+			}
 		}
 		return nil
 	}); err != nil {
@@ -112,15 +116,30 @@ func (u *studentUsecase) Update(ctx context.Context, tenantID, parentID, authorI
 	return student, nil
 }
 
-func (u *studentUsecase) buildStudentNote(tenantID, authorID *uuid.UUID, studentID uuid.UUID, req *domain.StudentNoteRequest) (*domain.StudentNote, error) {
-	if req == nil {
-		return nil, nil
+func (u *studentUsecase) buildStudentNotes(tenantID, authorID *uuid.UUID, student *domain.Student, requests []domain.StudentNoteRequest) ([]*domain.StudentNote, error) {
+	notes := make([]*domain.StudentNote, 0, len(requests))
+	for _, request := range requests {
+		note, err := u.buildStudentNote(tenantID, authorID, student, request)
+		if err != nil {
+			return nil, err
+		}
+		notes = append(notes, note)
 	}
-	if tenantID == nil || *tenantID == uuid.Nil {
-		return nil, domain.ErrStudentNoteTenantRequired
-	}
+	return notes, nil
+}
+
+func (u *studentUsecase) buildStudentNote(tenantID, authorID *uuid.UUID, student *domain.Student, req domain.StudentNoteRequest) (*domain.StudentNote, error) {
 	if authorID == nil || *authorID == uuid.Nil {
 		return nil, domain.ErrStudentNoteInvalid
+	}
+	if tenantID == nil || *tenantID == uuid.Nil {
+		if student == nil {
+			return nil, domain.ErrStudentNoteInvalid
+		}
+		if *authorID != student.ParentID {
+			return nil, domain.ErrStudentForbidden
+		}
+		tenantID = nil
 	}
 	content := strings.TrimSpace(req.Content)
 	if content == "" {
@@ -129,7 +148,7 @@ func (u *studentUsecase) buildStudentNote(tenantID, authorID *uuid.UUID, student
 	if req.NoteType != "medical" && req.NoteType != "academic" && req.NoteType != "behavioral" {
 		return nil, domain.ErrStudentNoteInvalid
 	}
-	return &domain.StudentNote{ID: uuid.New(), TenantID: *tenantID, StudentID: studentID, AuthorID: *authorID, NoteType: req.NoteType, Content: content}, nil
+	return &domain.StudentNote{ID: uuid.New(), TenantID: tenantID, StudentID: student.ID, AuthorID: *authorID, NoteType: req.NoteType, Content: content}, nil
 }
 
 func cleanOptional(value *string) *string {

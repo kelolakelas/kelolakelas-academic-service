@@ -64,6 +64,10 @@ func main() {
 		slog.Error("Auto-migration failed", "error", err)
 		os.Exit(1)
 	}
+	if err := db.Exec(`ALTER TABLE student_notes ALTER COLUMN tenant_id DROP NOT NULL`).Error; err != nil {
+		slog.Error("Student note migration failed", "error", err)
+		os.Exit(1)
+	}
 	for _, statement := range []string{
 		`CREATE INDEX IF NOT EXISTS idx_classes_catalog_filters ON classes (is_published, enrollment_status, type, price, created_at) WHERE deleted_at IS NULL`,
 		`DROP INDEX IF EXISTS idx_student_class`,
@@ -93,7 +97,7 @@ func main() {
 	enrollmentRepo := repository.NewEnrollmentRepository(db)
 	studentRepo := repository.NewStudentRepository(db)
 	studentNoteRepo := repository.NewStudentNoteRepository(db)
-	billingClient := billing.NewClient(cfg.BillingServiceURL)
+	billingClient := billing.NewClient(cfg.BillingServiceURL, cfg.InternalServiceCredential)
 
 	// Initialize Usecases
 	categoryUsecase := usecase.NewCategoryUsecase(categoryRepo, tenantClient, txManager)
@@ -158,9 +162,6 @@ func main() {
 		apiV1.GET("/enrollments", enrollmentHandler.ListQuery)
 		apiV1.GET("/enrollments/:id", enrollmentHandler.GetQuery)
 
-		// Enrollment Routes
-		apiV1.PUT("/enrollments/:id/status", enrollmentHandler.UpdateStatus)
-
 		// Schedule Routes
 		apiV1.POST("/schedules", scheduleHandler.CreateInitialSchedules)
 		apiV1.DELETE("/schedules/:id", scheduleHandler.Delete)
@@ -181,6 +182,9 @@ func main() {
 		apiV1.PATCH("/sessions/:id/substitute-tutor", scheduleHandler.ChangeTutorTemporary)
 		apiV1.GET("/sessions/:id/attendees", scheduleHandler.GetSessionAttendees)
 	}
+	internal := r.Group("/internal")
+	internal.Use(middleware.InternalServiceAuth(cfg.InternalServiceCredential))
+	internal.POST("/enrollments/:id/activate", enrollmentHandler.ActivateInternal)
 
 	slog.Info("Starting academic service", "port", cfg.Port)
 	if err := r.Run("0.0.0.0:" + cfg.Port); err != nil {

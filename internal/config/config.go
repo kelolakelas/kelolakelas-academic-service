@@ -12,18 +12,19 @@ import (
 )
 
 type Config struct {
-	DatabaseURL       string `mapstructure:"DATABASE_URL"`
-	DBHost            string `mapstructure:"DB_HOST"`
-	DBPort            string `mapstructure:"DB_PORT"`
-	DBSSLMode         string `mapstructure:"DB_SSLMODE"`
-	DBChannelBinding  string `mapstructure:"DB_CHANNEL_BINDING"`
-	DBUser            string `mapstructure:"DB_USER"`
-	DBPassword        string `mapstructure:"DB_PASSWORD"`
-	DBName            string `mapstructure:"DB_NAME"`
-	IdentityGRPCHost  string `mapstructure:"IDENTITY_GRPC_HOST"`
-	BillingServiceURL string `mapstructure:"BILLING_SERVICE_URL"`
-	Port              string `mapstructure:"PORT"`
-	JWTSecret         string `mapstructure:"JWT_SECRET"`
+	DatabaseURL               string `mapstructure:"DATABASE_URL"`
+	DBHost                    string `mapstructure:"DB_HOST"`
+	DBPort                    string `mapstructure:"DB_PORT"`
+	DBSSLMode                 string `mapstructure:"DB_SSLMODE"`
+	DBChannelBinding          string `mapstructure:"DB_CHANNEL_BINDING"`
+	DBUser                    string `mapstructure:"DB_USER"`
+	DBPassword                string `mapstructure:"DB_PASSWORD"`
+	DBName                    string `mapstructure:"DB_NAME"`
+	IdentityGRPCHost          string `mapstructure:"IDENTITY_GRPC_HOST"`
+	BillingServiceURL         string `mapstructure:"BILLING_SERVICE_URL"`
+	InternalServiceCredential string `mapstructure:"INTERNAL_SERVICE_CREDENTIAL"`
+	Port                      string `mapstructure:"PORT"`
+	JWTSecret                 string `mapstructure:"JWT_SECRET"`
 }
 
 func LoadConfig() (Config, error) {
@@ -42,7 +43,7 @@ func LoadConfig() (Config, error) {
 	viper.AutomaticEnv()
 	for _, key := range []string{
 		"DATABASE_URL", "DB_HOST", "DB_PORT", "DB_SSLMODE", "DB_CHANNEL_BINDING", "DB_USER", "DB_PASSWORD", "DB_NAME",
-		"IDENTITY_GRPC_HOST", "BILLING_SERVICE_URL", "PORT", "JWT_SECRET",
+		"IDENTITY_GRPC_HOST", "BILLING_SERVICE_URL", "INTERNAL_SERVICE_CREDENTIAL", "PORT", "JWT_SECRET",
 	} {
 		if err := viper.BindEnv(key); err != nil {
 			return Config{}, err
@@ -93,6 +94,9 @@ func LoadConfig() (Config, error) {
 	}
 	if config.BillingServiceURL == "" {
 		config.BillingServiceURL = "http://localhost:8082"
+	}
+	if config.InternalServiceCredential == "" {
+		return Config{}, fmt.Errorf("INTERNAL_SERVICE_CREDENTIAL is required")
 	}
 
 	return config, nil

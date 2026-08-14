@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"errors"
+	"log/slog"
 
 	"github.com/google/uuid"
 	"gorm.io/gorm"
@@ -35,7 +36,7 @@ func (r *studentRepository) accessQuery(ctx context.Context, id uuid.UUID, tenan
 		db = db.Where("students.parent_id = ?", *parentID)
 	}
 	if tenantID != nil {
-		db = db.Joins("JOIN enrollments e ON e.student_id = students.id").Where("e.tenant_id = ?", *tenantID)
+		db = db.Where("EXISTS (SELECT 1 FROM enrollments e WHERE e.student_id = students.id AND e.tenant_id = ? AND e.deleted_at IS NULL)", *tenantID)
 	}
 	return db
 }
@@ -46,6 +47,9 @@ func (r *studentRepository) GetByIDForAccess(ctx context.Context, id uuid.UUID, 
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, domain.ErrStudentNotFound
 	}
+	if err != nil {
+		slog.Error("student access query failed", "operation", "get_by_id", "student_id", id, "error", err)
+	}
 	return &student, err
 }
 
@@ -55,7 +59,7 @@ func (r *studentRepository) List(ctx context.Context, tenantID, parentID *uuid.U
 		db = db.Where("students.parent_id = ?", *parentID)
 	}
 	if tenantID != nil {
-		db = db.Joins("JOIN enrollments e ON e.student_id = students.id").Where("e.tenant_id = ?", *tenantID).Distinct("students.id")
+		db = db.Where("EXISTS (SELECT 1 FROM enrollments e WHERE e.student_id = students.id AND e.tenant_id = ? AND e.deleted_at IS NULL)", *tenantID)
 	}
 	if query.Search != "" {
 		search := "%" + query.Search + "%"
@@ -63,11 +67,22 @@ func (r *studentRepository) List(ctx context.Context, tenantID, parentID *uuid.U
 	}
 	var total int64
 	if err := db.Session(&gorm.Session{}).Count(&total).Error; err != nil {
+		slog.Error("student list count query failed", "operation", "list_count", "tenant_id", uuidOrNil(tenantID), "parent_id", uuidOrNil(parentID), "error", err)
 		return nil, 0, err
 	}
 	var students []domain.Student
 	err := db.Order("students.created_at DESC").Limit(query.PageSize).Offset((query.Page - 1) * query.PageSize).Find(&students).Error
+	if err != nil {
+		slog.Error("student list query failed", "operation", "list", "tenant_id", uuidOrNil(tenantID), "parent_id", uuidOrNil(parentID), "page", query.Page, "page_size", query.PageSize, "error", err)
+	}
 	return students, total, err
+}
+
+func uuidOrNil(value *uuid.UUID) uuid.UUID {
+	if value == nil {
+		return uuid.Nil
+	}
+	return *value
 }
 
 func (r *studentRepository) CountActiveEnrollments(ctx context.Context, studentID uuid.UUID) (int64, error) {

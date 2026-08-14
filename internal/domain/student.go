@@ -14,7 +14,6 @@ var (
 	ErrStudentActiveEnroll        = errors.New("student has active enrollments")
 	ErrStudentFirstNameRequired   = errors.New("first name is required")
 	ErrStudentNoteInvalid         = errors.New("invalid student note")
-	ErrStudentNoteTenantRequired  = errors.New("tenant context is required for student note")
 	ErrStudentNoteContentRequired = errors.New("student note content is required")
 )
 
@@ -22,7 +21,7 @@ type Student struct {
 	ID          uuid.UUID      `gorm:"type:uuid;primaryKey;default:gen_random_uuid()" json:"id"`
 	ParentID    uuid.UUID      `gorm:"type:uuid;not null;index" json:"parent_id"` // Cross-service, ordinary UUID
 	FirstName   string         `gorm:"type:varchar(255);not null" json:"first_name"`
-	LastName    *string        `gorm:"type:varchar(255)" json:"last_name"`
+	LastName    *string        `gorm:"type:varchar(255)" json:"lastå_name"`
 	Nickname    *string        `gorm:"type:varchar(100)" json:"nickname"`
 	Gender      *string        `gorm:"type:varchar(10)" json:"gender"`
 	DateOfBirth *time.Time     `gorm:"type:date" json:"date_of_birth,omitempty"`
@@ -48,20 +47,20 @@ type StudentNoteRequest struct {
 }
 
 type CreateStudentRequest struct {
-	ParentID    uuid.UUID           `json:"parent_id" binding:"required"`
-	FirstName   string              `json:"first_name" binding:"required,max=255"`
-	LastName    *string             `json:"last_name,omitempty" binding:"omitempty,max=255"`
-	Nickname    *string             `json:"nickname,omitempty" binding:"omitempty,max=100"`
-	Gender      *string             `json:"gender,omitempty" binding:"omitempty,oneof=male female"`
-	DateOfBirth string              `json:"date_of_birth" binding:"required,datetime=2006-01-02"`
-	StudentNote *StudentNoteRequest `json:"student_note,omitempty"`
+	ParentID     uuid.UUID            `json:"parent_id" binding:"required"`
+	FirstName    string               `json:"first_name" binding:"required,max=255"`
+	LastName     *string              `json:"last_name,omitempty" binding:"omitempty,max=255"`
+	Nickname     *string              `json:"nickname,omitempty" binding:"omitempty,max=100"`
+	Gender       *string              `json:"gender,omitempty" binding:"omitempty,oneof=male female"`
+	DateOfBirth  string               `json:"date_of_birth" binding:"required,datetime=2006-01-02"`
+	StudentNotes []StudentNoteRequest `json:"student_notes,omitempty" binding:"omitempty,dive"`
 }
 
 type UpdateStudentRequest struct {
-	FirstName   string              `json:"first_name" binding:"required,max=255"`
-	LastName    *string             `json:"last_name,omitempty" binding:"omitempty,max=255"`
-	Nickname    *string             `json:"nickname,omitempty" binding:"omitempty,max=100"`
-	Gender      *string             `json:"gender,omitempty" binding:"omitempty,oneof=male female"`
-	DateOfBirth string              `json:"date_of_birth" binding:"required,datetime=2006-01-02"`
-	StudentNote *StudentNoteRequest `json:"student_note,omitempty"`
+	FirstName    string               `json:"first_name" binding:"required,max=255"`
+	LastName     *string              `json:"last_name,omitempty" binding:"omitempty,max=255"`
+	Nickname     *string              `json:"nickname,omitempty" binding:"omitempty,max=100"`
+	Gender       *string              `json:"gender,omitempty" binding:"omitempty,oneof=male female"`
+	DateOfBirth  string               `json:"date_of_birth" binding:"required,datetime=2006-01-02"`
+	StudentNotes []StudentNoteRequest `json:"student_notes,omitempty" binding:"omitempty,dive"`
 }

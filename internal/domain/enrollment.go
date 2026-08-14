@@ -12,6 +12,7 @@ var ErrInvalidEnrollmentStatus = errors.New("invalid enrollment status")
 var ErrIdempotencyConflict = errors.New("idempotency key already used with a different request")
 var ErrParentRequired = errors.New("parent authentication is required")
 var ErrStudentOwnership = errors.New("student does not belong to parent")
+var ErrInvalidEnrollmentTransition = errors.New("invalid enrollment transition")
 
 type Enrollment struct {
 	ID                   uuid.UUID      `gorm:"type:uuid;primaryKey;default:gen_random_uuid()" json:"id"`
@@ -33,14 +34,11 @@ type Enrollment struct {
 	Class   *Class   `gorm:"foreignKey:ClassID" json:"class,omitempty"`
 }
 
-type UpdateEnrollmentStatusRequest struct {
-	Status string `json:"status" binding:"required"`
-}
-
 type EnrollStudentRequest struct {
-	StudentID    uuid.UUID `json:"student_id" binding:"required"`
-	ClassID      uuid.UUID `json:"class_id" binding:"required"`
-	BillingCycle string    `json:"billing_cycle" binding:"required,oneof=monthly quarterly yearly"`
+	StudentID      uuid.UUID `json:"student_id" binding:"required"`
+	ClassID        uuid.UUID `json:"class_id" binding:"required"`
+	BillingCycle   string    `json:"billing_cycle" binding:"required,oneof=monthly quarterly yearly"`
+	IdempotencyKey string    `json:"-"`
 }
 
 type PublicEnrollmentRequest struct {

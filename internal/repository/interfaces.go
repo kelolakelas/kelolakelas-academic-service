@@ -75,9 +75,9 @@ type StudentRepository interface {
 
 type StudentNoteRepository interface {
 	Create(ctx context.Context, note *domain.StudentNote) error
-	GetByID(ctx context.Context, id uuid.UUID) (*domain.StudentNote, error)
-	Update(ctx context.Context, note *domain.StudentNote) error
-	Delete(ctx context.Context, id uuid.UUID) error
+	GetByIDForAccess(ctx context.Context, id uuid.UUID, tenantID, parentID *uuid.UUID) (*domain.StudentNote, error)
+	UpdateForAccess(ctx context.Context, note *domain.StudentNote, tenantID, parentID *uuid.UUID) error
+	DeleteForAccess(ctx context.Context, id uuid.UUID, tenantID, parentID *uuid.UUID) error
 }
 
 type EnrollmentRepository interface {

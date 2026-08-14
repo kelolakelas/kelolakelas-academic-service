@@ -23,11 +23,14 @@ func studentScope(c *gin.Context) (*uuid.UUID, *uuid.UUID, error) {
 		return nil, nil, err
 	}
 	tenantValue := c.GetString("tenant_id")
+	if tenantValue == "" {
+		return nil, userID, nil
+	}
 	tenantID, tenantErr := uuid.Parse(tenantValue)
 	if tenantErr == nil && tenantID != uuid.Nil {
 		return &tenantID, nil, nil
 	}
-	return nil, userID, nil
+	return nil, nil, errors.New("invalid tenant context")
 }
 
 func authenticatedUserID(c *gin.Context) (*uuid.UUID, error) {
@@ -41,7 +44,6 @@ func authenticatedUserID(c *gin.Context) (*uuid.UUID, error) {
 func isStudentInputError(err error) bool {
 	if errors.Is(err, domain.ErrStudentFirstNameRequired) ||
 		errors.Is(err, domain.ErrStudentNoteInvalid) ||
-		errors.Is(err, domain.ErrStudentNoteTenantRequired) ||
 		errors.Is(err, domain.ErrStudentNoteContentRequired) {
 		return true
 	}
@@ -84,7 +86,7 @@ func (h *StudentHandler) List(c *gin.Context) {
 }
 
 // @Summary Create student
-// @Description Create a student and optionally an initial student note. Notes require an authenticated tenant context.
+// @Description Create a student and optionally append multiple student notes. Notes require an authenticated tenant context.
 // @Tags Students
 // @Accept json
 // @Produce json
@@ -118,7 +120,9 @@ func (h *StudentHandler) Create(c *gin.Context) {
 	}
 	if err != nil {
 		status := http.StatusInternalServerError
-		if isStudentInputError(err) {
+		if errors.Is(err, domain.ErrStudentForbidden) {
+			status = http.StatusForbidden
+		} else if isStudentInputError(err) {
 			status = http.StatusBadRequest
 		}
 		c.JSON(status, gin.H{"status": "error", "message": "Invalid student payload", "data": nil})
@@ -137,7 +141,7 @@ func (h *StudentHandler) Create(c *gin.Context) {
 func (h *StudentHandler) Get(c *gin.Context) { h.mutate(c, false) }
 
 // @Summary Update student
-// @Description Update a student and optionally append a new student note. Existing notes are not overwritten.
+// @Description Update a student and optionally append multiple new student notes. Existing notes are not overwritten or deleted.
 // @Tags Students
 // @Accept json
 // @Produce json
@@ -191,7 +195,9 @@ func (h *StudentHandler) mutate(c *gin.Context, update bool) {
 	}
 	if err != nil {
 		status := http.StatusInternalServerError
-		if isStudentInputError(err) {
+		if errors.Is(err, domain.ErrStudentForbidden) {
+			status = http.StatusForbidden
+		} else if isStudentInputError(err) {
 			status = http.StatusBadRequest
 		}
 		c.JSON(status, gin.H{"status": "error", "message": "Invalid student payload", "data": nil})
