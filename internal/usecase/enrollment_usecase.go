@@ -95,9 +95,25 @@ func (u *enrollmentUsecase) EnrollPublic(ctx context.Context, parentID, classID 
 	}
 	if u.txManager != nil {
 		if err := u.txManager.WithTransaction(ctx, create); err != nil {
+			if lockingRepo, ok := u.enrollmentRepo.(repository.EnrollmentLockingRepository); ok {
+				if existing, lookupErr := lockingRepo.GetByIdempotencyKeyAny(ctx, idempotencyKey); lookupErr == nil {
+					if existing.StudentID != req.StudentID || existing.ClassID != classID || existing.BillingCycle != req.BillingCycle {
+						return nil, domain.ErrIdempotencyConflict
+					}
+					return u.publicEnrollmentResponse(existing)
+				}
+			}
 			return nil, err
 		}
 	} else if err := create(ctx); err != nil {
+		if lockingRepo, ok := u.enrollmentRepo.(repository.EnrollmentLockingRepository); ok {
+			if existing, lookupErr := lockingRepo.GetByIdempotencyKeyAny(ctx, idempotencyKey); lookupErr == nil {
+				if existing.StudentID != req.StudentID || existing.ClassID != classID || existing.BillingCycle != req.BillingCycle {
+					return nil, domain.ErrIdempotencyConflict
+				}
+				return u.publicEnrollmentResponse(existing)
+			}
+		}
 		return nil, err
 	}
 	invoice, err := u.billingClient.GenerateInvoice(ctx, billing.InvoiceRequest{TenantID: class.TenantID, StudentID: student.ID, ClassID: class.ID, EnrollmentID: enrollment.ID, ParentID: parentID, BillingCycle: req.BillingCycle, SubtotalAmount: class.Price, IdempotencyKey: idempotencyKey, Title: class.Name})
@@ -125,6 +141,19 @@ func (u *enrollmentUsecase) publicEnrollmentResponse(enrollment *domain.Enrollme
 }
 
 func (u *enrollmentUsecase) EnrollStudent(ctx context.Context, tenantID uuid.UUID, req *domain.EnrollStudentRequest) (*domain.EnrollmentResponse, error) {
+	if req.IdempotencyKey == "" {
+		return nil, errors.New("idempotency key is required")
+	}
+	if lockingRepo, ok := u.enrollmentRepo.(repository.EnrollmentLockingRepository); ok {
+		if existing, lookupErr := lockingRepo.GetByIdempotencyKeyForTenant(ctx, tenantID, req.IdempotencyKey); lookupErr == nil {
+			if existing.StudentID != req.StudentID || existing.ClassID != req.ClassID || existing.BillingCycle != req.BillingCycle {
+				return nil, domain.ErrIdempotencyConflict
+			}
+			return enrollmentResponse(existing), nil
+		} else if !errors.Is(lookupErr, gorm.ErrRecordNotFound) {
+			return nil, lookupErr
+		}
+	}
 	student, err := u.studentRepo.GetByID(ctx, req.StudentID)
 	if err != nil {
 		return nil, fmt.Errorf("student not found: %w", err)
@@ -139,16 +168,16 @@ func (u *enrollmentUsecase) EnrollStudent(ctx context.Context, tenantID uuid.UUI
 	if !class.IsPublished || class.EnrollmentStatus != "open" {
 		return nil, domain.ErrClassNotEnrollable
 	}
-	duplicate, err := u.enrollmentRepo.ExistsActive(ctx, req.StudentID, req.ClassID)
-	if err != nil {
-		return nil, fmt.Errorf("check enrollment: %w", err)
-	}
-	if duplicate {
-		return nil, fmt.Errorf("active enrollment already exists")
-	}
 	key := req.IdempotencyKey
 	enrollment := &domain.Enrollment{ID: uuid.New(), TenantID: tenantID, StudentID: req.StudentID, ClassID: req.ClassID, Status: "pending", BillingCycle: req.BillingCycle, IdempotencyKey: &key, GrossAmount: class.Price, PaymentStatus: "pending"}
-	if err := u.enrollmentRepo.Create(ctx, enrollment); err != nil {
+	create := func(txCtx context.Context) error {
+		return u.enrollmentRepo.CreateIfCapacityAvailable(txCtx, enrollment)
+	}
+	if u.txManager != nil {
+		if err := u.txManager.WithTransaction(ctx, create); err != nil {
+			return nil, fmt.Errorf("create enrollment: %w", err)
+		}
+	} else if err := create(ctx); err != nil {
 		return nil, fmt.Errorf("create enrollment: %w", err)
 	}
 	invoice, err := u.billingClient.GenerateInvoice(ctx, billing.InvoiceRequest{TenantID: tenantID, StudentID: req.StudentID, ClassID: req.ClassID, EnrollmentID: enrollment.ID, ParentID: student.ParentID, BillingCycle: req.BillingCycle, SubtotalAmount: class.Price, IdempotencyKey: req.IdempotencyKey, Title: class.Name})
@@ -165,7 +194,25 @@ func (u *enrollmentUsecase) EnrollStudent(ctx context.Context, tenantID uuid.UUI
 }
 
 func (u *enrollmentUsecase) ActivateEnrollment(ctx context.Context, enrollmentID uuid.UUID) (*domain.EnrollmentResponse, error) {
-	enrollment, err := u.enrollmentRepo.GetByID(ctx, enrollmentID)
+	load := u.enrollmentRepo.GetByID
+	if lockingRepo, ok := u.enrollmentRepo.(repository.EnrollmentLockingRepository); ok {
+		load = lockingRepo.GetByIDForUpdate
+	}
+	var enrollment *domain.Enrollment
+	var err error
+	if u.txManager != nil {
+		err = u.txManager.WithTransaction(ctx, func(txCtx context.Context) error {
+			enrollment, err = load(txCtx, enrollmentID)
+			if err != nil || enrollment.Status != "pending" {
+				return err
+			}
+			enrollment.Status = "active"
+			enrollment.UpdatedAt = time.Now()
+			return u.enrollmentRepo.Update(txCtx, enrollment)
+		})
+	} else {
+		enrollment, err = load(ctx, enrollmentID)
+	}
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, ErrEnrollmentNotFound
@@ -179,11 +226,12 @@ func (u *enrollmentUsecase) ActivateEnrollment(ctx context.Context, enrollmentID
 		return nil, domain.ErrInvalidEnrollmentTransition
 	}
 
-	enrollment.Status = "active"
-	enrollment.UpdatedAt = time.Now()
-
-	if err := u.enrollmentRepo.Update(ctx, enrollment); err != nil {
-		return nil, fmt.Errorf("failed to update enrollment status: %w", err)
+	if u.txManager == nil {
+		enrollment.Status = "active"
+		enrollment.UpdatedAt = time.Now()
+		if err := u.enrollmentRepo.Update(ctx, enrollment); err != nil {
+			return nil, fmt.Errorf("failed to update enrollment status: %w", err)
+		}
 	}
 
 	return enrollmentResponse(enrollment), nil

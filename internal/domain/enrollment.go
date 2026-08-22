@@ -21,7 +21,7 @@ type Enrollment struct {
 	ClassID              uuid.UUID      `gorm:"type:uuid;not null;index:idx_student_class,unique" json:"class_id"`
 	Status               string         `gorm:"type:varchar(50);not null;index:idx_tenant_status" json:"status"` // 'pending', 'active', 'completed', 'dropped'
 	BillingCycle         string         `gorm:"type:varchar(20);not null;default:'monthly'" json:"billing_cycle"`
-	IdempotencyKey       *string        `gorm:"type:varchar(255);index:idx_enrollment_idempotency" json:"-"`
+	IdempotencyKey       *string        `gorm:"type:varchar(255);index:idx_enrollment_idempotency,unique" json:"-"`
 	PaymentTransactionID *uuid.UUID     `gorm:"type:uuid" json:"-"`
 	CheckoutSessionURL   *string        `gorm:"type:text" json:"-"`
 	PaymentStatus        string         `gorm:"type:varchar(30);default:'pending'" json:"-"`

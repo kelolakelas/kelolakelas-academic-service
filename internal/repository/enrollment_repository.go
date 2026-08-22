@@ -6,6 +6,7 @@ import (
 
 	"github.com/google/uuid"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 
 	"github.com/kelolakelas/kelolakelas-academic-service/internal/domain"
 )
@@ -33,22 +34,44 @@ func (r *enrollmentRepository) GetByIdempotencyKey(ctx context.Context, parentID
 }
 
 func (r *enrollmentRepository) CreateIfCapacityAvailable(ctx context.Context, enrollment *domain.Enrollment) error {
-	result := r.getDB(ctx).Exec(`
-		INSERT INTO enrollments (id, tenant_id, student_id, class_id, status, billing_cycle, idempotency_key, gross_amount, joined_at, updated_at)
-		SELECT ?, ?, ?, c.id, 'pending', ?, ?, ?, NOW(), NOW()
-		FROM classes c
-		WHERE c.id = ? AND c.deleted_at IS NULL AND c.is_published = TRUE AND c.enrollment_status = 'open'
-		AND (c.type <> 'group' OR c.capacity IS NULL OR (
-			SELECT COUNT(*) FROM enrollments e WHERE e.class_id = c.id AND e.status IN ('pending', 'active') AND e.deleted_at IS NULL
-		) < c.capacity)
-	`, enrollment.ID, enrollment.TenantID, enrollment.StudentID, enrollment.BillingCycle, enrollment.IdempotencyKey, enrollment.GrossAmount, enrollment.ClassID)
-	if result.Error != nil {
-		return result.Error
+	db := r.getDB(ctx)
+	var class domain.Class
+	if err := db.Clauses(clause.Locking{Strength: "UPDATE"}).First(&class, "id = ? AND deleted_at IS NULL", enrollment.ClassID).Error; err != nil {
+		return err
 	}
-	if result.RowsAffected == 0 {
+	if !class.IsPublished || class.EnrollmentStatus != "open" {
 		return domain.ErrClassNotEnrollable
 	}
-	return nil
+	if class.Type == "group" && class.Capacity != nil {
+		var count int64
+		if err := db.Model(&domain.Enrollment{}).Where("class_id = ? AND status IN ? AND deleted_at IS NULL", enrollment.ClassID, []string{"pending", "active"}).Count(&count).Error; err != nil {
+			return err
+		}
+		if count >= int64(*class.Capacity) {
+			return domain.ErrClassNotEnrollable
+		}
+	}
+	return db.Create(enrollment).Error
+}
+
+func (r *enrollmentRepository) GetByIDForUpdate(ctx context.Context, id uuid.UUID) (*domain.Enrollment, error) {
+	var enrollment domain.Enrollment
+	if err := r.getDB(ctx).Clauses(clause.Locking{Strength: "UPDATE"}).First(&enrollment, "id = ?", id).Error; err != nil {
+		return nil, err
+	}
+	return &enrollment, nil
+}
+
+func (r *enrollmentRepository) GetByIdempotencyKeyForTenant(ctx context.Context, tenantID uuid.UUID, key string) (*domain.Enrollment, error) {
+	var enrollment domain.Enrollment
+	err := r.getDB(ctx).Where("tenant_id = ? AND idempotency_key = ?", tenantID, key).First(&enrollment).Error
+	return &enrollment, err
+}
+
+func (r *enrollmentRepository) GetByIdempotencyKeyAny(ctx context.Context, key string) (*domain.Enrollment, error) {
+	var enrollment domain.Enrollment
+	err := r.getDB(ctx).Where("idempotency_key = ?", key).First(&enrollment).Error
+	return &enrollment, err
 }
 
 func (r *enrollmentRepository) GetByID(ctx context.Context, id uuid.UUID) (*domain.Enrollment, error) {

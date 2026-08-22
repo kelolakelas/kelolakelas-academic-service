@@ -1,0 +1,1 @@
+DROP INDEX IF EXISTS idx_enrollments_idempotency_key;

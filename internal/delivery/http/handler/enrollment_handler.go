@@ -53,7 +53,11 @@ func (h *EnrollmentHandler) Create(c *gin.Context) {
 	}
 	res, err := h.enrollmentUsecase.EnrollStudent(c.Request.Context(), tenantID, &req)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"status": "error", "message": err.Error()})
+		status := http.StatusInternalServerError
+		if errors.Is(err, domain.ErrIdempotencyConflict) {
+			status = http.StatusConflict
+		}
+		c.JSON(status, gin.H{"status": "error", "message": "Failed to create enrollment"})
 		return
 	}
 	c.JSON(http.StatusCreated, gin.H{"status": "success", "message": "Enrollment created and invoice generated", "data": res})
@@ -135,7 +139,7 @@ func NewEnrollmentHandler(enrollmentUsecase usecase.EnrollmentUsecase) *Enrollme
 // @Failure 400 {object} domain.ErrorResponse
 // @Failure 404 {object} domain.ErrorResponse
 // @Failure 500 {object} domain.ErrorResponse
-// @Router /internal/enrollments/{id}/activate [post]
+// @Router /internal/enrollments/{id}/activate [put]
 func (h *EnrollmentHandler) ActivateInternal(c *gin.Context) {
 	idParam := c.Param("id")
 	enrollmentID, err := uuid.Parse(idParam)

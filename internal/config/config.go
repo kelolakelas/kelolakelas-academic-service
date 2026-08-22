@@ -95,6 +95,7 @@ func LoadConfig() (Config, error) {
 	if config.BillingServiceURL == "" {
 		config.BillingServiceURL = "http://localhost:8082"
 	}
+	config.InternalServiceCredential = strings.TrimSpace(config.InternalServiceCredential)
 	if config.InternalServiceCredential == "" {
 		return Config{}, fmt.Errorf("INTERNAL_SERVICE_CREDENTIAL is required")
 	}

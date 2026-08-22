@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"strings"
 	"time"
@@ -51,7 +52,7 @@ func (c *client) GenerateInvoice(ctx context.Context, request InvoiceRequest) (*
 	if err != nil {
 		return nil, fmt.Errorf("marshal billing request: %w", err)
 	}
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.baseURL+"/api/v1/billing/transactions", bytes.NewReader(body))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.baseURL+"/internal/billing/transactions", bytes.NewReader(body))
 	if err != nil {
 		return nil, fmt.Errorf("create billing request: %w", err)
 	}
@@ -66,7 +67,13 @@ func (c *client) GenerateInvoice(ctx context.Context, request InvoiceRequest) (*
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return nil, fmt.Errorf("billing service returned status %d", resp.StatusCode)
+		var envelope struct {
+			Message string `json:"message"`
+		}
+		if err := json.NewDecoder(io.LimitReader(resp.Body, 1<<20)).Decode(&envelope); err != nil || envelope.Message == "" {
+			return nil, fmt.Errorf("billing service returned status %d", resp.StatusCode)
+		}
+		return nil, fmt.Errorf("billing service returned status %d: %s", resp.StatusCode, redactCredential(envelope.Message, c.credential))
 	}
 	var envelope struct {
 		Data InvoiceResponse `json:"data"`
@@ -75,4 +82,11 @@ func (c *client) GenerateInvoice(ctx context.Context, request InvoiceRequest) (*
 		return nil, fmt.Errorf("decode billing response: %w", err)
 	}
 	return &envelope.Data, nil
+}
+
+func redactCredential(message, credential string) string {
+	if credential == "" {
+		return message
+	}
+	return strings.ReplaceAll(message, credential, "[redacted]")
 }

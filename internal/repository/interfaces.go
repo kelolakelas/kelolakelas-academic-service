@@ -94,6 +94,12 @@ type EnrollmentRepository interface {
 	Delete(ctx context.Context, id uuid.UUID) error
 }
 
+type EnrollmentLockingRepository interface {
+	GetByIDForUpdate(ctx context.Context, id uuid.UUID) (*domain.Enrollment, error)
+	GetByIdempotencyKeyForTenant(ctx context.Context, tenantID uuid.UUID, key string) (*domain.Enrollment, error)
+	GetByIdempotencyKeyAny(ctx context.Context, key string) (*domain.Enrollment, error)
+}
+
 type AttendanceRepository interface {
 	Create(ctx context.Context, attendance *domain.Attendance) error
 	GetByID(ctx context.Context, id uuid.UUID) (*domain.Attendance, error)
