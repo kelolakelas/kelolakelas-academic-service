@@ -10,11 +10,13 @@ import (
 type ScheduleItemRequest struct {
 	EnrollmentID *uuid.UUID `json:"enrollment_id,omitempty"`
 	TutorID      *uuid.UUID `json:"tutor_id,omitempty"`
+	Capacity     int        `json:"capacity" binding:"required,min=1"`
 	Location     *string    `json:"location,omitempty"`
 	DayOfWeek    int        `json:"day_of_week" binding:"required,min=1,max=7"` // 1=Monday, ..., 7=Sunday
 	StartTime    string     `json:"start_time" binding:"required"`              // HH:MM:SS
 	EndTime      string     `json:"end_time" binding:"required"`                // HH:MM:SS
 	ValidFrom    *time.Time `json:"valid_from,omitempty"`
+	ValidUntil   *time.Time `json:"valid_until,omitempty"`
 }
 
 type CreateInitialSchedulesRequest struct {

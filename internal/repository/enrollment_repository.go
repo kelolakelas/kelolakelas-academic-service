@@ -36,19 +36,26 @@ func (r *enrollmentRepository) GetByIdempotencyKey(ctx context.Context, parentID
 func (r *enrollmentRepository) CreateIfCapacityAvailable(ctx context.Context, enrollment *domain.Enrollment) error {
 	db := r.getDB(ctx)
 	var class domain.Class
-	if err := db.Clauses(clause.Locking{Strength: "UPDATE"}).First(&class, "id = ? AND deleted_at IS NULL", enrollment.ClassID).Error; err != nil {
+	if err := db.First(&class, "id = ? AND deleted_at IS NULL", enrollment.ClassID).Error; err != nil {
 		return err
 	}
 	if !class.IsPublished || class.EnrollmentStatus != "open" {
 		return domain.ErrClassNotEnrollable
 	}
-	if class.Type == "group" && class.Capacity != nil {
-		var count int64
-		if err := db.Model(&domain.Enrollment{}).Where("class_id = ? AND status IN ? AND deleted_at IS NULL", enrollment.ClassID, []string{"pending", "active"}).Count(&count).Error; err != nil {
+	if class.Type == "group" && enrollment.ScheduleID != nil {
+		var schedule domain.ClassSchedule
+		if err := db.Clauses(clause.Locking{Strength: "UPDATE"}).Where("id = ? AND class_id = ? AND deleted_at IS NULL", *enrollment.ScheduleID, enrollment.ClassID).First(&schedule).Error; err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return domain.ErrScheduleClassMismatch
+			}
 			return err
 		}
-		if count >= int64(*class.Capacity) {
-			return domain.ErrClassNotEnrollable
+		var count int64
+		if err := db.Model(&domain.Enrollment{}).Where("schedule_id = ? AND status IN ? AND deleted_at IS NULL", *enrollment.ScheduleID, []string{"pending", "active"}).Count(&count).Error; err != nil {
+			return err
+		}
+		if count >= int64(schedule.Capacity) {
+			return domain.ErrScheduleFull
 		}
 	}
 	return db.Create(enrollment).Error
@@ -158,6 +165,42 @@ func (r *enrollmentRepository) GetActiveByClassID(ctx context.Context, classID u
 		return nil, err
 	}
 	return enrollments, nil
+}
+
+func (r *enrollmentRepository) GetActiveByScheduleID(ctx context.Context, scheduleID uuid.UUID) ([]*domain.Enrollment, error) {
+	var enrollments []*domain.Enrollment
+	err := r.getDB(ctx).Preload("Student").Where("schedule_id = ? AND status IN ? AND deleted_at IS NULL", scheduleID, []string{"pending", "active"}).Find(&enrollments).Error
+	return enrollments, err
+}
+
+func (r *enrollmentRepository) AssignSchedule(ctx context.Context, enrollmentID, scheduleID uuid.UUID) error {
+	db := r.getDB(ctx)
+	var enrollment domain.Enrollment
+	if err := db.Clauses(clause.Locking{Strength: "UPDATE"}).First(&enrollment, "id = ? AND deleted_at IS NULL", enrollmentID).Error; err != nil {
+		return err
+	}
+	if enrollment.Status != "pending" || enrollment.ScheduleID != nil {
+		return domain.ErrInvalidEnrollmentTransition
+	}
+	var schedule domain.ClassSchedule
+	if err := db.Clauses(clause.Locking{Strength: "UPDATE"}).First(&schedule, "id = ? AND deleted_at IS NULL", scheduleID).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return domain.ErrScheduleNotFound
+		}
+		return err
+	}
+	if schedule.ClassID != enrollment.ClassID {
+		return domain.ErrScheduleClassMismatch
+	}
+	var count int64
+	if err := db.Model(&domain.Enrollment{}).Where("schedule_id = ? AND status IN ? AND deleted_at IS NULL", scheduleID, []string{"pending", "active"}).Count(&count).Error; err != nil {
+		return err
+	}
+	if count >= int64(schedule.Capacity) {
+		return domain.ErrScheduleFull
+	}
+	enrollment.ScheduleID = &scheduleID
+	return db.Save(&enrollment).Error
 }
 
 func (r *enrollmentRepository) Update(ctx context.Context, enrollment *domain.Enrollment) error {

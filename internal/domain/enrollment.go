@@ -13,12 +13,16 @@ var ErrIdempotencyConflict = errors.New("idempotency key already used with a dif
 var ErrParentRequired = errors.New("parent authentication is required")
 var ErrStudentOwnership = errors.New("student does not belong to parent")
 var ErrInvalidEnrollmentTransition = errors.New("invalid enrollment transition")
+var ErrScheduleNotFound = errors.New("schedule not found")
+var ErrScheduleClassMismatch = errors.New("schedule does not belong to enrollment class")
+var ErrScheduleFull = errors.New("schedule capacity is full")
 
 type Enrollment struct {
 	ID                   uuid.UUID      `gorm:"type:uuid;primaryKey;default:gen_random_uuid()" json:"id"`
 	TenantID             uuid.UUID      `gorm:"type:uuid;not null;index:idx_tenant_status" json:"tenant_id"` // Cross-service, ordinary UUID
 	StudentID            uuid.UUID      `gorm:"type:uuid;not null;index:idx_student_class,unique" json:"student_id"`
 	ClassID              uuid.UUID      `gorm:"type:uuid;not null;index:idx_student_class,unique" json:"class_id"`
+	ScheduleID           *uuid.UUID     `gorm:"type:uuid;index:idx_enrollment_schedule_status" json:"schedule_id,omitempty"`
 	Status               string         `gorm:"type:varchar(50);not null;index:idx_tenant_status" json:"status"` // 'pending', 'active', 'completed', 'dropped'
 	BillingCycle         string         `gorm:"type:varchar(20);not null;default:'monthly'" json:"billing_cycle"`
 	IdempotencyKey       *string        `gorm:"type:varchar(255);index:idx_enrollment_idempotency,unique" json:"-"`
@@ -35,15 +39,21 @@ type Enrollment struct {
 }
 
 type EnrollStudentRequest struct {
-	StudentID      uuid.UUID `json:"student_id" binding:"required"`
-	ClassID        uuid.UUID `json:"class_id" binding:"required"`
-	BillingCycle   string    `json:"billing_cycle" binding:"required,oneof=monthly quarterly yearly"`
-	IdempotencyKey string    `json:"-"`
+	StudentID      uuid.UUID  `json:"student_id" binding:"required"`
+	ClassID        uuid.UUID  `json:"class_id" binding:"required"`
+	BillingCycle   string     `json:"billing_cycle" binding:"required,oneof=monthly quarterly yearly"`
+	ScheduleID     *uuid.UUID `json:"schedule_id,omitempty"`
+	IdempotencyKey string     `json:"-"`
 }
 
 type PublicEnrollmentRequest struct {
-	StudentID    uuid.UUID `json:"student_id" binding:"required"`
-	BillingCycle string    `json:"billing_cycle" binding:"required,oneof=monthly quarterly yearly"`
+	StudentID    uuid.UUID  `json:"student_id" binding:"required"`
+	BillingCycle string     `json:"billing_cycle" binding:"required,oneof=monthly quarterly yearly"`
+	ScheduleID   *uuid.UUID `json:"schedule_id,omitempty"`
+}
+
+type AssignEnrollmentScheduleRequest struct {
+	ScheduleID uuid.UUID `json:"schedule_id" binding:"required"`
 }
 
 type PublicEnrollmentResponse struct {
@@ -59,16 +69,17 @@ type PaymentResponse struct {
 }
 
 type EnrollmentResponse struct {
-	ID           uuid.UUID `json:"id"`
-	TenantID     uuid.UUID `json:"tenant_id"`
-	StudentID    uuid.UUID `json:"student_id"`
-	ClassID      uuid.UUID `json:"class_id"`
-	Status       string    `json:"status"`
-	JoinedAt     time.Time `json:"joined_at"`
-	UpdatedAt    time.Time `json:"updated_at"`
-	Class        *Class    `json:"class,omitempty"`
-	Student      *Student  `json:"student,omitempty"`
-	BillingCycle string    `json:"billing_cycle"`
+	ID           uuid.UUID  `json:"id"`
+	TenantID     uuid.UUID  `json:"tenant_id"`
+	StudentID    uuid.UUID  `json:"student_id"`
+	ClassID      uuid.UUID  `json:"class_id"`
+	ScheduleID   *uuid.UUID `json:"schedule_id,omitempty"`
+	Status       string     `json:"status"`
+	JoinedAt     time.Time  `json:"joined_at"`
+	UpdatedAt    time.Time  `json:"updated_at"`
+	Class        *Class     `json:"class,omitempty"`
+	Student      *Student   `json:"student,omitempty"`
+	BillingCycle string     `json:"billing_cycle"`
 }
 
 type EnrollmentQuery struct {

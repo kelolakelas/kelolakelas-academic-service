@@ -12,7 +12,6 @@ import (
 	"github.com/kelolakelas/kelolakelas-academic-service/internal/config"
 	"github.com/kelolakelas/kelolakelas-academic-service/internal/delivery/http/handler"
 	"github.com/kelolakelas/kelolakelas-academic-service/internal/delivery/http/middleware"
-	"github.com/kelolakelas/kelolakelas-academic-service/internal/domain"
 	"github.com/kelolakelas/kelolakelas-academic-service/internal/repository"
 	"github.com/kelolakelas/kelolakelas-academic-service/internal/usecase"
 	"github.com/kelolakelas/kelolakelas-academic-service/pkg/billing"
@@ -46,39 +45,6 @@ func main() {
 		os.Exit(1)
 	}
 
-	// Auto-migrate schema
-	slog.Info("Running auto-migration...")
-	if err := db.AutoMigrate(
-		&domain.Category{},
-		&domain.Class{},
-		&domain.Student{},
-		&domain.StudentNote{},
-		&domain.Enrollment{},
-		&domain.ClassSchedule{},
-		&domain.ClassSession{},
-		&domain.ClassTeacher{},
-		&domain.Attendance{},
-		&domain.Report{},
-		&domain.TenantLocationSnapshot{},
-	); err != nil {
-		slog.Error("Auto-migration failed", "error", err)
-		os.Exit(1)
-	}
-	if err := db.Exec(`ALTER TABLE student_notes ALTER COLUMN tenant_id DROP NOT NULL`).Error; err != nil {
-		slog.Error("Student note migration failed", "error", err)
-		os.Exit(1)
-	}
-	for _, statement := range []string{
-		`CREATE INDEX IF NOT EXISTS idx_classes_catalog_filters ON classes (is_published, enrollment_status, type, price, created_at) WHERE deleted_at IS NULL`,
-		`DROP INDEX IF EXISTS idx_student_class`,
-		`CREATE UNIQUE INDEX IF NOT EXISTS idx_student_class_active ON enrollments (student_id, class_id) WHERE status IN ('pending', 'active') AND deleted_at IS NULL`,
-	} {
-		if err := db.Exec(statement).Error; err != nil {
-			slog.Error("Marketplace migration failed", "error", err)
-			os.Exit(1)
-		}
-	}
-
 	// Initialize gRPC Client
 	tenantClient, err := grpcclient.NewTenantClient(cfg.IdentityGRPCHost)
 	if err != nil {
@@ -101,7 +67,7 @@ func main() {
 
 	// Initialize Usecases
 	categoryUsecase := usecase.NewCategoryUsecase(categoryRepo, tenantClient, txManager)
-	classUsecase := usecase.NewClassUsecase(classRepo, scheduleRepo, sessionRepo, enrollmentRepo, tenantClient, txManager)
+	classUsecase := usecase.NewClassUsecase(classRepo, scheduleRepo, sessionRepo, enrollmentRepo, tenantClient, txManager, categoryRepo)
 	classCreationUsecase := usecase.NewClassCreationUsecase(txManager, categoryRepo, classRepo, classTeacherRepo, scheduleRepo, sessionRepo, tenantClient)
 	scheduleUsecase := usecase.NewScheduleUsecase(txManager, classRepo, scheduleRepo, sessionRepo, enrollmentRepo)
 	enrollmentUsecase := usecase.NewEnrollmentUsecase(enrollmentRepo, studentRepo, classRepo, billingClient, txManager)
@@ -161,6 +127,7 @@ func main() {
 		apiV1.POST("/catalog/classes/:class_id/enrollments", enrollmentHandler.CreateCatalogEnrollment)
 		apiV1.GET("/enrollments", enrollmentHandler.ListQuery)
 		apiV1.GET("/enrollments/:id", enrollmentHandler.GetQuery)
+		apiV1.PATCH("/enrollments/:id/schedule", enrollmentHandler.AssignSchedule)
 
 		// Schedule Routes
 		apiV1.POST("/schedules", scheduleHandler.CreateInitialSchedules)

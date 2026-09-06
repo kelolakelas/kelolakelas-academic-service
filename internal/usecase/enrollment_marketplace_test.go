@@ -53,6 +53,12 @@ func (m *marketplaceEnrollmentRepo) IsTutorForEnrollment(context.Context, uuid.U
 func (m *marketplaceEnrollmentRepo) GetActiveByClassID(context.Context, uuid.UUID) ([]*domain.Enrollment, error) {
 	return nil, nil
 }
+func (m *marketplaceEnrollmentRepo) GetActiveByScheduleID(context.Context, uuid.UUID) ([]*domain.Enrollment, error) {
+	return nil, nil
+}
+func (m *marketplaceEnrollmentRepo) AssignSchedule(context.Context, uuid.UUID, uuid.UUID) error {
+	return nil
+}
 func (m *marketplaceEnrollmentRepo) Update(_ context.Context, enrollment *domain.Enrollment) error {
 	if m.updateErr != nil {
 		return m.updateErr

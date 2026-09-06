@@ -24,7 +24,7 @@ type Class struct {
 	Description      *json.RawMessage `gorm:"type:jsonb;serializer:json" json:"description,omitempty"`
 	Type             string           `gorm:"type:varchar(50);not null" json:"type"` // 'private' or 'group'
 	Price            int64            `gorm:"type:bigint;not null" json:"price"`     // Financial Data: Always use int64 for money, price, balance, or amounts
-	Capacity         *int             `gorm:"type:integer" json:"capacity,omitempty"`
+	Capacity         *int             `gorm:"type:integer" json:"-"`                 // Deprecated; use ClassSchedule.Capacity.
 	IsPublished      bool             `gorm:"not null;default:false;index:idx_catalog_visibility" json:"is_published"`
 	EnrollmentStatus string           `gorm:"type:varchar(20);not null;default:'open';index:idx_catalog_visibility" json:"enrollment_status"`
 	CreatedAt        time.Time        `gorm:"type:timestamp;not null;default:now()" json:"created_at"`
@@ -40,7 +40,6 @@ type CreateClassRequest struct {
 	Description      *json.RawMessage `json:"description,omitempty"`
 	Type             string           `json:"type" binding:"required,oneof=private group"`
 	Price            int64            `json:"price" binding:"required,min=0"`
-	Capacity         *int             `json:"capacity,omitempty"`
 	IsPublished      bool             `json:"is_published,omitempty"`
 	EnrollmentStatus string           `json:"enrollment_status,omitempty" binding:"omitempty,oneof=open closed full archived"`
 }
@@ -50,10 +49,9 @@ type UpdateClassPublicationRequest struct {
 }
 
 type CreateClassWithCategoryRequest struct {
-	Category   CreateCategoryRequest `json:"category" binding:"required"`
-	Class      CreateClassPayload    `json:"class" binding:"required"`
-	TeacherIDs []uuid.UUID           `json:"teacher_ids" binding:"required,min=1"`
-	Schedules  []ScheduleItemRequest `json:"schedules,omitempty"`
+	CategoryID uuid.UUID          `json:"category_id" binding:"required"`
+	Class      CreateClassPayload `json:"class" binding:"required"`
+	TeacherIDs []uuid.UUID        `json:"teacher_ids" binding:"required,min=1"`
 }
 
 type CreateClassPayload struct {
@@ -61,16 +59,12 @@ type CreateClassPayload struct {
 	Description      *json.RawMessage `json:"description,omitempty"`
 	Type             string           `json:"type" binding:"required,oneof=private group"`
 	Price            int64            `json:"price" binding:"min=0"`
-	Capacity         *int             `json:"capacity,omitempty"`
 	IsPublished      bool             `json:"is_published,omitempty"`
 	EnrollmentStatus string           `json:"enrollment_status,omitempty" binding:"omitempty,oneof=open closed full archived"`
 }
 
 type CreateClassWithCategoryResponse struct {
-	Category  *Category        `json:"category"`
-	Class     *Class           `json:"class"`
-	Schedules []*ClassSchedule `json:"schedules"`
-	Sessions  []*ClassSession  `json:"sessions"`
+	Class *Class `json:"class"`
 }
 
 type ClassResponse struct {
@@ -81,7 +75,6 @@ type ClassResponse struct {
 	Description      *json.RawMessage `json:"description,omitempty"`
 	Type             string           `json:"type"`
 	Price            int64            `json:"price"`
-	Capacity         *int             `json:"capacity,omitempty"`
 	CreatedAt        time.Time        `json:"created_at"`
 	IsPublished      bool             `json:"is_published"`
 	EnrollmentStatus string           `json:"enrollment_status"`

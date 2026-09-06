@@ -173,6 +173,12 @@ func (m *deleteEnrollmentRepoMock) IsTutorForEnrollment(context.Context, uuid.UU
 func (m *deleteEnrollmentRepoMock) GetActiveByClassID(context.Context, uuid.UUID) ([]*domain.Enrollment, error) {
 	return m.active, m.err
 }
+func (m *deleteEnrollmentRepoMock) GetActiveByScheduleID(context.Context, uuid.UUID) ([]*domain.Enrollment, error) {
+	return nil, nil
+}
+func (m *deleteEnrollmentRepoMock) AssignSchedule(context.Context, uuid.UUID, uuid.UUID) error {
+	return nil
+}
 func (m *deleteEnrollmentRepoMock) Update(context.Context, *domain.Enrollment) error { return nil }
 func (m *deleteEnrollmentRepoMock) Delete(context.Context, uuid.UUID) error          { return nil }
 

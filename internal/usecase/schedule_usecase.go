@@ -159,12 +159,16 @@ func generateSessionsForSchedule(schedule *domain.ClassSchedule, fromDate time.T
 // 1. Create Initial Schedules for an Existing Class
 func (u *scheduleUsecase) CreateInitialSchedules(
 	ctx context.Context,
+	tenantID uuid.UUID,
 	req *domain.CreateInitialSchedulesRequest,
 ) (*domain.CreateInitialSchedulesResponse, error) {
 	// Fetch Class details first
 	class, err := u.classRepo.GetByID(ctx, req.ClassID)
 	if err != nil || class == nil {
 		return nil, ErrClassNotFound
+	}
+	if class.TenantID != tenantID {
+		return nil, domain.ErrClassForbidden
 	}
 
 	var createdSchedules []*domain.ClassSchedule
@@ -174,9 +178,17 @@ func (u *scheduleUsecase) CreateInitialSchedules(
 		now := normalizeDate(time.Now())
 
 		for _, item := range req.Schedules {
+			start, startErr := parseScheduleTime(item.StartTime)
+			end, endErr := parseScheduleTime(item.EndTime)
+			if startErr != nil || endErr != nil || !start.Before(end) {
+				return errors.New("start_time must be before end_time")
+			}
 			validFrom := now
 			if item.ValidFrom != nil {
 				validFrom = normalizeDate(*item.ValidFrom)
+			}
+			if item.ValidUntil != nil && validFrom.After(normalizeDate(*item.ValidUntil)) {
+				return errors.New("valid_from must not be after valid_until")
 			}
 
 			var enrollmentID *uuid.UUID
@@ -211,11 +223,16 @@ func (u *scheduleUsecase) CreateInitialSchedules(
 				ClassID:      req.ClassID,
 				EnrollmentID: enrollmentID,
 				TutorID:      item.TutorID,
+				Capacity:     item.Capacity,
 				Location:     item.Location,
 				DayOfWeek:    item.DayOfWeek,
 				StartTime:    item.StartTime,
 				EndTime:      item.EndTime,
 				ValidFrom:    &validFrom,
+			}
+			if item.ValidUntil != nil {
+				validUntil := normalizeDate(*item.ValidUntil)
+				schedule.ValidUntil = &validUntil
 			}
 
 			if err := u.scheduleRepo.Create(txCtx, schedule); err != nil {
@@ -243,6 +260,15 @@ func (u *scheduleUsecase) CreateInitialSchedules(
 		Schedules: createdSchedules,
 		Sessions:  createdSessions,
 	}, nil
+}
+
+func parseScheduleTime(value string) (time.Time, error) {
+	for _, layout := range []string{"15:04:05", "15:04"} {
+		if parsed, err := time.Parse(layout, value); err == nil {
+			return parsed, nil
+		}
+	}
+	return time.Time{}, errors.New("invalid schedule time")
 }
 
 // 2. Temporary Schedule Change (One-off Reschedule / Make-up Class)
@@ -465,8 +491,11 @@ func (u *scheduleUsecase) GetSessionAttendees(
 		return []*domain.Enrollment{enrollment}, nil
 	}
 
-	// IF the session has a NULL enrollment_id (Group Class): Query the Enrollments table for ALL active students enrolled in the parent class_id and return the list.
-	enrollments, err := u.enrollmentRepo.GetActiveByClassID(ctx, session.ClassID)
+	// Group sessions only include enrollments assigned to this schedule.
+	if session.ScheduleID == nil {
+		return nil, ErrScheduleNotFound
+	}
+	enrollments, err := u.enrollmentRepo.GetActiveByScheduleID(ctx, *session.ScheduleID)
 	if err != nil {
 		return nil, err
 	}

@@ -15,6 +15,7 @@ type ClassSchedule struct {
 	ClassID      uuid.UUID      `gorm:"type:uuid;not null;index:idx_class_day" json:"class_id"`
 	EnrollmentID *uuid.UUID     `gorm:"type:uuid" json:"enrollment_id,omitempty"`
 	TutorID      *uuid.UUID     `gorm:"type:uuid" json:"tutor_id,omitempty"`
+	Capacity     int            `gorm:"type:integer;not null" json:"capacity"`
 	Location     *string        `gorm:"type:varchar(255)" json:"location,omitempty"`
 	DayOfWeek    int            `gorm:"type:integer;not null;index:idx_class_day" json:"day_of_week"` // 1 = Senin, 7 = Minggu (ISO 8601)
 	StartTime    string         `gorm:"type:time;not null" json:"start_time"`                         // standard HH:MM:SS for time column

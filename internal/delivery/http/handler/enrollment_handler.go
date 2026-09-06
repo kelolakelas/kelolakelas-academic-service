@@ -15,6 +15,52 @@ type EnrollmentHandler struct {
 	enrollmentUsecase usecase.EnrollmentUsecase
 }
 
+// AssignSchedule godoc
+// @Summary Assign an enrollment to a schedule
+// @Description Assigns a parent-owned pending enrollment to a tenant-owned schedule transactionally.
+// @Tags Enrollments
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param id path string true "Enrollment ID (UUID)"
+// @Param request body domain.AssignEnrollmentScheduleRequest true "Schedule assignment"
+// @Success 200 {object} domain.HTTPResponse{data=domain.EnrollmentResponse}
+// @Failure 400 {object} domain.ErrorResponse
+// @Failure 403 {object} domain.ErrorResponse
+// @Failure 404 {object} domain.ErrorResponse
+// @Failure 409 {object} domain.ErrorResponse
+// @Router /api/v1/enrollments/{id}/schedule [patch]
+func (h *EnrollmentHandler) AssignSchedule(c *gin.Context) {
+	parentID, err := uuid.Parse(c.GetString("user_id"))
+	if err != nil || !c.GetBool("is_parent") {
+		c.JSON(http.StatusForbidden, gin.H{"status": "error", "message": "Parent authentication is required", "data": nil})
+		return
+	}
+	enrollmentID, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"status": "error", "message": "Invalid enrollment ID", "data": nil})
+		return
+	}
+	var req domain.AssignEnrollmentScheduleRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"status": "error", "message": err.Error(), "data": nil})
+		return
+	}
+	res, err := h.enrollmentUsecase.AssignSchedule(c.Request.Context(), parentID, enrollmentID, req.ScheduleID)
+	if err != nil {
+		status := http.StatusInternalServerError
+		if errors.Is(err, domain.ErrScheduleFull) || errors.Is(err, domain.ErrInvalidEnrollmentTransition) {
+			status = http.StatusConflict
+		}
+		if errors.Is(err, domain.ErrScheduleNotFound) || errors.Is(err, domain.ErrScheduleClassMismatch) {
+			status = http.StatusUnprocessableEntity
+		}
+		c.JSON(status, gin.H{"status": "error", "message": err.Error(), "data": nil})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"status": "success", "message": "Schedule assigned successfully", "data": res})
+}
+
 // Create godoc
 // @Summary Enroll a student in a class
 // @Tags Enrollments
@@ -43,7 +89,7 @@ func (h *EnrollmentHandler) Create(c *gin.Context) {
 			return
 		}
 		key := c.GetHeader("Idempotency-Key")
-		result, enrollErr := h.enrollmentUsecase.EnrollPublic(c.Request.Context(), parentID, req.ClassID, &domain.PublicEnrollmentRequest{StudentID: req.StudentID, BillingCycle: req.BillingCycle}, key)
+		result, enrollErr := h.enrollmentUsecase.EnrollPublic(c.Request.Context(), parentID, req.ClassID, &domain.PublicEnrollmentRequest{StudentID: req.StudentID, BillingCycle: req.BillingCycle, ScheduleID: req.ScheduleID}, key)
 		if enrollErr != nil {
 			c.JSON(http.StatusUnprocessableEntity, gin.H{"status": "error", "message": enrollErr.Error(), "data": nil})
 			return

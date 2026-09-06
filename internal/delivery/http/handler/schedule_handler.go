@@ -65,7 +65,7 @@ func (h *ScheduleHandler) Delete(c *gin.Context) {
 // 1. Create Initial Schedules for an Existing Class
 // CreateInitialSchedules godoc
 // @Summary Create initial schedules for a class
-// @Description Create recurring schedule items and corresponding class sessions for a class
+// @Description Create one or more schedules for an existing tenant-owned class and generate their corresponding sessions
 // @Tags Schedules
 // @Accept json
 // @Produce json
@@ -79,6 +79,11 @@ func (h *ScheduleHandler) Delete(c *gin.Context) {
 // @Failure 500 {object} domain.ErrorResponse
 // @Router /api/v1/schedules [post]
 func (h *ScheduleHandler) CreateInitialSchedules(c *gin.Context) {
+	tenantID, err := tenantIDFromContext(c)
+	if err != nil {
+		writeTenantError(c, err)
+		return
+	}
 	var req domain.CreateInitialSchedulesRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
@@ -89,7 +94,7 @@ func (h *ScheduleHandler) CreateInitialSchedules(c *gin.Context) {
 		return
 	}
 
-	res, err := h.scheduleUsecase.CreateInitialSchedules(c.Request.Context(), &req)
+	res, err := h.scheduleUsecase.CreateInitialSchedules(c.Request.Context(), tenantID, &req)
 	if err != nil {
 		if errors.Is(err, usecase.ErrClassNotFound) || errors.Is(err, usecase.ErrEnrollmentNotFound) {
 			c.JSON(http.StatusNotFound, gin.H{
@@ -97,6 +102,10 @@ func (h *ScheduleHandler) CreateInitialSchedules(c *gin.Context) {
 				"message": err.Error(),
 				"data":    nil,
 			})
+			return
+		}
+		if errors.Is(err, domain.ErrClassForbidden) {
+			c.JSON(http.StatusForbidden, gin.H{"status": "error", "message": err.Error(), "data": nil})
 			return
 		}
 		if errors.Is(err, usecase.ErrEnrollmentRequired) || errors.Is(err, usecase.ErrInvalidEnrollmentClass) || errors.Is(err, usecase.ErrInvalidEnrollmentTenant) {
@@ -117,7 +126,7 @@ func (h *ScheduleHandler) CreateInitialSchedules(c *gin.Context) {
 
 	c.JSON(http.StatusCreated, gin.H{
 		"status":  "success",
-		"message": "Initial schedules and sessions created successfully",
+		"message": "Schedules and sessions created successfully",
 		"data":    res,
 	})
 }

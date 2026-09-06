@@ -90,6 +90,8 @@ type EnrollmentRepository interface {
 	CreateIfCapacityAvailable(ctx context.Context, enrollment *domain.Enrollment) error
 	IsTutorForEnrollment(ctx context.Context, enrollmentID, memberID uuid.UUID) (bool, error)
 	GetActiveByClassID(ctx context.Context, classID uuid.UUID) ([]*domain.Enrollment, error)
+	GetActiveByScheduleID(ctx context.Context, scheduleID uuid.UUID) ([]*domain.Enrollment, error)
+	AssignSchedule(ctx context.Context, enrollmentID, scheduleID uuid.UUID) error
 	Update(ctx context.Context, enrollment *domain.Enrollment) error
 	Delete(ctx context.Context, id uuid.UUID) error
 }

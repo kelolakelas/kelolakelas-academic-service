@@ -24,14 +24,14 @@ func NewClassHandler(classUsecase usecase.ClassUsecase, creationUsecase usecase.
 }
 
 // CreateWithCategory godoc
-// @Summary Create category, class, and initial schedules
-// @Description Atomically creates a category and class, assigns one or more teachers, plus initial schedules and sessions for group classes. Private classes must omit schedules.
+// @Summary Create class using an existing category
+// @Description Creates a class using an existing category owned by the requester and assigns teachers. Schedules and sessions are created separately.
 // @Tags Classes
 // @Accept json
 // @Produce json
 // @Security BearerAuth
 // @Param X-Tenant-ID header string true "Tenant ID dalam format UUID"
-// @Param request body domain.CreateClassWithCategoryRequest true "Create category, class, teacher assignments, and schedules payload"
+// @Param request body domain.CreateClassWithCategoryRequest true "Create class with existing category payload"
 // @Success 201 {object} domain.HTTPResponse{data=domain.CreateClassWithCategoryResponse}
 // @Failure 400 {object} domain.ErrorResponse
 // @Failure 401 {object} domain.ErrorResponse
@@ -59,14 +59,14 @@ func (h *ClassHandler) CreateWithCategory(c *gin.Context) {
 			c.JSON(http.StatusForbidden, gin.H{"status": "error", "message": err.Error(), "data": nil})
 			return
 		}
-		if errors.Is(err, usecase.ErrPrivateSchedulesNotAllowed) || err.Error() == "group classes require at least one schedule" {
+		if errors.Is(err, domain.ErrCategoryNotFound) || errors.Is(err, domain.ErrCategoryForbidden) {
 			c.JSON(http.StatusBadRequest, gin.H{"status": "error", "message": err.Error(), "data": nil})
 			return
 		}
 		c.JSON(http.StatusInternalServerError, gin.H{"status": "error", "message": "Failed to create class: " + err.Error(), "data": nil})
 		return
 	}
-	c.JSON(http.StatusCreated, gin.H{"status": "success", "message": "Category, class, and initial schedules created successfully", "data": res})
+	c.JSON(http.StatusCreated, gin.H{"status": "success", "message": "Class created successfully", "data": res})
 }
 
 // Create godoc

@@ -59,7 +59,7 @@ func (r *sessionRepository) DeleteByTenant(ctx context.Context, tenantID, id uui
 func (r *sessionRepository) FindForAttendance(ctx context.Context, tenantID, scheduleID, enrollmentID uuid.UUID, date time.Time) (*domain.ClassSession, error) {
 	var session domain.ClassSession
 	err := r.getDB(ctx).Joins("JOIN classes c ON c.id = class_sessions.class_id").
-		Where("c.tenant_id = ? AND class_sessions.schedule_id = ? AND class_sessions.enrollment_id = ? AND class_sessions.session_date = ?", tenantID, scheduleID, enrollmentID, date).
+		Where("c.tenant_id = ? AND class_sessions.schedule_id = ? AND class_sessions.session_date = ? AND ((class_sessions.enrollment_id = ? AND class_sessions.enrollment_id IS NOT NULL) OR (class_sessions.enrollment_id IS NULL AND EXISTS (SELECT 1 FROM enrollments e WHERE e.id = ? AND e.schedule_id = ? AND e.deleted_at IS NULL)))", tenantID, scheduleID, date, enrollmentID, enrollmentID, scheduleID).
 		First(&session).Error
 	return &session, err
 }

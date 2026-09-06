@@ -1,0 +1,12 @@
+DROP TABLE IF EXISTS tenant_location_snapshots;
+DROP TABLE IF EXISTS reports;
+DROP TABLE IF EXISTS student_notes;
+DROP TABLE IF EXISTS attendances;
+DROP TABLE IF EXISTS class_teachers;
+DROP TABLE IF EXISTS class_sessions;
+DROP TABLE IF EXISTS class_schedules;
+DROP TABLE IF EXISTS enrollments;
+DROP TABLE IF EXISTS students;
+DROP TABLE IF EXISTS classes;
+DROP TABLE IF EXISTS categories;
+DROP TABLE IF EXISTS seed_versions;

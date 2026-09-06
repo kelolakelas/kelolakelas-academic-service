@@ -21,6 +21,26 @@ type EnrollmentUsecase interface {
 	ActivateEnrollment(ctx context.Context, enrollmentID uuid.UUID) (*domain.EnrollmentResponse, error)
 	List(ctx context.Context, tenantID, parentID *uuid.UUID, query domain.EnrollmentQuery) (*domain.EnrollmentListResponse, error)
 	GetByID(ctx context.Context, tenantID, parentID *uuid.UUID, id uuid.UUID) (*domain.EnrollmentResponse, error)
+	AssignSchedule(ctx context.Context, parentID, enrollmentID, scheduleID uuid.UUID) (*domain.EnrollmentResponse, error)
+}
+
+func (u *enrollmentUsecase) AssignSchedule(ctx context.Context, parentID, enrollmentID, scheduleID uuid.UUID) (*domain.EnrollmentResponse, error) {
+	enrollment, err := u.enrollmentRepo.GetByIDForAccess(ctx, nil, &parentID, enrollmentID)
+	if err != nil {
+		return nil, err
+	}
+	assign := func(txCtx context.Context) error {
+		return u.enrollmentRepo.AssignSchedule(txCtx, enrollmentID, scheduleID)
+	}
+	if u.txManager != nil {
+		if err := u.txManager.WithTransaction(ctx, assign); err != nil {
+			return nil, err
+		}
+	} else if err := assign(ctx); err != nil {
+		return nil, err
+	}
+	enrollment.ScheduleID = &scheduleID
+	return enrollmentResponse(enrollment), nil
 }
 
 type enrollmentUsecase struct {
@@ -89,7 +109,7 @@ func (u *enrollmentUsecase) EnrollPublic(ctx context.Context, parentID, classID 
 		return nil, domain.ErrClassNotEnrollable
 	}
 	key := idempotencyKey
-	enrollment := &domain.Enrollment{ID: uuid.New(), TenantID: class.TenantID, StudentID: student.ID, ClassID: class.ID, Status: "pending", BillingCycle: req.BillingCycle, IdempotencyKey: &key, PaymentStatus: "pending", GrossAmount: class.Price}
+	enrollment := &domain.Enrollment{ID: uuid.New(), TenantID: class.TenantID, StudentID: student.ID, ClassID: class.ID, ScheduleID: req.ScheduleID, Status: "pending", BillingCycle: req.BillingCycle, IdempotencyKey: &key, PaymentStatus: "pending", GrossAmount: class.Price}
 	create := func(txCtx context.Context) error {
 		return u.enrollmentRepo.CreateIfCapacityAvailable(txCtx, enrollment)
 	}
@@ -169,7 +189,7 @@ func (u *enrollmentUsecase) EnrollStudent(ctx context.Context, tenantID uuid.UUI
 		return nil, domain.ErrClassNotEnrollable
 	}
 	key := req.IdempotencyKey
-	enrollment := &domain.Enrollment{ID: uuid.New(), TenantID: tenantID, StudentID: req.StudentID, ClassID: req.ClassID, Status: "pending", BillingCycle: req.BillingCycle, IdempotencyKey: &key, GrossAmount: class.Price, PaymentStatus: "pending"}
+	enrollment := &domain.Enrollment{ID: uuid.New(), TenantID: tenantID, StudentID: req.StudentID, ClassID: req.ClassID, ScheduleID: req.ScheduleID, Status: "pending", BillingCycle: req.BillingCycle, IdempotencyKey: &key, GrossAmount: class.Price, PaymentStatus: "pending"}
 	create := func(txCtx context.Context) error {
 		return u.enrollmentRepo.CreateIfCapacityAvailable(txCtx, enrollment)
 	}
@@ -276,6 +296,6 @@ func enrollmentResponse(enrollment *domain.Enrollment) *domain.EnrollmentRespons
 		ID: enrollment.ID, TenantID: enrollment.TenantID, StudentID: enrollment.StudentID,
 		ClassID: enrollment.ClassID, Status: enrollment.Status, JoinedAt: enrollment.JoinedAt,
 		UpdatedAt: enrollment.UpdatedAt, Class: enrollment.Class, Student: enrollment.Student,
-		BillingCycle: enrollment.BillingCycle,
+		BillingCycle: enrollment.BillingCycle, ScheduleID: enrollment.ScheduleID,
 	}
 }

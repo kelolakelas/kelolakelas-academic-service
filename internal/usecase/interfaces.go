@@ -40,7 +40,7 @@ type ScheduleUsecase interface {
 	GetSession(ctx context.Context, tenantID, sessionID uuid.UUID) (*domain.ClassSession, error)
 	DeleteSession(ctx context.Context, tenantID, sessionID uuid.UUID) error
 	// Scenario 1: Create Initial Schedules for an Existing Class
-	CreateInitialSchedules(ctx context.Context, req *domain.CreateInitialSchedulesRequest) (*domain.CreateInitialSchedulesResponse, error)
+	CreateInitialSchedules(ctx context.Context, tenantID uuid.UUID, req *domain.CreateInitialSchedulesRequest) (*domain.CreateInitialSchedulesResponse, error)
 
 	// Scenario 2: Temporary Schedule Change (One-off Reschedule / Make-up Class)
 	RescheduleSession(ctx context.Context, req *domain.RescheduleSessionRequest) (*domain.RescheduleSessionResponse, error)

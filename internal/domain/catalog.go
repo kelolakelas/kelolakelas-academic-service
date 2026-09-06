@@ -77,8 +77,7 @@ type CatalogItem struct {
 	Description     *json.RawMessage `json:"description,omitempty"`
 	Type            string           `json:"type"`
 	Price           int64            `json:"price"`
-	Capacity        *int             `json:"capacity,omitempty"`
-	AvailableSlots  *int             `json:"available_slots,omitempty"`
+	Schedules       json.RawMessage  `json:"schedules"`
 	DistanceKM      *float64         `json:"distance_km,omitempty"`
 	IsEnrollable    bool             `json:"is_enrollable"`
 	CreatedAt       time.Time        `json:"created_at"`

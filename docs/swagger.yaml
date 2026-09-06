@@ -1,5 +1,12 @@
 basePath: /
 definitions:
+  github_com_kelolakelas_kelolakelas-academic-service_internal_domain.AssignEnrollmentScheduleRequest:
+    properties:
+      schedule_id:
+        type: string
+    required:
+    - schedule_id
+    type: object
   github_com_kelolakelas_kelolakelas-academic-service_internal_domain.Attendance:
     properties:
       created_at:
@@ -33,10 +40,6 @@ definitions:
     type: object
   github_com_kelolakelas_kelolakelas-academic-service_internal_domain.CatalogItem:
     properties:
-      available_slots:
-        type: integer
-      capacity:
-        type: integer
       category_id:
         type: string
       category_name:
@@ -61,6 +64,10 @@ definitions:
         type: string
       price:
         type: integer
+      schedules:
+        items:
+          type: integer
+        type: array
       tenant_address:
         type: string
       tenant_id:
@@ -124,8 +131,6 @@ definitions:
     type: object
   github_com_kelolakelas_kelolakelas-academic-service_internal_domain.Class:
     properties:
-      capacity:
-        type: integer
       category:
         $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.Category'
       category_id:
@@ -169,8 +174,6 @@ definitions:
     type: object
   github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ClassResponse:
     properties:
-      capacity:
-        type: integer
       category_id:
         type: string
       created_at:
@@ -196,6 +199,8 @@ definitions:
     type: object
   github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ClassSchedule:
     properties:
+      capacity:
+        type: integer
       class:
         $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.Class'
       class_id:
@@ -290,8 +295,6 @@ definitions:
     type: object
   github_com_kelolakelas_kelolakelas-academic-service_internal_domain.CreateClassPayload:
     properties:
-      capacity:
-        type: integer
       description:
         items:
           type: integer
@@ -321,8 +324,6 @@ definitions:
     type: object
   github_com_kelolakelas_kelolakelas-academic-service_internal_domain.CreateClassRequest:
     properties:
-      capacity:
-        type: integer
       category_id:
         type: string
       description:
@@ -356,38 +357,24 @@ definitions:
     type: object
   github_com_kelolakelas_kelolakelas-academic-service_internal_domain.CreateClassWithCategoryRequest:
     properties:
-      category:
-        $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.CreateCategoryRequest'
+      category_id:
+        type: string
       class:
         $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.CreateClassPayload'
-      schedules:
-        items:
-          $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ScheduleItemRequest'
-        type: array
       teacher_ids:
         items:
           type: string
         minItems: 1
         type: array
     required:
-    - category
+    - category_id
     - class
     - teacher_ids
     type: object
   github_com_kelolakelas_kelolakelas-academic-service_internal_domain.CreateClassWithCategoryResponse:
     properties:
-      category:
-        $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.Category'
       class:
         $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.Class'
-      schedules:
-        items:
-          $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ClassSchedule'
-        type: array
-      sessions:
-        items:
-          $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ClassSession'
-        type: array
     type: object
   github_com_kelolakelas_kelolakelas-academic-service_internal_domain.CreateInitialSchedulesRequest:
     properties:
@@ -450,9 +437,9 @@ definitions:
       parent_id:
         type: string
       student_notes:
-        type: array
         items:
           $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.StudentNoteRequest'
+        type: array
     required:
     - date_of_birth
     - first_name
@@ -467,6 +454,8 @@ definitions:
         - yearly
         type: string
       class_id:
+        type: string
+      schedule_id:
         type: string
       student_id:
         type: string
@@ -488,6 +477,8 @@ definitions:
       id:
         type: string
       joined_at:
+        type: string
+      schedule_id:
         type: string
       status:
         description: '''pending'', ''active'', ''completed'', ''dropped'''
@@ -522,6 +513,8 @@ definitions:
       id:
         type: string
       joined_at:
+        type: string
+      schedule_id:
         type: string
       status:
         type: string
@@ -636,6 +629,8 @@ definitions:
         - quarterly
         - yearly
         type: string
+      schedule_id:
+        type: string
       student_id:
         type: string
     required:
@@ -714,6 +709,9 @@ definitions:
     type: object
   github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ScheduleItemRequest:
     properties:
+      capacity:
+        minimum: 1
+        type: integer
       day_of_week:
         description: 1=Monday, ..., 7=Sunday
         maximum: 7
@@ -733,7 +731,10 @@ definitions:
         type: string
       valid_from:
         type: string
+      valid_until:
+        type: string
     required:
+    - capacity
     - day_of_week
     - end_time
     - start_time
@@ -779,17 +780,26 @@ definitions:
         type: string
       gender:
         type: string
-      last_name:
+      id:
+        type: string
+      lastå_name:
         type: string
       nickname:
-        type: string
-      id:
         type: string
       parent_id:
         description: Cross-service, ordinary UUID
         type: string
       updated_at:
         type: string
+    type: object
+  github_com_kelolakelas_kelolakelas-academic-service_internal_domain.StudentListResponse:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.Student'
+        type: array
+      pagination:
+        $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.Pagination'
     type: object
   github_com_kelolakelas_kelolakelas-academic-service_internal_domain.StudentNoteRequest:
     properties:
@@ -805,15 +815,6 @@ definitions:
     required:
     - content
     - note_type
-    type: object
-  github_com_kelolakelas_kelolakelas-academic-service_internal_domain.StudentListResponse:
-    properties:
-      items:
-        items:
-          $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.Student'
-        type: array
-      pagination:
-        $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.Pagination'
     type: object
   github_com_kelolakelas_kelolakelas-academic-service_internal_domain.SubstituteTutorRequest:
     properties:
@@ -849,13 +850,6 @@ definitions:
     required:
     - is_published
     type: object
-  github_com_kelolakelas_kelolakelas-academic-service_internal_domain.UpdateEnrollmentStatusRequest:
-    properties:
-      status:
-        type: string
-    required:
-    - status
-    type: object
   github_com_kelolakelas_kelolakelas-academic-service_internal_domain.UpdateReportRequest:
     properties:
       evaluation_notes:
@@ -888,9 +882,9 @@ definitions:
         maxLength: 100
         type: string
       student_notes:
-        type: array
         items:
           $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.StudentNoteRequest'
+        type: array
     required:
     - date_of_birth
     - first_name
@@ -931,8 +925,6 @@ paths:
     post:
       consumes:
       - application/json
-      description: Create a student and optionally append multiple student notes.
-        Notes may be created without tenant context only by the parent who owns the student; otherwise they belong to the authenticated tenant.
       parameters:
       - description: Attendance payload
         in: body
@@ -985,8 +977,6 @@ paths:
     patch:
       consumes:
       - application/json
-      description: Update a student and optionally append multiple new student notes.
-        Existing notes are not overwritten or deleted.
       parameters:
       - description: Attendance UUID
         in: path
@@ -1554,16 +1544,15 @@ paths:
     post:
       consumes:
       - application/json
-      description: Atomically creates a category and class, assigns one or more teachers,
-        plus initial schedules and sessions for group classes. Private classes must
-        omit schedules.
+      description: Creates a class using an existing category owned by the requester
+        and assigns teachers. Schedules and sessions are created separately.
       parameters:
       - description: Tenant ID dalam format UUID
         in: header
         name: X-Tenant-ID
         required: true
         type: string
-      - description: Create category, class, teacher assignments, and schedules payload
+      - description: Create class with existing category payload
         in: body
         name: request
         required: true
@@ -1599,7 +1588,7 @@ paths:
             $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
       security:
       - BearerAuth: []
-      summary: Create category, class, and initial schedules
+      summary: Create class using an existing category
       tags:
       - Classes
   /api/v1/enrollments:
@@ -1646,24 +1635,24 @@ paths:
       summary: Get enrollment
       tags:
       - Enrollments
-  /api/v1/enrollments/{id}/status:
-    put:
+  /api/v1/enrollments/{id}/schedule:
+    patch:
       consumes:
       - application/json
-      description: Update status of an enrollment (e.g. from pending to active upon
-        payment)
+      description: Assigns a parent-owned pending enrollment to a tenant-owned schedule
+        transactionally.
       parameters:
       - description: Enrollment ID (UUID)
         in: path
         name: id
         required: true
         type: string
-      - description: Status update payload
+      - description: Schedule assignment
         in: body
         name: request
         required: true
         schema:
-          $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.UpdateEnrollmentStatusRequest'
+          $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.AssignEnrollmentScheduleRequest'
       produces:
       - application/json
       responses:
@@ -1680,15 +1669,21 @@ paths:
           description: Bad Request
           schema:
             $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
         "404":
           description: Not Found
           schema:
             $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
-        "500":
-          description: Internal Server Error
+        "409":
+          description: Conflict
           schema:
             $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
-      summary: Update enrollment status
+      security:
+      - BearerAuth: []
+      summary: Assign an enrollment to a schedule
       tags:
       - Enrollments
   /api/v1/reports:
@@ -1858,8 +1853,8 @@ paths:
     post:
       consumes:
       - application/json
-      description: Create recurring schedule items and corresponding class sessions
-        for a class
+      description: Create one or more schedules for an existing tenant-owned class
+        and generate their corresponding sessions
       parameters:
       - description: Tenant ID dalam format UUID
         in: header
@@ -2368,6 +2363,8 @@ paths:
     post:
       consumes:
       - application/json
+      description: Create a student and optionally append multiple student notes.
+        Notes require an authenticated tenant context.
       parameters:
       - description: Student payload
         in: body
@@ -2387,6 +2384,18 @@ paths:
                 data:
                   $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.Student'
               type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Create student
@@ -2443,6 +2452,8 @@ paths:
     patch:
       consumes:
       - application/json
+      description: Update a student and optionally append multiple new student notes.
+        Existing notes are not overwritten or deleted.
       parameters:
       - description: Student UUID
         in: path
@@ -2467,6 +2478,18 @@ paths:
                 data:
                   $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.Student'
               type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Update student
@@ -2501,6 +2524,45 @@ paths:
                   $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.EnrollmentResponse'
               type: object
       summary: Enroll a student in a class
+      tags:
+      - Enrollments
+  /internal/enrollments/{id}/activate:
+    put:
+      consumes:
+      - application/json
+      description: Internal service-to-service endpoint for payment-confirmed enrollment
+        activation.
+      parameters:
+      - description: Enrollment ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.HTTPResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.EnrollmentResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+      summary: Activate enrollment after confirmed payment
       tags:
       - Enrollments
 securityDefinitions:

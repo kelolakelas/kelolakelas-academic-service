@@ -28,7 +28,7 @@ func (u *classUsecase) ListClasses(ctx context.Context, tenantID uuid.UUID, quer
 	}
 	responses := make([]domain.ClassResponse, 0, len(items))
 	for _, item := range items {
-		responses = append(responses, domain.ClassResponse{ID: item.ID, TenantID: item.TenantID, CategoryID: item.CategoryID, Name: item.Name, Description: item.Description, Type: item.Type, Price: item.Price, Capacity: item.Capacity, CreatedAt: item.CreatedAt})
+		responses = append(responses, domain.ClassResponse{ID: item.ID, TenantID: item.TenantID, CategoryID: item.CategoryID, Name: item.Name, Description: item.Description, Type: item.Type, Price: item.Price, CreatedAt: item.CreatedAt})
 		responses[len(responses)-1].IsPublished = item.IsPublished
 		responses[len(responses)-1].EnrollmentStatus = item.EnrollmentStatus
 	}
@@ -37,6 +37,7 @@ func (u *classUsecase) ListClasses(ctx context.Context, tenantID uuid.UUID, quer
 
 type classUsecase struct {
 	classRepo      repository.ClassRepository
+	categoryRepo   repository.CategoryRepository
 	scheduleRepo   repository.ScheduleRepository
 	sessionRepo    repository.SessionRepository
 	enrollmentRepo repository.EnrollmentRepository
@@ -44,9 +45,14 @@ type classUsecase struct {
 	txManager      repository.TransactionManager
 }
 
-func NewClassUsecase(classRepo repository.ClassRepository, scheduleRepo repository.ScheduleRepository, sessionRepo repository.SessionRepository, enrollmentRepo repository.EnrollmentRepository, tenantClient grpcclient.TenantClient, txManager repository.TransactionManager) ClassUsecase {
+func NewClassUsecase(classRepo repository.ClassRepository, scheduleRepo repository.ScheduleRepository, sessionRepo repository.SessionRepository, enrollmentRepo repository.EnrollmentRepository, tenantClient grpcclient.TenantClient, txManager repository.TransactionManager, categoryRepos ...repository.CategoryRepository) ClassUsecase {
+	var categoryRepo repository.CategoryRepository
+	if len(categoryRepos) > 0 {
+		categoryRepo = categoryRepos[0]
+	}
 	return &classUsecase{
 		classRepo:      classRepo,
+		categoryRepo:   categoryRepo,
 		scheduleRepo:   scheduleRepo,
 		sessionRepo:    sessionRepo,
 		enrollmentRepo: enrollmentRepo,
@@ -103,7 +109,6 @@ func (u *classUsecase) UpdateClassPublication(ctx context.Context, tenantID, id 
 		Description:      class.Description,
 		Type:             class.Type,
 		Price:            class.Price,
-		Capacity:         class.Capacity,
 		CreatedAt:        class.CreatedAt,
 		IsPublished:      class.IsPublished,
 		EnrollmentStatus: class.EnrollmentStatus,
@@ -116,6 +121,18 @@ func (u *classUsecase) CreateClass(ctx context.Context, tenantID uuid.UUID, req 
 	if err != nil || !isActive {
 		return nil, ErrTenantInactiveOrNotFound
 	}
+	if u.categoryRepo != nil {
+		category, err := u.categoryRepo.GetByID(ctx, req.CategoryID)
+		if errors.Is(err, gorm.ErrRecordNotFound) || category == nil {
+			return nil, domain.ErrCategoryNotFound
+		}
+		if err != nil {
+			return nil, err
+		}
+		if category.TenantID != tenantID {
+			return nil, domain.ErrCategoryForbidden
+		}
+	}
 
 	// 2. Create Class
 	class := &domain.Class{
@@ -126,7 +143,6 @@ func (u *classUsecase) CreateClass(ctx context.Context, tenantID uuid.UUID, req 
 		Description:      req.Description,
 		Type:             req.Type,
 		Price:            req.Price,
-		Capacity:         req.Capacity,
 		IsPublished:      req.IsPublished,
 		EnrollmentStatus: req.EnrollmentStatus,
 	}
@@ -146,7 +162,6 @@ func (u *classUsecase) CreateClass(ctx context.Context, tenantID uuid.UUID, req 
 		Description:      class.Description,
 		Type:             class.Type,
 		Price:            class.Price,
-		Capacity:         class.Capacity,
 		IsPublished:      class.IsPublished,
 		EnrollmentStatus: class.EnrollmentStatus,
 		CreatedAt:        class.CreatedAt,

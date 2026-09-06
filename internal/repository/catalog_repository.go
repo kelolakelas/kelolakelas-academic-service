@@ -70,8 +70,8 @@ func (r *catalogRepository) List(ctx context.Context, query domain.CatalogQuery)
 		order = "c.price DESC"
 	}
 	items := make([]domain.CatalogItem, 0)
-	availableSlots := "CASE WHEN c.capacity IS NULL THEN NULL ELSE GREATEST(c.capacity - (SELECT COUNT(*) FROM enrollments e WHERE e.class_id = c.id AND e.status IN ('pending', 'active') AND e.deleted_at IS NULL), 0) END"
-	selectSQL := "c.id, c.tenant_id, t.name AS tenant_name, t.address_formatted AS tenant_address, c.category_id, cat.name AS category_name, c.name, c.description, c.type, c.price, c.capacity, " + availableSlots + " AS available_slots, " + distance + " AS distance_km, (c.enrollment_status = 'open' AND (c.capacity IS NULL OR " + availableSlots + " > 0)) AS is_enrollable, c.created_at"
+	schedules := "COALESCE((SELECT jsonb_agg(jsonb_build_object('id', cs.id, 'day_of_week', cs.day_of_week, 'start_time', cs.start_time, 'end_time', cs.end_time, 'capacity', cs.capacity, 'available_slots', GREATEST(cs.capacity - (SELECT COUNT(*) FROM enrollments e WHERE e.schedule_id = cs.id AND e.status IN ('pending', 'active') AND e.deleted_at IS NULL), 0), 'is_available', GREATEST(cs.capacity - (SELECT COUNT(*) FROM enrollments e WHERE e.schedule_id = cs.id AND e.status IN ('pending', 'active') AND e.deleted_at IS NULL), 0) > 0)) FROM class_schedules cs WHERE cs.class_id = c.id AND cs.deleted_at IS NULL), '[]'::jsonb)"
+	selectSQL := "c.id, c.tenant_id, t.name AS tenant_name, t.address_formatted AS tenant_address, c.category_id, cat.name AS category_name, c.name, c.description, c.type, c.price, " + schedules + " AS schedules, " + distance + " AS distance_km, c.enrollment_status = 'open' AS is_enrollable, c.created_at"
 	args := []interface{}{}
 	if query.Latitude != nil {
 		args = []interface{}{*query.Latitude, *query.Latitude, *query.Longitude}
@@ -84,8 +84,8 @@ func (r *catalogRepository) List(ctx context.Context, query domain.CatalogQuery)
 
 func (r *catalogRepository) GetByID(ctx context.Context, id uuid.UUID) (*domain.CatalogItem, error) {
 	var item domain.CatalogItem
-	availableSlots := "CASE WHEN c.capacity IS NULL THEN NULL ELSE GREATEST(c.capacity - (SELECT COUNT(*) FROM enrollments e WHERE e.class_id = c.id AND e.status IN ('pending', 'active') AND e.deleted_at IS NULL), 0) END"
-	err := r.db.WithContext(ctx).Table("classes c").Joins("JOIN categories cat ON cat.id = c.category_id AND cat.deleted_at IS NULL").Joins("JOIN tenant_location_snapshots t ON t.tenant_id = c.tenant_id AND t.is_active = ?", true).Where("c.id = ? AND c.deleted_at IS NULL AND c.is_published = ? AND c.enrollment_status = ?", id, true, "open").Select("c.id, c.tenant_id, t.name AS tenant_name, t.address_formatted AS tenant_address, c.category_id, cat.name AS category_name, c.name, c.description, c.type, c.price, c.capacity, " + availableSlots + " AS available_slots, (c.enrollment_status = 'open' AND (c.capacity IS NULL OR " + availableSlots + " > 0)) AS is_enrollable, c.created_at").Scan(&item).Error
+	schedules := "COALESCE((SELECT jsonb_agg(jsonb_build_object('id', cs.id, 'day_of_week', cs.day_of_week, 'start_time', cs.start_time, 'end_time', cs.end_time, 'capacity', cs.capacity, 'available_slots', GREATEST(cs.capacity - (SELECT COUNT(*) FROM enrollments e WHERE e.schedule_id = cs.id AND e.status IN ('pending', 'active') AND e.deleted_at IS NULL), 0), 'is_available', GREATEST(cs.capacity - (SELECT COUNT(*) FROM enrollments e WHERE e.schedule_id = cs.id AND e.status IN ('pending', 'active') AND e.deleted_at IS NULL), 0) > 0)) FROM class_schedules cs WHERE cs.class_id = c.id AND cs.deleted_at IS NULL), '[]'::jsonb)"
+	err := r.db.WithContext(ctx).Table("classes c").Joins("JOIN categories cat ON cat.id = c.category_id AND cat.deleted_at IS NULL").Joins("JOIN tenant_location_snapshots t ON t.tenant_id = c.tenant_id AND t.is_active = ?", true).Where("c.id = ? AND c.deleted_at IS NULL AND c.is_published = ? AND c.enrollment_status = ?", id, true, "open").Select("c.id, c.tenant_id, t.name AS tenant_name, t.address_formatted AS tenant_address, c.category_id, cat.name AS category_name, c.name, c.description, c.type, c.price, " + schedules + " AS schedules, c.enrollment_status = 'open' AS is_enrollable, c.created_at").Scan(&item).Error
 	if err != nil {
 		return nil, err
 	}

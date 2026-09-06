@@ -886,7 +886,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Atomically creates a category and class, assigns one or more teachers, plus initial schedules and sessions for group classes. Private classes must omit schedules.",
+                "description": "Creates a class using an existing category owned by the requester and assigns teachers. Schedules and sessions are created separately.",
                 "consumes": [
                     "application/json"
                 ],
@@ -896,7 +896,7 @@ const docTemplate = `{
                 "tags": [
                     "Classes"
                 ],
-                "summary": "Create category, class, and initial schedules",
+                "summary": "Create class using an existing category",
                 "parameters": [
                     {
                         "type": "string",
@@ -906,7 +906,7 @@ const docTemplate = `{
                         "required": true
                     },
                     {
-                        "description": "Create category, class, teacher assignments, and schedules payload",
+                        "description": "Create class with existing category payload",
                         "name": "request",
                         "in": "body",
                         "required": true,
@@ -1211,9 +1211,14 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/v1/enrollments/{id}/status": {
-            "put": {
-                "description": "Update status of an enrollment (e.g. from pending to active upon payment)",
+        "/api/v1/enrollments/{id}/schedule": {
+            "patch": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Assigns a parent-owned pending enrollment to a tenant-owned schedule transactionally.",
                 "consumes": [
                     "application/json"
                 ],
@@ -1223,7 +1228,7 @@ const docTemplate = `{
                 "tags": [
                     "Enrollments"
                 ],
-                "summary": "Update enrollment status",
+                "summary": "Assign an enrollment to a schedule",
                 "parameters": [
                     {
                         "type": "string",
@@ -1233,12 +1238,12 @@ const docTemplate = `{
                         "required": true
                     },
                     {
-                        "description": "Status update payload",
+                        "description": "Schedule assignment",
                         "name": "request",
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.UpdateEnrollmentStatusRequest"
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.AssignEnrollmentScheduleRequest"
                         }
                     }
                 ],
@@ -1267,14 +1272,20 @@ const docTemplate = `{
                             "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
                         }
                     },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
+                        }
+                    },
                     "404": {
                         "description": "Not Found",
                         "schema": {
                             "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
                         }
                     },
-                    "500": {
-                        "description": "Internal Server Error",
+                    "409": {
+                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
                         }
@@ -1572,7 +1583,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Create recurring schedule items and corresponding class sessions for a class",
+                "description": "Create one or more schedules for an existing tenant-owned class and generate their corresponding sessions",
                 "consumes": [
                     "application/json"
                 ],
@@ -2396,6 +2407,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
+                "description": "Create a student and optionally append multiple student notes. Notes require an authenticated tenant context.",
                 "consumes": [
                     "application/json"
                 ],
@@ -2405,7 +2417,6 @@ const docTemplate = `{
                 "tags": [
                     "Students"
                 ],
-                "description": "Create a student and optionally append multiple student notes. Notes may be created without tenant context only by the parent who owns the student; otherwise they belong to the authenticated tenant.",
                 "summary": "Create student",
                 "parameters": [
                     {
@@ -2435,6 +2446,24 @@ const docTemplate = `{
                                     }
                                 }
                             ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
                         }
                     }
                 }
@@ -2527,6 +2556,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
+                "description": "Update a student and optionally append multiple new student notes. Existing notes are not overwritten or deleted.",
                 "consumes": [
                     "application/json"
                 ],
@@ -2536,7 +2566,6 @@ const docTemplate = `{
                 "tags": [
                     "Students"
                 ],
-                "description": "Update a student and optionally append multiple new student notes. Existing notes are not overwritten or deleted.",
                 "summary": "Update student",
                 "parameters": [
                     {
@@ -2573,6 +2602,24 @@ const docTemplate = `{
                                     }
                                 }
                             ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
                         }
                     }
                 }
@@ -2629,9 +2676,82 @@ const docTemplate = `{
                     }
                 }
             }
+        },
+        "/internal/enrollments/{id}/activate": {
+            "put": {
+                "description": "Internal service-to-service endpoint for payment-confirmed enrollment activation.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Enrollments"
+                ],
+                "summary": "Activate enrollment after confirmed payment",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Enrollment ID (UUID)",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.HTTPResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.EnrollmentResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
+                        }
+                    }
+                }
+            }
         }
     },
     "definitions": {
+        "github_com_kelolakelas_kelolakelas-academic-service_internal_domain.AssignEnrollmentScheduleRequest": {
+            "type": "object",
+            "required": [
+                "schedule_id"
+            ],
+            "properties": {
+                "schedule_id": {
+                    "type": "string"
+                }
+            }
+        },
         "github_com_kelolakelas_kelolakelas-academic-service_internal_domain.Attendance": {
             "type": "object",
             "properties": {
@@ -2682,12 +2802,6 @@ const docTemplate = `{
         "github_com_kelolakelas_kelolakelas-academic-service_internal_domain.CatalogItem": {
             "type": "object",
             "properties": {
-                "available_slots": {
-                    "type": "integer"
-                },
-                "capacity": {
-                    "type": "integer"
-                },
                 "category_id": {
                     "type": "string"
                 },
@@ -2723,6 +2837,12 @@ const docTemplate = `{
                 },
                 "price": {
                     "type": "integer"
+                },
+                "schedules": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
                 },
                 "tenant_address": {
                     "type": "string"
@@ -2821,9 +2941,6 @@ const docTemplate = `{
         "github_com_kelolakelas_kelolakelas-academic-service_internal_domain.Class": {
             "type": "object",
             "properties": {
-                "capacity": {
-                    "type": "integer"
-                },
                 "category": {
                     "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.Category"
                 },
@@ -2887,9 +3004,6 @@ const docTemplate = `{
         "github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ClassResponse": {
             "type": "object",
             "properties": {
-                "capacity": {
-                    "type": "integer"
-                },
                 "category_id": {
                     "type": "string"
                 },
@@ -2928,6 +3042,9 @@ const docTemplate = `{
         "github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ClassSchedule": {
             "type": "object",
             "properties": {
+                "capacity": {
+                    "type": "integer"
+                },
                 "class": {
                     "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.Class"
                 },
@@ -3070,9 +3187,6 @@ const docTemplate = `{
                 "type"
             ],
             "properties": {
-                "capacity": {
-                    "type": "integer"
-                },
                 "description": {
                     "type": "array",
                     "items": {
@@ -3116,9 +3230,6 @@ const docTemplate = `{
                 "type"
             ],
             "properties": {
-                "capacity": {
-                    "type": "integer"
-                },
                 "category_id": {
                     "type": "string"
                 },
@@ -3159,22 +3270,16 @@ const docTemplate = `{
         "github_com_kelolakelas_kelolakelas-academic-service_internal_domain.CreateClassWithCategoryRequest": {
             "type": "object",
             "required": [
-                "category",
+                "category_id",
                 "class",
                 "teacher_ids"
             ],
             "properties": {
-                "category": {
-                    "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.CreateCategoryRequest"
+                "category_id": {
+                    "type": "string"
                 },
                 "class": {
                     "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.CreateClassPayload"
-                },
-                "schedules": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ScheduleItemRequest"
-                    }
                 },
                 "teacher_ids": {
                     "type": "array",
@@ -3188,23 +3293,8 @@ const docTemplate = `{
         "github_com_kelolakelas_kelolakelas-academic-service_internal_domain.CreateClassWithCategoryResponse": {
             "type": "object",
             "properties": {
-                "category": {
-                    "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.Category"
-                },
                 "class": {
                     "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.Class"
-                },
-                "schedules": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ClassSchedule"
-                    }
-                },
-                "sessions": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ClassSession"
-                    }
                 }
             }
         },
@@ -3284,10 +3374,10 @@ const docTemplate = `{
                 },
                 "gender": {
                     "type": "string",
-                "enum": [
-                    "male",
-                    "female"
-                ]
+                    "enum": [
+                        "male",
+                        "female"
+                    ]
                 },
                 "last_name": {
                     "type": "string",
@@ -3327,6 +3417,9 @@ const docTemplate = `{
                 "class_id": {
                     "type": "string"
                 },
+                "schedule_id": {
+                    "type": "string"
+                },
                 "student_id": {
                     "type": "string"
                 }
@@ -3351,6 +3444,9 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "joined_at": {
+                    "type": "string"
+                },
+                "schedule_id": {
                     "type": "string"
                 },
                 "status": {
@@ -3402,6 +3498,9 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "joined_at": {
+                    "type": "string"
+                },
+                "schedule_id": {
                     "type": "string"
                 },
                 "status": {
@@ -3574,6 +3673,9 @@ const docTemplate = `{
                         "yearly"
                     ]
                 },
+                "schedule_id": {
+                    "type": "string"
+                },
                 "student_id": {
                     "type": "string"
                 }
@@ -3686,11 +3788,16 @@ const docTemplate = `{
         "github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ScheduleItemRequest": {
             "type": "object",
             "required": [
+                "capacity",
                 "day_of_week",
                 "end_time",
                 "start_time"
             ],
             "properties": {
+                "capacity": {
+                    "type": "integer",
+                    "minimum": 1
+                },
                 "day_of_week": {
                     "description": "1=Monday, ..., 7=Sunday",
                     "type": "integer",
@@ -3715,6 +3822,9 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "valid_from": {
+                    "type": "string"
+                },
+                "valid_until": {
                     "type": "string"
                 }
             }
@@ -3782,13 +3892,13 @@ const docTemplate = `{
                 "gender": {
                     "type": "string"
                 },
-                "last_name": {
+                "id": {
+                    "type": "string"
+                },
+                "lastå_name": {
                     "type": "string"
                 },
                 "nickname": {
-                    "type": "string"
-                },
-                "id": {
                     "type": "string"
                 },
                 "parent_id": {
@@ -3883,17 +3993,6 @@ const docTemplate = `{
             "properties": {
                 "is_published": {
                     "type": "boolean"
-                }
-            }
-        },
-        "github_com_kelolakelas_kelolakelas-academic-service_internal_domain.UpdateEnrollmentStatusRequest": {
-            "type": "object",
-            "required": [
-                "status"
-            ],
-            "properties": {
-                "status": {
-                    "type": "string"
                 }
             }
         },
