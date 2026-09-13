@@ -54,6 +54,7 @@ func TestLoadConfig(t *testing.T) {
 			for _, key := range []string{"DATABASE_URL", "DB_HOST", "DB_PORT", "DB_SSLMODE", "DB_CHANNEL_BINDING", "DB_USER", "DB_PASSWORD", "DB_NAME", "IDENTITY_GRPC_HOST", "BILLING_SERVICE_URL", "INTERNAL_SERVICE_CREDENTIAL", "PORT", "JWT_SECRET"} {
 				t.Setenv(key, "")
 			}
+			t.Setenv("JWT_SECRET", "test-jwt-secret")
 			t.Setenv("INTERNAL_SERVICE_CREDENTIAL", "test-internal-credential")
 			if tt.setup != nil {
 				tt.setup(t)
@@ -73,6 +74,7 @@ func TestLoadConfig(t *testing.T) {
 func TestChannelBindingEnvironmentOverridesDatabaseURL(t *testing.T) {
 	viper.Reset()
 	t.Chdir(t.TempDir())
+	t.Setenv("JWT_SECRET", "test-jwt-secret")
 	t.Setenv("INTERNAL_SERVICE_CREDENTIAL", "test-internal-credential")
 	t.Setenv("DATABASE_URL", "postgres://user:password@localhost/db?channel_binding=require")
 	t.Setenv("DB_CHANNEL_BINDING", "disable")
@@ -88,6 +90,7 @@ func TestChannelBindingEnvironmentOverridesDatabaseURL(t *testing.T) {
 func TestLoadConfigRejectsInvalidChannelBinding(t *testing.T) {
 	viper.Reset()
 	t.Chdir(t.TempDir())
+	t.Setenv("JWT_SECRET", "test-jwt-secret")
 	t.Setenv("INTERNAL_SERVICE_CREDENTIAL", "test-internal-credential")
 	t.Setenv("DB_CHANNEL_BINDING", "invalid")
 	if _, err := LoadConfig(); err == nil {
@@ -98,6 +101,7 @@ func TestLoadConfigRejectsInvalidChannelBinding(t *testing.T) {
 func TestLoadConfigReadsDisabledChannelBindingFromDatabaseURL(t *testing.T) {
 	viper.Reset()
 	t.Chdir(t.TempDir())
+	t.Setenv("JWT_SECRET", "test-jwt-secret")
 	t.Setenv("INTERNAL_SERVICE_CREDENTIAL", "test-internal-credential")
 	t.Setenv("DATABASE_URL", "postgres://user:password@localhost/db?sslmode=disable&channel_binding=disable")
 	config, err := LoadConfig()
@@ -106,5 +110,40 @@ func TestLoadConfigReadsDisabledChannelBindingFromDatabaseURL(t *testing.T) {
 	}
 	if config.DBChannelBinding != "disable" {
 		t.Fatalf("channel binding=%q, want disable", config.DBChannelBinding)
+	}
+}
+
+func TestLoadConfigRequiresNonBlankJWTSecret(t *testing.T) {
+	tests := []struct {
+		name    string
+		secret  string
+		wantErr bool
+	}{
+		{name: "missing secret", wantErr: true},
+		{name: "blank secret", secret: " \t ", wantErr: true},
+		{name: "valid secret", secret: "test-jwt-secret"},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			viper.Reset()
+			t.Chdir(t.TempDir())
+			t.Setenv("JWT_SECRET", test.secret)
+			t.Setenv("INTERNAL_SERVICE_CREDENTIAL", "test-internal-credential")
+
+			config, err := LoadConfig()
+			if test.wantErr {
+				if err == nil {
+					t.Fatal("expected JWT_SECRET configuration error")
+				}
+				return
+			}
+			if err != nil {
+				t.Fatal(err)
+			}
+			if config.JWTSecret != test.secret {
+				t.Fatalf("JWTSecret=%q, want %q", config.JWTSecret, test.secret)
+			}
+		})
 	}
 }

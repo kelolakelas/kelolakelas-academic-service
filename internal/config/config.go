@@ -89,8 +89,8 @@ func LoadConfig() (Config, error) {
 	if config.Port == "" {
 		config.Port = "8081"
 	}
-	if config.JWTSecret == "" {
-		config.JWTSecret = "supersecretjwtkey123!"
+	if strings.TrimSpace(config.JWTSecret) == "" {
+		return Config{}, fmt.Errorf("JWT_SECRET is required")
 	}
 	if config.BillingServiceURL == "" {
 		config.BillingServiceURL = "http://localhost:8082"
