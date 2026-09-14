@@ -151,21 +151,26 @@ func (h *EnrollmentHandler) CreateCatalogEnrollment(c *gin.Context) {
 	}
 	result, err := h.enrollmentUsecase.EnrollPublic(c.Request.Context(), parentID, classID, &req, key)
 	if err != nil {
-		status := http.StatusInternalServerError
-		switch {
-		case errors.Is(err, domain.ErrIdempotencyConflict):
-			status = http.StatusConflict
-		case errors.Is(err, domain.ErrStudentOwnership), errors.Is(err, domain.ErrClassNotEnrollable):
-			status = http.StatusUnprocessableEntity
-		case errors.Is(err, domain.ErrClassNotFound), errors.Is(err, domain.ErrStudentNotFound):
-			status = http.StatusNotFound
-		case errors.Is(err, domain.ErrParentRequired):
-			status = http.StatusUnauthorized
-		}
+		status := catalogEnrollmentErrorStatus(err)
 		c.JSON(status, gin.H{"status": "error", "message": err.Error(), "data": nil})
 		return
 	}
 	c.JSON(http.StatusCreated, gin.H{"status": "success", "message": "Enrollment created and invoice generated", "data": result})
+}
+
+func catalogEnrollmentErrorStatus(err error) int {
+	switch {
+	case errors.Is(err, domain.ErrIdempotencyConflict), errors.Is(err, domain.ErrScheduleFull):
+		return http.StatusConflict
+	case errors.Is(err, domain.ErrStudentOwnership), errors.Is(err, domain.ErrClassNotEnrollable), errors.Is(err, domain.ErrScheduleClassMismatch):
+		return http.StatusUnprocessableEntity
+	case errors.Is(err, domain.ErrClassNotFound), errors.Is(err, domain.ErrStudentNotFound):
+		return http.StatusNotFound
+	case errors.Is(err, domain.ErrParentRequired):
+		return http.StatusUnauthorized
+	default:
+		return http.StatusInternalServerError
+	}
 }
 
 func NewEnrollmentHandler(enrollmentUsecase usecase.EnrollmentUsecase) *EnrollmentHandler {
