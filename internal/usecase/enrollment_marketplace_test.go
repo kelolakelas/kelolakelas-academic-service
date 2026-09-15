@@ -169,6 +169,23 @@ func TestEnrollPublic(t *testing.T) {
 	}
 }
 
+func TestEnrollPublicRequiresScheduleForGroupClass(t *testing.T) {
+	parentID, studentID, classID := uuid.New(), uuid.New(), uuid.New()
+	class := &domain.Class{ID: classID, TenantID: uuid.New(), Type: "group", IsPublished: true, EnrollmentStatus: "open"}
+	uc := NewEnrollmentUsecase(
+		&marketplaceEnrollmentRepo{},
+		&marketplaceStudentRepo{student: &domain.Student{ID: studentID, ParentID: parentID}},
+		&marketplaceClassRepo{class: class},
+		&marketplaceBilling{},
+		marketplaceTx{},
+	)
+
+	_, err := uc.EnrollPublic(context.Background(), parentID, classID, &domain.PublicEnrollmentRequest{StudentID: studentID, BillingCycle: "monthly"}, uuid.NewString())
+	if !errors.Is(err, domain.ErrScheduleRequired) {
+		t.Fatalf("error = %v, want schedule required", err)
+	}
+}
+
 func TestEnrollPublicIdempotency(t *testing.T) {
 	parentID, studentID, classID := uuid.New(), uuid.New(), uuid.New()
 	transactionID := uuid.New()

@@ -108,6 +108,9 @@ func (u *enrollmentUsecase) EnrollPublic(ctx context.Context, parentID, classID 
 	if !class.IsPublished || class.EnrollmentStatus != "open" {
 		return nil, domain.ErrClassNotEnrollable
 	}
+	if class.Type == "group" && req.ScheduleID == nil {
+		return nil, domain.ErrScheduleRequired
+	}
 	key := idempotencyKey
 	enrollment := &domain.Enrollment{ID: uuid.New(), TenantID: class.TenantID, StudentID: student.ID, ClassID: class.ID, ScheduleID: req.ScheduleID, Status: "pending", BillingCycle: req.BillingCycle, IdempotencyKey: &key, PaymentStatus: "pending", GrossAmount: class.Price}
 	create := func(txCtx context.Context) error {

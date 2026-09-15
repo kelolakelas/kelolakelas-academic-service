@@ -42,7 +42,7 @@ func (r *enrollmentRepository) CreateIfCapacityAvailable(ctx context.Context, en
 	if !class.IsPublished || class.EnrollmentStatus != "open" {
 		return domain.ErrClassNotEnrollable
 	}
-	if class.Type == "group" && enrollment.ScheduleID != nil {
+	if enrollment.ScheduleID != nil {
 		var schedule domain.ClassSchedule
 		if err := db.Clauses(clause.Locking{Strength: "UPDATE"}).Where("id = ? AND class_id = ? AND deleted_at IS NULL", *enrollment.ScheduleID, enrollment.ClassID).First(&schedule).Error; err != nil {
 			if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -57,6 +57,8 @@ func (r *enrollmentRepository) CreateIfCapacityAvailable(ctx context.Context, en
 		if count >= int64(schedule.Capacity) {
 			return domain.ErrScheduleFull
 		}
+	} else if class.Type == "group" {
+		return domain.ErrScheduleRequired
 	}
 	return db.Create(enrollment).Error
 }

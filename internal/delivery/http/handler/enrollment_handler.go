@@ -162,7 +162,7 @@ func catalogEnrollmentErrorStatus(err error) int {
 	switch {
 	case errors.Is(err, domain.ErrIdempotencyConflict), errors.Is(err, domain.ErrScheduleFull):
 		return http.StatusConflict
-	case errors.Is(err, domain.ErrStudentOwnership), errors.Is(err, domain.ErrClassNotEnrollable), errors.Is(err, domain.ErrScheduleClassMismatch):
+	case errors.Is(err, domain.ErrStudentOwnership), errors.Is(err, domain.ErrClassNotEnrollable), errors.Is(err, domain.ErrScheduleClassMismatch), errors.Is(err, domain.ErrScheduleRequired):
 		return http.StatusUnprocessableEntity
 	case errors.Is(err, domain.ErrClassNotFound), errors.Is(err, domain.ErrStudentNotFound):
 		return http.StatusNotFound
