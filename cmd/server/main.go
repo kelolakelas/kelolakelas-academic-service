@@ -52,6 +52,12 @@ func main() {
 		os.Exit(1)
 	}
 	defer tenantClient.Close()
+	permissionClient, err := grpcclient.NewPermissionClient(cfg.IdentityGRPCHost)
+	if err != nil {
+		slog.Error("Failed to initialize identity permission client", "error", err)
+		os.Exit(1)
+	}
+	defer permissionClient.Close()
 
 	// Initialize Repositories
 	txManager := repository.NewTransactionManager(db)
@@ -101,13 +107,13 @@ func main() {
 	apiV1.Use(middleware.AuthMiddleware(cfg.JWTSecret))
 	{
 		apiV1.GET("/categories", listHandler.ListCategories)
-		apiV1.POST("/categories", categoryHandler.Create)
-		apiV1.DELETE("/categories/:id", categoryHandler.Delete)
+		apiV1.POST("/categories", middleware.RequirePermission(permissionClient, "category:create"), categoryHandler.Create)
+		apiV1.DELETE("/categories/:id", middleware.RequirePermission(permissionClient, "category:delete"), categoryHandler.Delete)
 		apiV1.GET("/classes", listHandler.ListClasses)
-		apiV1.POST("/classes", classHandler.Create)
-		apiV1.POST("/classes/with-category", classHandler.CreateWithCategory)
-		apiV1.DELETE("/classes/:id", classHandler.Delete)
-		apiV1.PATCH("/classes/:id/published", classHandler.UpdatePublication)
+		apiV1.POST("/classes", middleware.RequirePermission(permissionClient, "class:create"), classHandler.Create)
+		apiV1.POST("/classes/with-category", middleware.RequirePermission(permissionClient, "class:create"), classHandler.CreateWithCategory)
+		apiV1.DELETE("/classes/:id", middleware.RequirePermission(permissionClient, "class:delete"), classHandler.Delete)
+		apiV1.PATCH("/classes/:id/published", middleware.RequirePermission(permissionClient, "class:update"), classHandler.UpdatePublication)
 		apiV1.GET("/schedules", listHandler.ListSchedules)
 		apiV1.GET("/students", studentHandler.List)
 		apiV1.POST("/students", studentHandler.Create)
@@ -130,23 +136,23 @@ func main() {
 		apiV1.PATCH("/enrollments/:id/schedule", enrollmentHandler.AssignSchedule)
 
 		// Schedule Routes
-		apiV1.POST("/schedules", scheduleHandler.CreateInitialSchedules)
-		apiV1.DELETE("/schedules/:id", scheduleHandler.Delete)
-		apiV1.PUT("/schedules/permanent", scheduleHandler.ChangeSchedulePermanent)
-		apiV1.PUT("/schedules/:id/permanent", scheduleHandler.ChangeSchedulePermanent)
-		apiV1.PATCH("/schedules/tutor-permanent", scheduleHandler.ChangeTutorPermanent)
-		apiV1.PATCH("/schedules/:id/tutor-permanent", scheduleHandler.ChangeTutorPermanent)
-		apiV1.PUT("/schedules/tutor-permanent", scheduleHandler.ChangeTutorPermanent)
-		apiV1.PUT("/schedules/:id/tutor-permanent", scheduleHandler.ChangeTutorPermanent)
+		apiV1.POST("/schedules", middleware.RequirePermission(permissionClient, "schedule:create"), scheduleHandler.CreateInitialSchedules)
+		apiV1.DELETE("/schedules/:id", middleware.RequirePermission(permissionClient, "schedule:delete"), scheduleHandler.Delete)
+		apiV1.PUT("/schedules/permanent", middleware.RequirePermission(permissionClient, "schedule:update"), scheduleHandler.ChangeSchedulePermanent)
+		apiV1.PUT("/schedules/:id/permanent", middleware.RequirePermission(permissionClient, "schedule:update"), scheduleHandler.ChangeSchedulePermanent)
+		apiV1.PATCH("/schedules/tutor-permanent", middleware.RequirePermission(permissionClient, "schedule:update"), scheduleHandler.ChangeTutorPermanent)
+		apiV1.PATCH("/schedules/:id/tutor-permanent", middleware.RequirePermission(permissionClient, "schedule:update"), scheduleHandler.ChangeTutorPermanent)
+		apiV1.PUT("/schedules/tutor-permanent", middleware.RequirePermission(permissionClient, "schedule:update"), scheduleHandler.ChangeTutorPermanent)
+		apiV1.PUT("/schedules/:id/tutor-permanent", middleware.RequirePermission(permissionClient, "schedule:update"), scheduleHandler.ChangeTutorPermanent)
 
 		// Session Routes
 		apiV1.GET("/sessions", sessionHandler.ListSessions)
 		apiV1.GET("/sessions/:id", sessionHandler.GetSession)
-		apiV1.DELETE("/sessions/:id", sessionHandler.DeleteSession)
-		apiV1.POST("/sessions/reschedule", scheduleHandler.RescheduleSession)
-		apiV1.POST("/sessions/:id/reschedule", scheduleHandler.RescheduleSession)
-		apiV1.PATCH("/sessions/substitute-tutor", scheduleHandler.ChangeTutorTemporary)
-		apiV1.PATCH("/sessions/:id/substitute-tutor", scheduleHandler.ChangeTutorTemporary)
+		apiV1.DELETE("/sessions/:id", middleware.RequirePermission(permissionClient, "schedule:update"), sessionHandler.DeleteSession)
+		apiV1.POST("/sessions/reschedule", middleware.RequirePermission(permissionClient, "schedule:update"), scheduleHandler.RescheduleSession)
+		apiV1.POST("/sessions/:id/reschedule", middleware.RequirePermission(permissionClient, "schedule:update"), scheduleHandler.RescheduleSession)
+		apiV1.PATCH("/sessions/substitute-tutor", middleware.RequirePermission(permissionClient, "schedule:update"), scheduleHandler.ChangeTutorTemporary)
+		apiV1.PATCH("/sessions/:id/substitute-tutor", middleware.RequirePermission(permissionClient, "schedule:update"), scheduleHandler.ChangeTutorTemporary)
 		apiV1.GET("/sessions/:id/attendees", scheduleHandler.GetSessionAttendees)
 	}
 	internal := r.Group("/internal")
