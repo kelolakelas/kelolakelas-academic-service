@@ -30,7 +30,6 @@ func NewClassHandler(classUsecase usecase.ClassUsecase, creationUsecase usecase.
 // @Accept json
 // @Produce json
 // @Security BearerAuth
-// @Param X-Tenant-ID header string true "Tenant ID dalam format UUID"
 // @Param request body domain.CreateClassWithCategoryRequest true "Create class with existing category payload"
 // @Success 201 {object} domain.HTTPResponse{data=domain.CreateClassWithCategoryResponse}
 // @Failure 400 {object} domain.ErrorResponse
@@ -39,13 +38,9 @@ func NewClassHandler(classUsecase usecase.ClassUsecase, creationUsecase usecase.
 // @Failure 500 {object} domain.ErrorResponse
 // @Router /api/v1/classes/with-category [post]
 func (h *ClassHandler) CreateWithCategory(c *gin.Context) {
-	tenantIDStr := c.GetString("tenant_id")
-	if tenantIDStr == "" {
-		tenantIDStr = c.GetHeader("X-Tenant-ID")
-	}
-	tenantID, err := uuid.Parse(tenantIDStr)
+	tenantID, err := tenantIDFromContext(c)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"status": "error", "message": "Invalid Tenant ID format", "data": nil})
+		writeTenantError(c, err)
 		return
 	}
 	var req domain.CreateClassWithCategoryRequest
@@ -76,7 +71,6 @@ func (h *ClassHandler) CreateWithCategory(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Security BearerAuth
-// @Param X-Tenant-ID header string true "Tenant ID dalam format UUID"
 // @Param request body domain.CreateClassRequest true "Create class payload"
 // @Success 201 {object} domain.HTTPResponse{data=domain.ClassResponse}
 // @Failure 400 {object} domain.ErrorResponse
@@ -85,27 +79,9 @@ func (h *ClassHandler) CreateWithCategory(c *gin.Context) {
 // @Failure 500 {object} domain.ErrorResponse
 // @Router /api/v1/classes [post]
 func (h *ClassHandler) Create(c *gin.Context) {
-	tenantIDStr := c.GetString("tenant_id")
-	if tenantIDStr == "" {
-		tenantIDStr = c.GetHeader("X-Tenant-ID")
-	}
-
-	if tenantIDStr == "" {
-		c.JSON(http.StatusUnauthorized, gin.H{
-			"status":  "error",
-			"message": "Tenant ID is missing in context or header",
-			"data":    nil,
-		})
-		return
-	}
-
-	tenantID, err := uuid.Parse(tenantIDStr)
+	tenantID, err := tenantIDFromContext(c)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"status":  "error",
-			"message": "Invalid Tenant ID format",
-			"data":    nil,
-		})
+		writeTenantError(c, err)
 		return
 	}
 
@@ -151,7 +127,6 @@ func (h *ClassHandler) Create(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Security BearerAuth
-// @Param X-Tenant-ID header string true "Tenant ID dalam format UUID"
 // @Param id path string true "Class ID (UUID)"
 // @Success 200 {object} domain.HTTPResponse
 // @Failure 400 {object} domain.ErrorResponse
@@ -195,7 +170,6 @@ func (h *ClassHandler) Delete(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Security BearerAuth
-// @Param X-Tenant-ID header string true "Tenant ID dalam format UUID"
 // @Param id path string true "Class ID (UUID)"
 // @Param request body domain.UpdateClassPublicationRequest true "Class publication status payload"
 // @Success 200 {object} domain.HTTPResponse{data=domain.ClassResponse}

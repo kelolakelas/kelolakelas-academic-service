@@ -574,13 +574,6 @@
                 "summary": "Create academic category",
                 "parameters": [
                     {
-                        "type": "string",
-                        "description": "Tenant ID dalam format UUID",
-                        "name": "X-Tenant-ID",
-                        "in": "header",
-                        "required": true
-                    },
-                    {
                         "description": "Create category payload",
                         "name": "request",
                         "in": "body",
@@ -655,13 +648,6 @@
                 ],
                 "summary": "Delete academic category",
                 "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Tenant ID dalam format UUID",
-                        "name": "X-Tenant-ID",
-                        "in": "header",
-                        "required": true
-                    },
                     {
                         "type": "string",
                         "description": "Category ID (UUID)",
@@ -810,13 +796,6 @@
                 "summary": "Create academic class",
                 "parameters": [
                     {
-                        "type": "string",
-                        "description": "Tenant ID dalam format UUID",
-                        "name": "X-Tenant-ID",
-                        "in": "header",
-                        "required": true
-                    },
-                    {
                         "description": "Create class payload",
                         "name": "request",
                         "in": "body",
@@ -891,13 +870,6 @@
                 ],
                 "summary": "Create class using an existing category",
                 "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Tenant ID dalam format UUID",
-                        "name": "X-Tenant-ID",
-                        "in": "header",
-                        "required": true
-                    },
                     {
                         "description": "Create class with existing category payload",
                         "name": "request",
@@ -975,13 +947,6 @@
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "Tenant ID dalam format UUID",
-                        "name": "X-Tenant-ID",
-                        "in": "header",
-                        "required": true
-                    },
-                    {
-                        "type": "string",
                         "description": "Class ID (UUID)",
                         "name": "id",
                         "in": "path",
@@ -1053,13 +1018,6 @@
                 ],
                 "summary": "Publish or unpublish an academic class",
                 "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Tenant ID dalam format UUID",
-                        "name": "X-Tenant-ID",
-                        "in": "header",
-                        "required": true
-                    },
                     {
                         "type": "string",
                         "description": "Class ID (UUID)",
@@ -1589,13 +1547,6 @@
                 "summary": "Create initial schedules for a class",
                 "parameters": [
                     {
-                        "type": "string",
-                        "description": "Tenant ID dalam format UUID",
-                        "name": "X-Tenant-ID",
-                        "in": "header",
-                        "required": true
-                    },
-                    {
                         "description": "Create initial schedules request",
                         "name": "request",
                         "in": "body",
@@ -1672,13 +1623,6 @@
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "Tenant ID dalam format UUID",
-                        "name": "X-Tenant-ID",
-                        "in": "header",
-                        "required": true
-                    },
-                    {
-                        "type": "string",
                         "description": "Schedule ID (UUID)",
                         "name": "id",
                         "in": "path",
@@ -1744,13 +1688,6 @@
                 ],
                 "summary": "Permanently change schedule",
                 "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Tenant ID dalam format UUID",
-                        "name": "X-Tenant-ID",
-                        "in": "header",
-                        "required": true
-                    },
                     {
                         "type": "string",
                         "description": "Schedule ID (UUID)",
@@ -1833,13 +1770,6 @@
                 ],
                 "summary": "Permanently change tutor",
                 "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Tenant ID dalam format UUID",
-                        "name": "X-Tenant-ID",
-                        "in": "header",
-                        "required": true
-                    },
                     {
                         "type": "string",
                         "description": "Schedule ID (UUID)",
@@ -2047,13 +1977,6 @@
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "Tenant ID dalam format UUID",
-                        "name": "X-Tenant-ID",
-                        "in": "header",
-                        "required": true
-                    },
-                    {
-                        "type": "string",
                         "description": "Session ID (UUID)",
                         "name": "id",
                         "in": "path",
@@ -2119,13 +2042,6 @@
                 ],
                 "summary": "Get session attendees",
                 "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Tenant ID dalam format UUID",
-                        "name": "X-Tenant-ID",
-                        "in": "header",
-                        "required": true
-                    },
                     {
                         "type": "string",
                         "description": "Session ID (UUID)",
@@ -2199,13 +2115,6 @@
                 ],
                 "summary": "Reschedule a specific session",
                 "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Tenant ID dalam format UUID",
-                        "name": "X-Tenant-ID",
-                        "in": "header",
-                        "required": true
-                    },
                     {
                         "type": "string",
                         "description": "Session ID (UUID)",
@@ -2288,13 +2197,6 @@
                 ],
                 "summary": "Assign substitute tutor",
                 "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Tenant ID dalam format UUID",
-                        "name": "X-Tenant-ID",
-                        "in": "header",
-                        "required": true
-                    },
                     {
                         "type": "string",
                         "description": "Session ID (UUID)",

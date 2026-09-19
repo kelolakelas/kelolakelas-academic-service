@@ -71,7 +71,7 @@ func (h *EnrollmentHandler) AssignSchedule(c *gin.Context) {
 // @Success 201 {object} domain.HTTPResponse{data=domain.EnrollmentResponse}
 // @Router /api/v1/tenants/{tenant_id}/enrollments [post]
 func (h *EnrollmentHandler) Create(c *gin.Context) {
-	tenantID, err := uuid.Parse(c.Param("tenant_id"))
+	pathTenantID, err := uuid.Parse(c.Param("tenant_id"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"status": "error", "message": "Invalid tenant ID format"})
 		return
@@ -97,7 +97,18 @@ func (h *EnrollmentHandler) Create(c *gin.Context) {
 		c.JSON(http.StatusCreated, gin.H{"status": "success", "message": "Enrollment created and invoice generated", "data": result})
 		return
 	}
-	res, err := h.enrollmentUsecase.EnrollStudent(c.Request.Context(), tenantID, &req)
+	// Tenant-scoped callers may only enroll inside their own tenant, so the path
+	// segment has to match the verified JWT claim before any use case runs.
+	claimTenantID, err := tenantIDFromContext(c)
+	if err != nil {
+		writeTenantError(c, err)
+		return
+	}
+	if claimTenantID != pathTenantID {
+		c.JSON(http.StatusForbidden, gin.H{"status": "error", "message": "Tenant mismatch: enrollment is not allowed for another tenant", "data": nil})
+		return
+	}
+	res, err := h.enrollmentUsecase.EnrollStudent(c.Request.Context(), pathTenantID, &req)
 	if err != nil {
 		status := http.StatusInternalServerError
 		if errors.Is(err, domain.ErrIdempotencyConflict) {

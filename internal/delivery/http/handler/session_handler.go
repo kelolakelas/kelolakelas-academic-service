@@ -141,7 +141,6 @@ func (h *SessionHandler) GetSession(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Security BearerAuth
-// @Param X-Tenant-ID header string true "Tenant ID dalam format UUID"
 // @Param id path string true "Session ID (UUID)"
 // @Success 200 {object} domain.HTTPResponse
 // @Failure 400 {object} domain.ErrorResponse

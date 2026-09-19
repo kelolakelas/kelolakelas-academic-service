@@ -581,13 +581,6 @@ const docTemplate = `{
                 "summary": "Create academic category",
                 "parameters": [
                     {
-                        "type": "string",
-                        "description": "Tenant ID dalam format UUID",
-                        "name": "X-Tenant-ID",
-                        "in": "header",
-                        "required": true
-                    },
-                    {
                         "description": "Create category payload",
                         "name": "request",
                         "in": "body",
@@ -662,13 +655,6 @@ const docTemplate = `{
                 ],
                 "summary": "Delete academic category",
                 "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Tenant ID dalam format UUID",
-                        "name": "X-Tenant-ID",
-                        "in": "header",
-                        "required": true
-                    },
                     {
                         "type": "string",
                         "description": "Category ID (UUID)",
@@ -817,13 +803,6 @@ const docTemplate = `{
                 "summary": "Create academic class",
                 "parameters": [
                     {
-                        "type": "string",
-                        "description": "Tenant ID dalam format UUID",
-                        "name": "X-Tenant-ID",
-                        "in": "header",
-                        "required": true
-                    },
-                    {
                         "description": "Create class payload",
                         "name": "request",
                         "in": "body",
@@ -898,13 +877,6 @@ const docTemplate = `{
                 ],
                 "summary": "Create class using an existing category",
                 "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Tenant ID dalam format UUID",
-                        "name": "X-Tenant-ID",
-                        "in": "header",
-                        "required": true
-                    },
                     {
                         "description": "Create class with existing category payload",
                         "name": "request",
@@ -982,13 +954,6 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "Tenant ID dalam format UUID",
-                        "name": "X-Tenant-ID",
-                        "in": "header",
-                        "required": true
-                    },
-                    {
-                        "type": "string",
                         "description": "Class ID (UUID)",
                         "name": "id",
                         "in": "path",
@@ -1060,13 +1025,6 @@ const docTemplate = `{
                 ],
                 "summary": "Publish or unpublish an academic class",
                 "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Tenant ID dalam format UUID",
-                        "name": "X-Tenant-ID",
-                        "in": "header",
-                        "required": true
-                    },
                     {
                         "type": "string",
                         "description": "Class ID (UUID)",
@@ -1596,13 +1554,6 @@ const docTemplate = `{
                 "summary": "Create initial schedules for a class",
                 "parameters": [
                     {
-                        "type": "string",
-                        "description": "Tenant ID dalam format UUID",
-                        "name": "X-Tenant-ID",
-                        "in": "header",
-                        "required": true
-                    },
-                    {
                         "description": "Create initial schedules request",
                         "name": "request",
                         "in": "body",
@@ -1679,13 +1630,6 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "Tenant ID dalam format UUID",
-                        "name": "X-Tenant-ID",
-                        "in": "header",
-                        "required": true
-                    },
-                    {
-                        "type": "string",
                         "description": "Schedule ID (UUID)",
                         "name": "id",
                         "in": "path",
@@ -1751,13 +1695,6 @@ const docTemplate = `{
                 ],
                 "summary": "Permanently change schedule",
                 "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Tenant ID dalam format UUID",
-                        "name": "X-Tenant-ID",
-                        "in": "header",
-                        "required": true
-                    },
                     {
                         "type": "string",
                         "description": "Schedule ID (UUID)",
@@ -1840,13 +1777,6 @@ const docTemplate = `{
                 ],
                 "summary": "Permanently change tutor",
                 "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Tenant ID dalam format UUID",
-                        "name": "X-Tenant-ID",
-                        "in": "header",
-                        "required": true
-                    },
                     {
                         "type": "string",
                         "description": "Schedule ID (UUID)",
@@ -2054,13 +1984,6 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "Tenant ID dalam format UUID",
-                        "name": "X-Tenant-ID",
-                        "in": "header",
-                        "required": true
-                    },
-                    {
-                        "type": "string",
                         "description": "Session ID (UUID)",
                         "name": "id",
                         "in": "path",
@@ -2126,13 +2049,6 @@ const docTemplate = `{
                 ],
                 "summary": "Get session attendees",
                 "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Tenant ID dalam format UUID",
-                        "name": "X-Tenant-ID",
-                        "in": "header",
-                        "required": true
-                    },
                     {
                         "type": "string",
                         "description": "Session ID (UUID)",
@@ -2206,13 +2122,6 @@ const docTemplate = `{
                 ],
                 "summary": "Reschedule a specific session",
                 "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Tenant ID dalam format UUID",
-                        "name": "X-Tenant-ID",
-                        "in": "header",
-                        "required": true
-                    },
                     {
                         "type": "string",
                         "description": "Session ID (UUID)",
@@ -2295,13 +2204,6 @@ const docTemplate = `{
                 ],
                 "summary": "Assign substitute tutor",
                 "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Tenant ID dalam format UUID",
-                        "name": "X-Tenant-ID",
-                        "in": "header",
-                        "required": true
-                    },
                     {
                         "type": "string",
                         "description": "Session ID (UUID)",

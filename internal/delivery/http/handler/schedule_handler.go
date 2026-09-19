@@ -28,7 +28,6 @@ func NewScheduleHandler(scheduleUsecase usecase.ScheduleUsecase) *ScheduleHandle
 // @Accept json
 // @Produce json
 // @Security BearerAuth
-// @Param X-Tenant-ID header string true "Tenant ID dalam format UUID"
 // @Param id path string true "Schedule ID (UUID)"
 // @Success 200 {object} domain.HTTPResponse
 // @Failure 400 {object} domain.ErrorResponse
@@ -70,7 +69,6 @@ func (h *ScheduleHandler) Delete(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Security BearerAuth
-// @Param X-Tenant-ID header string true "Tenant ID dalam format UUID"
 // @Param request body domain.CreateInitialSchedulesRequest true "Create initial schedules request"
 // @Success 201 {object} domain.HTTPResponse{data=domain.CreateInitialSchedulesResponse}
 // @Failure 400 {object} domain.ErrorResponse
@@ -139,7 +137,6 @@ func (h *ScheduleHandler) CreateInitialSchedules(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Security BearerAuth
-// @Param X-Tenant-ID header string true "Tenant ID dalam format UUID"
 // @Param id path string true "Session ID (UUID)"
 // @Param request body domain.RescheduleSessionRequest true "Reschedule session payload"
 // @Success 200 {object} domain.HTTPResponse{data=domain.RescheduleSessionResponse}
@@ -198,7 +195,6 @@ func (h *ScheduleHandler) RescheduleSession(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Security BearerAuth
-// @Param X-Tenant-ID header string true "Tenant ID dalam format UUID"
 // @Param id path string true "Schedule ID (UUID)"
 // @Param request body domain.PermanentScheduleChangeRequest true "Permanent schedule change payload"
 // @Success 200 {object} domain.HTTPResponse{data=domain.PermanentScheduleChangeResponse}
@@ -257,7 +253,6 @@ func (h *ScheduleHandler) ChangeSchedulePermanent(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Security BearerAuth
-// @Param X-Tenant-ID header string true "Tenant ID dalam format UUID"
 // @Param id path string true "Session ID (UUID)"
 // @Param request body domain.SubstituteTutorRequest true "Substitute tutor payload"
 // @Success 200 {object} domain.HTTPResponse{data=domain.SubstituteTutorResponse}
@@ -316,7 +311,6 @@ func (h *ScheduleHandler) ChangeTutorTemporary(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Security BearerAuth
-// @Param X-Tenant-ID header string true "Tenant ID dalam format UUID"
 // @Param id path string true "Schedule ID (UUID)"
 // @Param request body domain.PermanentTutorChangeRequest true "Permanent tutor change payload"
 // @Success 200 {object} domain.HTTPResponse{data=domain.PermanentTutorChangeResponse}
@@ -375,7 +369,6 @@ func (h *ScheduleHandler) ChangeTutorPermanent(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Security BearerAuth
-// @Param X-Tenant-ID header string true "Tenant ID dalam format UUID"
 // @Param id path string true "Session ID (UUID)"
 // @Success 200 {object} domain.HTTPResponse{data=domain.SessionAttendeesResponse}
 // @Failure 400 {object} domain.ErrorResponse
