@@ -49,7 +49,7 @@ func TestUpdatePublicationHandler(t *testing.T) {
 	}{
 		{name: "publish", pathID: classID.String(), tenant: tenantID.String(), body: `{"is_published":true}`, wantStatus: http.StatusOK},
 		{name: "unpublish", pathID: classID.String(), tenant: tenantID.String(), body: `{"is_published":false}`, wantStatus: http.StatusOK},
-		{name: "missing tenant", pathID: classID.String(), body: `{"is_published":true}`, wantStatus: http.StatusUnauthorized},
+		{name: "missing tenant", pathID: classID.String(), body: `{"is_published":true}`, wantStatus: http.StatusForbidden},
 		{name: "invalid UUID", pathID: "not-a-uuid", tenant: tenantID.String(), body: `{"is_published":true}`, wantStatus: http.StatusBadRequest},
 		{name: "malformed request body", pathID: classID.String(), tenant: tenantID.String(), body: `{"is_published":`, wantStatus: http.StatusBadRequest},
 		{name: "class not found", pathID: classID.String(), tenant: tenantID.String(), body: `{"is_published":true}`, usecaseErr: domain.ErrClassNotFound, wantStatus: http.StatusNotFound},
@@ -64,12 +64,18 @@ func TestUpdatePublicationHandler(t *testing.T) {
 			}
 			router := gin.New()
 			handler := NewClassHandler(usecase, publicationCreationUsecaseMock{})
-			router.PATCH("/classes/:id/published", handler.UpdatePublication)
+			router.PATCH("/classes/:id/published", func(c *gin.Context) {
+				// Mirrors the verified JWT claim set that AuthMiddleware installs.
+				// The header is intentionally ignored: tenant context must never
+				// come from a client-controlled value.
+				if tc.tenant != "" {
+					c.Set("tenant_id", tc.tenant)
+				}
+				handler.UpdatePublication(c)
+			})
 			req := httptest.NewRequest(http.MethodPatch, "/classes/"+tc.pathID+"/published", strings.NewReader(tc.body))
 			req.Header.Set("Content-Type", "application/json")
-			if tc.tenant != "" {
-				req.Header.Set("X-Tenant-ID", tc.tenant)
-			}
+			req.Header.Set("X-Tenant-ID", "11111111-1111-1111-1111-111111111111")
 			res := httptest.NewRecorder()
 			router.ServeHTTP(res, req)
 			if res.Code != tc.wantStatus {

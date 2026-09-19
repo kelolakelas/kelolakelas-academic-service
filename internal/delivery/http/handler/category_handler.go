@@ -28,7 +28,6 @@ func NewCategoryHandler(categoryUsecase usecase.CategoryUsecase) *CategoryHandle
 // @Accept json
 // @Produce json
 // @Security BearerAuth
-// @Param X-Tenant-ID header string true "Tenant ID dalam format UUID"
 // @Param request body domain.CreateCategoryRequest true "Create category payload"
 // @Success 201 {object} domain.HTTPResponse{data=domain.CategoryResponse}
 // @Failure 400 {object} domain.ErrorResponse
@@ -37,27 +36,9 @@ func NewCategoryHandler(categoryUsecase usecase.CategoryUsecase) *CategoryHandle
 // @Failure 500 {object} domain.ErrorResponse
 // @Router /api/v1/categories [post]
 func (h *CategoryHandler) Create(c *gin.Context) {
-	tenantIDStr := c.GetString("tenant_id")
-	if tenantIDStr == "" {
-		tenantIDStr = c.GetHeader("X-Tenant-ID")
-	}
-
-	if tenantIDStr == "" {
-		c.JSON(http.StatusUnauthorized, gin.H{
-			"status":  "error",
-			"message": "Tenant ID is missing in context or header",
-			"data":    nil,
-		})
-		return
-	}
-
-	tenantID, err := uuid.Parse(tenantIDStr)
+	tenantID, err := tenantIDFromContext(c)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"status":  "error",
-			"message": "Invalid Tenant ID format",
-			"data":    nil,
-		})
+		writeTenantError(c, err)
 		return
 	}
 
@@ -103,7 +84,6 @@ func (h *CategoryHandler) Create(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Security BearerAuth
-// @Param X-Tenant-ID header string true "Tenant ID dalam format UUID"
 // @Param id path string true "Category ID (UUID)"
 // @Success 200 {object} domain.HTTPResponse
 // @Failure 400 {object} domain.ErrorResponse
@@ -138,23 +118,4 @@ func (h *CategoryHandler) Delete(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"status": "success", "message": "Category deleted successfully", "data": nil})
-}
-
-func tenantIDFromContext(c *gin.Context) (uuid.UUID, error) {
-	tenantIDStr := c.GetString("tenant_id")
-	if tenantIDStr == "" {
-		tenantIDStr = c.GetHeader("X-Tenant-ID")
-	}
-	if tenantIDStr == "" {
-		return uuid.Nil, errors.New("tenant ID is missing")
-	}
-	return uuid.Parse(tenantIDStr)
-}
-
-func writeTenantError(c *gin.Context, err error) {
-	if err.Error() == "tenant ID is missing" {
-		c.JSON(http.StatusUnauthorized, gin.H{"status": "error", "message": err.Error(), "data": nil})
-		return
-	}
-	c.JSON(http.StatusBadRequest, gin.H{"status": "error", "message": "Invalid Tenant ID format", "data": nil})
 }

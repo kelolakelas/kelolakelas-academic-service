@@ -26,11 +26,7 @@ func listQuery(c *gin.Context) (domain.ListQuery, error) {
 }
 
 func tenantID(c *gin.Context) (uuid.UUID, error) {
-	value := c.GetString("tenant_id")
-	if value == "" {
-		value = c.GetHeader("X-Tenant-ID")
-	}
-	return uuid.Parse(value)
+	return tenantIDFromContext(c)
 }
 
 type ListHandler struct {
@@ -64,7 +60,7 @@ func (h *ListHandler) ListCategories(c *gin.Context) {
 	}
 	tenant, err := tenantID(c)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"status": "error", "message": "Invalid tenant ID", "data": nil})
+		writeTenantError(c, err)
 		return
 	}
 	result, err := h.category.ListCategories(c.Request.Context(), tenant, query)
@@ -96,7 +92,7 @@ func (h *ListHandler) ListClasses(c *gin.Context) {
 	}
 	tenant, err := tenantID(c)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"status": "error", "message": "Invalid tenant ID", "data": nil})
+		writeTenantError(c, err)
 		return
 	}
 	result, err := h.class.ListClasses(c.Request.Context(), tenant, query)
@@ -127,7 +123,7 @@ func (h *ListHandler) ListSchedules(c *gin.Context) {
 	}
 	tenant, err := tenantID(c)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"status": "error", "message": "Invalid tenant ID", "data": nil})
+		writeTenantError(c, err)
 		return
 	}
 	result, err := h.schedule.ListSchedules(c.Request.Context(), tenant, query)
