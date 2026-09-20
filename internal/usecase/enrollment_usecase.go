@@ -19,6 +19,7 @@ type EnrollmentUsecase interface {
 	EnrollStudent(ctx context.Context, tenantID uuid.UUID, req *domain.EnrollStudentRequest) (*domain.EnrollmentResponse, error)
 	EnrollPublic(ctx context.Context, parentID, classID uuid.UUID, req *domain.PublicEnrollmentRequest, idempotencyKey string) (*domain.PublicEnrollmentResponse, error)
 	ActivateEnrollment(ctx context.Context, enrollmentID uuid.UUID) (*domain.EnrollmentResponse, error)
+	ReleaseEnrollment(ctx context.Context, enrollmentID uuid.UUID) (*domain.EnrollmentResponse, error)
 	List(ctx context.Context, tenantID, parentID *uuid.UUID, query domain.EnrollmentQuery) (*domain.EnrollmentListResponse, error)
 	GetByID(ctx context.Context, tenantID, parentID *uuid.UUID, id uuid.UUID) (*domain.EnrollmentResponse, error)
 	AssignSchedule(ctx context.Context, parentID, enrollmentID, scheduleID uuid.UUID) (*domain.EnrollmentResponse, error)
@@ -251,6 +252,58 @@ func (u *enrollmentUsecase) ActivateEnrollment(ctx context.Context, enrollmentID
 
 	if u.txManager == nil {
 		enrollment.Status = "active"
+		enrollment.UpdatedAt = time.Now()
+		if err := u.enrollmentRepo.Update(ctx, enrollment); err != nil {
+			return nil, fmt.Errorf("failed to update enrollment status: %w", err)
+		}
+	}
+
+	return enrollmentResponse(enrollment), nil
+}
+
+// ReleaseEnrollment frees the seat held by an enrollment whose payment failed or
+// expired. Only a `pending` enrollment is moved to `dropped`, so the seat that the
+// capacity check counts is returned to the catalog while an already active
+// enrollment is never revoked by a late failure notification.
+func (u *enrollmentUsecase) ReleaseEnrollment(ctx context.Context, enrollmentID uuid.UUID) (*domain.EnrollmentResponse, error) {
+	load := u.enrollmentRepo.GetByID
+	if lockingRepo, ok := u.enrollmentRepo.(repository.EnrollmentLockingRepository); ok {
+		load = lockingRepo.GetByIDForUpdate
+	}
+
+	var enrollment *domain.Enrollment
+	var err error
+	if u.txManager != nil {
+		err = u.txManager.WithTransaction(ctx, func(txCtx context.Context) error {
+			enrollment, err = load(txCtx, enrollmentID)
+			if err != nil || enrollment.Status != "pending" {
+				return err
+			}
+			enrollment.Status = "dropped"
+			enrollment.UpdatedAt = time.Now()
+			return u.enrollmentRepo.Update(txCtx, enrollment)
+		})
+	} else {
+		enrollment, err = load(ctx, enrollmentID)
+	}
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, ErrEnrollmentNotFound
+		}
+		return nil, fmt.Errorf("failed to fetch enrollment: %w", err)
+	}
+
+	// Releasing a seat is terminal but idempotent: repeating the notification is a
+	// no-op, and a late failure never revokes an enrollment that is already active.
+	if enrollment.Status == "dropped" || enrollment.Status == "active" {
+		return enrollmentResponse(enrollment), nil
+	}
+	if enrollment.Status != "pending" {
+		return nil, domain.ErrInvalidEnrollmentTransition
+	}
+
+	if u.txManager == nil {
+		enrollment.Status = "dropped"
 		enrollment.UpdatedAt = time.Now()
 		if err := u.enrollmentRepo.Update(ctx, enrollment); err != nil {
 			return nil, fmt.Errorf("failed to update enrollment status: %w", err)

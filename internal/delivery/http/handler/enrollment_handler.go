@@ -190,6 +190,60 @@ func NewEnrollmentHandler(enrollmentUsecase usecase.EnrollmentUsecase) *Enrollme
 	}
 }
 
+// ReleaseInternal godoc
+// @Summary Release the seat of an enrollment whose payment failed or expired
+// @Description Internal service-to-service endpoint that transitions a pending enrollment to `dropped` so its schedule seat becomes available again. The transition is idempotent and never revokes an active enrollment.
+// @Tags Enrollments
+// @Accept json
+// @Produce json
+// @Param id path string true "Enrollment ID (UUID)"
+// @Success 200 {object} domain.HTTPResponse{data=domain.EnrollmentResponse}
+// @Failure 400 {object} domain.ErrorResponse
+// @Failure 404 {object} domain.ErrorResponse
+// @Failure 409 {object} domain.ErrorResponse
+// @Failure 500 {object} domain.ErrorResponse
+// @Router /internal/enrollments/{id}/release [put]
+func (h *EnrollmentHandler) ReleaseInternal(c *gin.Context) {
+	idParam := c.Param("id")
+	enrollmentID, err := uuid.Parse(idParam)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"status":  "error",
+			"message": "Invalid enrollment ID format",
+			"data":    nil,
+		})
+		return
+	}
+
+	res, err := h.enrollmentUsecase.ReleaseEnrollment(c.Request.Context(), enrollmentID)
+	if err != nil {
+		if errors.Is(err, usecase.ErrEnrollmentNotFound) {
+			c.JSON(http.StatusNotFound, gin.H{
+				"status":  "error",
+				"message": err.Error(),
+				"data":    nil,
+			})
+			return
+		}
+		status := http.StatusInternalServerError
+		if errors.Is(err, domain.ErrInvalidEnrollmentTransition) {
+			status = http.StatusConflict
+		}
+		c.JSON(status, gin.H{
+			"status":  "error",
+			"message": "Failed to release enrollment: " + err.Error(),
+			"data":    nil,
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"status":  "success",
+		"message": "Enrollment released successfully",
+		"data":    res,
+	})
+}
+
 // ActivateInternal godoc
 // @Summary Activate enrollment after confirmed payment
 // @Description Internal service-to-service endpoint for payment-confirmed enrollment activation.

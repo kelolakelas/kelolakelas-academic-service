@@ -158,6 +158,7 @@ func main() {
 	internal := r.Group("/internal")
 	internal.Use(middleware.InternalServiceAuth(cfg.InternalServiceCredential))
 	internal.PUT("/enrollments/:id/activate", enrollmentHandler.ActivateInternal)
+	internal.PUT("/enrollments/:id/release", enrollmentHandler.ReleaseInternal)
 
 	slog.Info("Starting academic service", "port", cfg.Port)
 	if err := r.Run("0.0.0.0:" + cfg.Port); err != nil {
