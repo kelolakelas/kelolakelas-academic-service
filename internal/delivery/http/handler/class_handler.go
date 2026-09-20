@@ -163,6 +163,60 @@ func (h *ClassHandler) Delete(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"status": "success", "message": "Class deleted successfully", "data": nil})
 }
 
+// Update godoc
+// @Summary Update an academic class
+// @Description Updates the sellable attributes (name, description, price, category) of a tenant-owned class. Existing enrollments keep their stored gross_amount.
+// @Tags Classes
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param id path string true "Class ID (UUID)"
+// @Param request body domain.UpdateClassRequest true "Class update payload"
+// @Success 200 {object} domain.HTTPResponse{data=domain.ClassResponse}
+// @Failure 400 {object} domain.ErrorResponse
+// @Failure 401 {object} domain.ErrorResponse
+// @Failure 403 {object} domain.ErrorResponse
+// @Failure 404 {object} domain.ErrorResponse
+// @Failure 422 {object} domain.ErrorResponse
+// @Failure 500 {object} domain.ErrorResponse
+// @Router /api/v1/classes/{id} [patch]
+func (h *ClassHandler) Update(c *gin.Context) {
+	tenantID, err := tenantIDFromContext(c)
+	if err != nil {
+		writeTenantError(c, err)
+		return
+	}
+	id, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"status": "error", "message": "Invalid class ID format", "data": nil})
+		return
+	}
+	var req domain.UpdateClassRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"status": "error", "message": err.Error(), "data": nil})
+		return
+	}
+	res, err := h.classUsecase.UpdateClass(c.Request.Context(), tenantID, id, &req)
+	if err != nil {
+		switch {
+		case errors.Is(err, domain.ErrClassNotFound):
+			c.JSON(http.StatusNotFound, gin.H{"status": "error", "message": err.Error(), "data": nil})
+		case errors.Is(err, domain.ErrClassForbidden):
+			c.JSON(http.StatusForbidden, gin.H{"status": "error", "message": err.Error(), "data": nil})
+		case errors.Is(err, domain.ErrCategoryNotFound),
+			errors.Is(err, domain.ErrCategoryForbidden),
+			errors.Is(err, domain.ErrClassTypeImmutable),
+			errors.Is(err, domain.ErrClassNameRequired),
+			errors.Is(err, domain.ErrInvalidClassPrice):
+			c.JSON(http.StatusUnprocessableEntity, gin.H{"status": "error", "message": err.Error(), "data": nil})
+		default:
+			c.JSON(http.StatusInternalServerError, gin.H{"status": "error", "message": "Failed to update class", "data": nil})
+		}
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"status": "success", "message": "Class updated successfully", "data": res})
+}
+
 // UpdatePublication godoc
 // @Summary Publish or unpublish an academic class
 // @Description Updates only the publication status of a tenant-owned class.

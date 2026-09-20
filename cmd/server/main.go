@@ -113,6 +113,7 @@ func main() {
 		apiV1.POST("/classes", middleware.RequirePermission(permissionClient, "class:create"), classHandler.Create)
 		apiV1.POST("/classes/with-category", middleware.RequirePermission(permissionClient, "class:create"), classHandler.CreateWithCategory)
 		apiV1.DELETE("/classes/:id", middleware.RequirePermission(permissionClient, "class:delete"), classHandler.Delete)
+		apiV1.PATCH("/classes/:id", middleware.RequirePermission(permissionClient, "class:update"), classHandler.Update)
 		apiV1.PATCH("/classes/:id/published", middleware.RequirePermission(permissionClient, "class:update"), classHandler.UpdatePublication)
 		apiV1.GET("/schedules", listHandler.ListSchedules)
 		apiV1.GET("/students", studentHandler.List)

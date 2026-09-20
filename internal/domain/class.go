@@ -14,6 +14,16 @@ var (
 	ErrClassForbidden         = errors.New("class access forbidden")
 	ErrClassActiveEnrollments = errors.New("class has active enrollments")
 	ErrClassNotEnrollable     = errors.New("class is not enrollable")
+	// ErrClassTypeImmutable rejects turning a private class into a group class or
+	// the other way around. The two types carry different schedule and capacity
+	// obligations, so the switch would silently invalidate schedules and
+	// enrollments that already exist.
+	ErrClassTypeImmutable = errors.New("class type cannot be changed")
+	// ErrClassNameRequired rejects a blank class name on update. The create path
+	// relies on binding:"required"; a pointer field needs an explicit check.
+	ErrClassNameRequired = errors.New("class name is required")
+	// ErrInvalidClassPrice rejects a negative price on update.
+	ErrInvalidClassPrice = errors.New("class price must not be negative")
 )
 
 type Class struct {
@@ -46,6 +56,24 @@ type CreateClassRequest struct {
 
 type UpdateClassPublicationRequest struct {
 	IsPublished *bool `json:"is_published" binding:"required"`
+}
+
+// UpdateClassRequest patches the sellable attributes of an existing class.
+//
+// Every field is a pointer so an omitted key means "leave unchanged": the
+// handler must never treat an absent field as a request to blank the column.
+// The validation rules mirror CreateClassRequest, except that `type` only
+// accepts a repeat of the current type (see ErrClassTypeImmutable).
+//
+// Note that encoding/json cannot distinguish an omitted `description` from an
+// explicit `null`, so this DTO cannot clear a description. Clearing is out of
+// scope for the class update endpoint.
+type UpdateClassRequest struct {
+	CategoryID  *uuid.UUID       `json:"category_id,omitempty"`
+	Name        *string          `json:"name,omitempty" binding:"omitempty,min=1,max=255"`
+	Description *json.RawMessage `json:"description,omitempty"`
+	Type        *string          `json:"type,omitempty" binding:"omitempty,oneof=private group"`
+	Price       *int64           `json:"price,omitempty" binding:"omitempty,min=0"`
 }
 
 type CreateClassWithCategoryRequest struct {

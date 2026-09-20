@@ -104,7 +104,8 @@ func (m *marketplaceClassRepo) GetByID(context.Context, uuid.UUID) (*domain.Clas
 func (m *marketplaceClassRepo) UpdatePublicationStatus(context.Context, uuid.UUID, uuid.UUID, bool) (*domain.Class, error) {
 	return m.class, nil
 }
-func (m *marketplaceClassRepo) Update(context.Context, *domain.Class) error { return nil }
+func (m *marketplaceClassRepo) Update(context.Context, *domain.Class) error         { return nil }
+func (m *marketplaceClassRepo) UpdateByTenant(context.Context, *domain.Class) error { return nil }
 func (m *marketplaceClassRepo) DeleteByTenant(context.Context, uuid.UUID, uuid.UUID) error {
 	return nil
 }

@@ -66,7 +66,8 @@ func (m *deleteClassRepoMock) GetByID(context.Context, uuid.UUID) (*domain.Class
 func (m *deleteClassRepoMock) UpdatePublicationStatus(context.Context, uuid.UUID, uuid.UUID, bool) (*domain.Class, error) {
 	return m.class, m.getErr
 }
-func (m *deleteClassRepoMock) Update(context.Context, *domain.Class) error { return nil }
+func (m *deleteClassRepoMock) Update(context.Context, *domain.Class) error         { return nil }
+func (m *deleteClassRepoMock) UpdateByTenant(context.Context, *domain.Class) error { return nil }
 func (m *deleteClassRepoMock) DeleteByTenant(context.Context, uuid.UUID, uuid.UUID) error {
 	m.deleted = true
 	return m.deleteErr
