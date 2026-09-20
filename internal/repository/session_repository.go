@@ -110,24 +110,31 @@ func (r *sessionRepository) Update(ctx context.Context, session *domain.ClassSes
 	return r.getDB(ctx).Save(session).Error
 }
 
-func (r *sessionRepository) CancelFutureSessionsBySchedule(ctx context.Context, scheduleID uuid.UUID, fromDate time.Time) error {
+// CancelFutureSessionsBySchedule, CancelFutureSessionsByClass and
+// UpdateFutureSessionsTutor are bulk writes, so the tenant filter is repeated in
+// the SQL rather than trusted from an earlier read: a caller that passes another
+// tenant's id must touch zero rows.
+func (r *sessionRepository) CancelFutureSessionsBySchedule(ctx context.Context, tenantID, scheduleID uuid.UUID, fromDate time.Time) error {
 	return r.getDB(ctx).
 		Model(&domain.ClassSession{}).
 		Where("schedule_id = ? AND session_date >= ? AND status = ?", scheduleID, fromDate, "scheduled").
+		Where("class_id IN (SELECT id FROM classes WHERE tenant_id = ?)", tenantID).
 		Update("status", "cancelled").Error
 }
 
-func (r *sessionRepository) CancelFutureSessionsByClass(ctx context.Context, classID uuid.UUID, fromDate time.Time) error {
+func (r *sessionRepository) CancelFutureSessionsByClass(ctx context.Context, tenantID, classID uuid.UUID, fromDate time.Time) error {
 	return r.getDB(ctx).
 		Model(&domain.ClassSession{}).
 		Where("class_id = ? AND session_date >= ? AND status = ?", classID, fromDate, "scheduled").
+		Where("class_id IN (SELECT id FROM classes WHERE tenant_id = ?)", tenantID).
 		Update("status", "cancelled").Error
 }
 
-func (r *sessionRepository) UpdateFutureSessionsTutor(ctx context.Context, scheduleID uuid.UUID, newTutorID uuid.UUID, newScheduleID uuid.UUID, fromDate time.Time) error {
+func (r *sessionRepository) UpdateFutureSessionsTutor(ctx context.Context, tenantID, scheduleID uuid.UUID, newTutorID uuid.UUID, newScheduleID uuid.UUID, fromDate time.Time) error {
 	return r.getDB(ctx).
 		Model(&domain.ClassSession{}).
 		Where("schedule_id = ? AND session_date >= ? AND status = ?", scheduleID, fromDate, "scheduled").
+		Where("class_id IN (SELECT id FROM classes WHERE tenant_id = ?)", tenantID).
 		Updates(map[string]interface{}{
 			"tutor_id":    newTutorID,
 			"schedule_id": newScheduleID,

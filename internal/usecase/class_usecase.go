@@ -85,7 +85,7 @@ func (u *classUsecase) DeleteClass(ctx context.Context, tenantID, id uuid.UUID) 
 		if err := u.scheduleRepo.DeleteByClass(txCtx, tenantID, id); err != nil {
 			return err
 		}
-		if err := u.sessionRepo.CancelFutureSessionsByClass(txCtx, id, normalizeDate(time.Now())); err != nil {
+		if err := u.sessionRepo.CancelFutureSessionsByClass(txCtx, tenantID, id, normalizeDate(time.Now())); err != nil {
 			return err
 		}
 		return u.classRepo.DeleteByTenant(txCtx, tenantID, id)

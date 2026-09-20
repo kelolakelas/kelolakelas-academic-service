@@ -91,6 +91,9 @@ func (m *deleteScheduleRepoMock) BatchCreate(context.Context, []*domain.ClassSch
 func (m *deleteScheduleRepoMock) GetByID(context.Context, uuid.UUID) (*domain.ClassSchedule, error) {
 	return m.schedule, m.getErr
 }
+func (m *deleteScheduleRepoMock) GetByIDForTenant(context.Context, uuid.UUID, uuid.UUID) (*domain.ClassSchedule, error) {
+	return m.schedule, m.getErr
+}
 func (m *deleteScheduleRepoMock) Update(context.Context, *domain.ClassSchedule) error { return nil }
 func (m *deleteScheduleRepoMock) DeleteByTenant(context.Context, uuid.UUID, uuid.UUID) error {
 	m.deleted = true
@@ -132,15 +135,15 @@ func (m *deleteSessionRepoMock) ListByTenant(context.Context, uuid.UUID, domain.
 	return nil, 0, nil
 }
 func (m *deleteSessionRepoMock) Update(context.Context, *domain.ClassSession) error { return nil }
-func (m *deleteSessionRepoMock) CancelFutureSessionsBySchedule(_ context.Context, id uuid.UUID, _ time.Time) error {
+func (m *deleteSessionRepoMock) CancelFutureSessionsBySchedule(_ context.Context, _ uuid.UUID, id uuid.UUID, _ time.Time) error {
 	m.cancelScheduleID = id
 	return m.cancelScheduleErr
 }
-func (m *deleteSessionRepoMock) CancelFutureSessionsByClass(_ context.Context, id uuid.UUID, _ time.Time) error {
+func (m *deleteSessionRepoMock) CancelFutureSessionsByClass(_ context.Context, _ uuid.UUID, id uuid.UUID, _ time.Time) error {
 	m.cancelClassID = id
 	return m.cancelClassErr
 }
-func (m *deleteSessionRepoMock) UpdateFutureSessionsTutor(context.Context, uuid.UUID, uuid.UUID, uuid.UUID, time.Time) error {
+func (m *deleteSessionRepoMock) UpdateFutureSessionsTutor(context.Context, uuid.UUID, uuid.UUID, uuid.UUID, uuid.UUID, time.Time) error {
 	return nil
 }
 
@@ -174,7 +177,7 @@ func (m *deleteEnrollmentRepoMock) IsTutorForEnrollment(context.Context, uuid.UU
 func (m *deleteEnrollmentRepoMock) GetActiveByClassID(context.Context, uuid.UUID) ([]*domain.Enrollment, error) {
 	return m.active, m.err
 }
-func (m *deleteEnrollmentRepoMock) GetActiveByScheduleID(context.Context, uuid.UUID) ([]*domain.Enrollment, error) {
+func (m *deleteEnrollmentRepoMock) GetActiveByScheduleID(context.Context, uuid.UUID, uuid.UUID) ([]*domain.Enrollment, error) {
 	return nil, nil
 }
 func (m *deleteEnrollmentRepoMock) AssignSchedule(context.Context, uuid.UUID, uuid.UUID) error {

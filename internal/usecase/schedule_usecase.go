@@ -54,7 +54,7 @@ func (u *scheduleUsecase) DeleteSchedule(ctx context.Context, tenantID, id uuid.
 		if err := u.scheduleRepo.DeleteByTenant(txCtx, tenantID, id); err != nil {
 			return err
 		}
-		return u.sessionRepo.CancelFutureSessionsBySchedule(txCtx, id, normalizeDate(time.Now()))
+		return u.sessionRepo.CancelFutureSessionsBySchedule(txCtx, tenantID, id, normalizeDate(time.Now()))
 	})
 }
 
@@ -274,6 +274,7 @@ func parseScheduleTime(value string) (time.Time, error) {
 // 2. Temporary Schedule Change (One-off Reschedule / Make-up Class)
 func (u *scheduleUsecase) RescheduleSession(
 	ctx context.Context,
+	tenantID uuid.UUID,
 	req *domain.RescheduleSessionRequest,
 ) (*domain.RescheduleSessionResponse, error) {
 	var targetSession *domain.ClassSession
@@ -281,8 +282,16 @@ func (u *scheduleUsecase) RescheduleSession(
 
 	err := u.txManager.WithTransaction(ctx, func(txCtx context.Context) error {
 		var err error
-		targetSession, err = u.sessionRepo.GetByID(txCtx, req.SessionID)
-		if err != nil || targetSession == nil {
+		// The ownership filter is part of the query, so a session owned by another
+		// tenant is reported exactly like a missing one and no row is touched.
+		targetSession, err = u.sessionRepo.GetByIDForTenant(txCtx, tenantID, req.SessionID)
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return ErrSessionNotFound
+		}
+		if err != nil {
+			return err
+		}
+		if targetSession == nil {
 			return ErrSessionNotFound
 		}
 
@@ -325,6 +334,7 @@ func (u *scheduleUsecase) RescheduleSession(
 // 3. Permanent Schedule Change
 func (u *scheduleUsecase) ChangeSchedulePermanent(
 	ctx context.Context,
+	tenantID uuid.UUID,
 	req *domain.PermanentScheduleChangeRequest,
 ) (*domain.PermanentScheduleChangeResponse, error) {
 	var oldSchedule *domain.ClassSchedule
@@ -336,8 +346,14 @@ func (u *scheduleUsecase) ChangeSchedulePermanent(
 
 	err := u.txManager.WithTransaction(ctx, func(txCtx context.Context) error {
 		var err error
-		oldSchedule, err = u.scheduleRepo.GetByID(txCtx, req.OldScheduleID)
-		if err != nil || oldSchedule == nil {
+		oldSchedule, err = u.scheduleRepo.GetByIDForTenant(txCtx, tenantID, req.OldScheduleID)
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return ErrScheduleNotFound
+		}
+		if err != nil {
+			return err
+		}
+		if oldSchedule == nil {
 			return ErrScheduleNotFound
 		}
 
@@ -365,7 +381,7 @@ func (u *scheduleUsecase) ChangeSchedulePermanent(
 		}
 
 		// 3. Delete all future Class_Sessions linked to old schedule (from effective date onwards)
-		if err := u.sessionRepo.CancelFutureSessionsBySchedule(txCtx, oldSchedule.ID, effectiveDate); err != nil {
+		if err := u.sessionRepo.CancelFutureSessionsBySchedule(txCtx, tenantID, oldSchedule.ID, effectiveDate); err != nil {
 			return err
 		}
 
@@ -394,16 +410,29 @@ func (u *scheduleUsecase) ChangeSchedulePermanent(
 // 4. Temporary Tutor Change (Substitute Teacher)
 func (u *scheduleUsecase) ChangeTutorTemporary(
 	ctx context.Context,
+	tenantID uuid.UUID,
 	req *domain.SubstituteTutorRequest,
 ) (*domain.SubstituteTutorResponse, error) {
-	session, err := u.sessionRepo.GetByID(ctx, req.SessionID)
-	if err != nil || session == nil {
-		return nil, ErrSessionNotFound
-	}
+	var session *domain.ClassSession
 
-	// Do NOT mutate Class_Schedules. Simply update tutor_id in the specific Class_Sessions row.
-	session.TutorID = req.SubstituteTutorID
-	if err := u.sessionRepo.Update(ctx, session); err != nil {
+	err := u.txManager.WithTransaction(ctx, func(txCtx context.Context) error {
+		var err error
+		session, err = u.sessionRepo.GetByIDForTenant(txCtx, tenantID, req.SessionID)
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return ErrSessionNotFound
+		}
+		if err != nil {
+			return err
+		}
+		if session == nil {
+			return ErrSessionNotFound
+		}
+
+		// Do NOT mutate Class_Schedules. Simply update tutor_id in the specific Class_Sessions row.
+		session.TutorID = req.SubstituteTutorID
+		return u.sessionRepo.Update(txCtx, session)
+	})
+	if err != nil {
 		return nil, err
 	}
 
@@ -415,6 +444,7 @@ func (u *scheduleUsecase) ChangeTutorTemporary(
 // 5. Permanent Tutor Change
 func (u *scheduleUsecase) ChangeTutorPermanent(
 	ctx context.Context,
+	tenantID uuid.UUID,
 	req *domain.PermanentTutorChangeRequest,
 ) (*domain.PermanentTutorChangeResponse, error) {
 	var oldSchedule *domain.ClassSchedule
@@ -425,8 +455,14 @@ func (u *scheduleUsecase) ChangeTutorPermanent(
 
 	err := u.txManager.WithTransaction(ctx, func(txCtx context.Context) error {
 		var err error
-		oldSchedule, err = u.scheduleRepo.GetByID(txCtx, req.ScheduleID)
-		if err != nil || oldSchedule == nil {
+		oldSchedule, err = u.scheduleRepo.GetByIDForTenant(txCtx, tenantID, req.ScheduleID)
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return ErrScheduleNotFound
+		}
+		if err != nil {
+			return err
+		}
+		if oldSchedule == nil {
 			return ErrScheduleNotFound
 		}
 
@@ -455,7 +491,7 @@ func (u *scheduleUsecase) ChangeTutorPermanent(
 		}
 
 		// 3. Update future Class_Sessions to reflect new tutor_id and new schedule_id from effective_date onwards
-		if err := u.sessionRepo.UpdateFutureSessionsTutor(txCtx, oldSchedule.ID, newTutorID, newSchedule.ID, effectiveDate); err != nil {
+		if err := u.sessionRepo.UpdateFutureSessionsTutor(txCtx, tenantID, oldSchedule.ID, newTutorID, newSchedule.ID, effectiveDate); err != nil {
 			return err
 		}
 
@@ -475,16 +511,26 @@ func (u *scheduleUsecase) ChangeTutorPermanent(
 // 6. Attendance/Session Read Logic
 func (u *scheduleUsecase) GetSessionAttendees(
 	ctx context.Context,
+	tenantID uuid.UUID,
 	sessionID uuid.UUID,
 ) ([]*domain.Enrollment, error) {
-	session, err := u.sessionRepo.GetByID(ctx, sessionID)
-	if err != nil || session == nil {
+	// Attendees are student records, so the session has to be resolved through the
+	// tenant filter before any enrollment is read: a session owned by another tenant
+	// is answered as missing and leaks no student data.
+	session, err := u.sessionRepo.GetByIDForTenant(ctx, tenantID, sessionID)
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, ErrSessionNotFound
+	}
+	if err != nil {
+		return nil, err
+	}
+	if session == nil {
 		return nil, ErrSessionNotFound
 	}
 
 	// IF the session has a non-null enrollment_id (Private Class): Return only the single student associated with that enrollment_id.
 	if session.EnrollmentID != nil {
-		enrollment, err := u.enrollmentRepo.GetByID(ctx, *session.EnrollmentID)
+		enrollment, err := u.enrollmentRepo.GetByIDForAccess(ctx, &tenantID, nil, *session.EnrollmentID)
 		if err != nil || enrollment == nil {
 			return nil, ErrEnrollmentNotFound
 		}
@@ -495,7 +541,7 @@ func (u *scheduleUsecase) GetSessionAttendees(
 	if session.ScheduleID == nil {
 		return nil, ErrScheduleNotFound
 	}
-	enrollments, err := u.enrollmentRepo.GetActiveByScheduleID(ctx, *session.ScheduleID)
+	enrollments, err := u.enrollmentRepo.GetActiveByScheduleID(ctx, tenantID, *session.ScheduleID)
 	if err != nil {
 		return nil, err
 	}

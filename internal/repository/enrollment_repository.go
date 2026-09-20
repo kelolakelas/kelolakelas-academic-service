@@ -169,9 +169,9 @@ func (r *enrollmentRepository) GetActiveByClassID(ctx context.Context, classID u
 	return enrollments, nil
 }
 
-func (r *enrollmentRepository) GetActiveByScheduleID(ctx context.Context, scheduleID uuid.UUID) ([]*domain.Enrollment, error) {
+func (r *enrollmentRepository) GetActiveByScheduleID(ctx context.Context, tenantID, scheduleID uuid.UUID) ([]*domain.Enrollment, error) {
 	var enrollments []*domain.Enrollment
-	err := r.getDB(ctx).Preload("Student").Where("schedule_id = ? AND status IN ? AND deleted_at IS NULL", scheduleID, []string{"pending", "active"}).Find(&enrollments).Error
+	err := r.getDB(ctx).Preload("Student").Where("schedule_id = ? AND tenant_id = ? AND status IN ? AND deleted_at IS NULL", scheduleID, tenantID, []string{"pending", "active"}).Find(&enrollments).Error
 	return enrollments, err
 }
 

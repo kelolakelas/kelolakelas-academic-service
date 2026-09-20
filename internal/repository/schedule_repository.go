@@ -53,6 +53,21 @@ func (r *scheduleRepository) GetByID(ctx context.Context, id uuid.UUID) (*domain
 	return &schedule, nil
 }
 
+// GetByIDForTenant resolves a schedule only when its parent class belongs to the
+// given tenant. The ownership filter lives in the query (a join on classes), so a
+// schedule owned by another tenant is indistinguishable from a missing one and
+// callers cannot probe for its existence.
+func (r *scheduleRepository) GetByIDForTenant(ctx context.Context, tenantID, id uuid.UUID) (*domain.ClassSchedule, error) {
+	var schedule domain.ClassSchedule
+	err := r.getDB(ctx).Joins("JOIN classes c ON c.id = class_schedules.class_id").
+		Where("class_schedules.id = ? AND c.tenant_id = ?", id, tenantID).
+		Preload("Class").Preload("Enrollment").First(&schedule).Error
+	if err != nil {
+		return nil, err
+	}
+	return &schedule, nil
+}
+
 func (r *scheduleRepository) Update(ctx context.Context, schedule *domain.ClassSchedule) error {
 	return r.getDB(ctx).Save(schedule).Error
 }

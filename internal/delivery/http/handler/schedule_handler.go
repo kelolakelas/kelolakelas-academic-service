@@ -146,6 +146,11 @@ func (h *ScheduleHandler) CreateInitialSchedules(c *gin.Context) {
 // @Failure 500 {object} domain.ErrorResponse
 // @Router /api/v1/sessions/{id}/reschedule [post]
 func (h *ScheduleHandler) RescheduleSession(c *gin.Context) {
+	tenantID, err := tenantIDFromContext(c)
+	if err != nil {
+		writeTenantError(c, err)
+		return
+	}
 	var req domain.RescheduleSessionRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
@@ -162,7 +167,7 @@ func (h *ScheduleHandler) RescheduleSession(c *gin.Context) {
 		}
 	}
 
-	res, err := h.scheduleUsecase.RescheduleSession(c.Request.Context(), &req)
+	res, err := h.scheduleUsecase.RescheduleSession(c.Request.Context(), tenantID, &req)
 	if err != nil {
 		if errors.Is(err, usecase.ErrSessionNotFound) {
 			c.JSON(http.StatusNotFound, gin.H{
@@ -204,6 +209,11 @@ func (h *ScheduleHandler) RescheduleSession(c *gin.Context) {
 // @Failure 500 {object} domain.ErrorResponse
 // @Router /api/v1/schedules/{id}/permanent [put]
 func (h *ScheduleHandler) ChangeSchedulePermanent(c *gin.Context) {
+	tenantID, err := tenantIDFromContext(c)
+	if err != nil {
+		writeTenantError(c, err)
+		return
+	}
 	var req domain.PermanentScheduleChangeRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
@@ -220,7 +230,7 @@ func (h *ScheduleHandler) ChangeSchedulePermanent(c *gin.Context) {
 		}
 	}
 
-	res, err := h.scheduleUsecase.ChangeSchedulePermanent(c.Request.Context(), &req)
+	res, err := h.scheduleUsecase.ChangeSchedulePermanent(c.Request.Context(), tenantID, &req)
 	if err != nil {
 		if errors.Is(err, usecase.ErrScheduleNotFound) {
 			c.JSON(http.StatusNotFound, gin.H{
@@ -262,6 +272,11 @@ func (h *ScheduleHandler) ChangeSchedulePermanent(c *gin.Context) {
 // @Failure 500 {object} domain.ErrorResponse
 // @Router /api/v1/sessions/{id}/substitute-tutor [patch]
 func (h *ScheduleHandler) ChangeTutorTemporary(c *gin.Context) {
+	tenantID, err := tenantIDFromContext(c)
+	if err != nil {
+		writeTenantError(c, err)
+		return
+	}
 	var req domain.SubstituteTutorRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
@@ -278,7 +293,7 @@ func (h *ScheduleHandler) ChangeTutorTemporary(c *gin.Context) {
 		}
 	}
 
-	res, err := h.scheduleUsecase.ChangeTutorTemporary(c.Request.Context(), &req)
+	res, err := h.scheduleUsecase.ChangeTutorTemporary(c.Request.Context(), tenantID, &req)
 	if err != nil {
 		if errors.Is(err, usecase.ErrSessionNotFound) {
 			c.JSON(http.StatusNotFound, gin.H{
@@ -320,6 +335,11 @@ func (h *ScheduleHandler) ChangeTutorTemporary(c *gin.Context) {
 // @Failure 500 {object} domain.ErrorResponse
 // @Router /api/v1/schedules/{id}/tutor-permanent [patch]
 func (h *ScheduleHandler) ChangeTutorPermanent(c *gin.Context) {
+	tenantID, err := tenantIDFromContext(c)
+	if err != nil {
+		writeTenantError(c, err)
+		return
+	}
 	var req domain.PermanentTutorChangeRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
@@ -336,7 +356,7 @@ func (h *ScheduleHandler) ChangeTutorPermanent(c *gin.Context) {
 		}
 	}
 
-	res, err := h.scheduleUsecase.ChangeTutorPermanent(c.Request.Context(), &req)
+	res, err := h.scheduleUsecase.ChangeTutorPermanent(c.Request.Context(), tenantID, &req)
 	if err != nil {
 		if errors.Is(err, usecase.ErrScheduleNotFound) {
 			c.JSON(http.StatusNotFound, gin.H{
@@ -377,6 +397,11 @@ func (h *ScheduleHandler) ChangeTutorPermanent(c *gin.Context) {
 // @Failure 500 {object} domain.ErrorResponse
 // @Router /api/v1/sessions/{id}/attendees [get]
 func (h *ScheduleHandler) GetSessionAttendees(c *gin.Context) {
+	tenantID, err := tenantIDFromContext(c)
+	if err != nil {
+		writeTenantError(c, err)
+		return
+	}
 	sessionIDStr := c.Param("id")
 	sessionID, err := uuid.Parse(sessionIDStr)
 	if err != nil {
@@ -388,7 +413,7 @@ func (h *ScheduleHandler) GetSessionAttendees(c *gin.Context) {
 		return
 	}
 
-	attendees, err := h.scheduleUsecase.GetSessionAttendees(c.Request.Context(), sessionID)
+	attendees, err := h.scheduleUsecase.GetSessionAttendees(c.Request.Context(), tenantID, sessionID)
 	if err != nil {
 		if errors.Is(err, usecase.ErrSessionNotFound) || errors.Is(err, usecase.ErrEnrollmentNotFound) {
 			c.JSON(http.StatusNotFound, gin.H{

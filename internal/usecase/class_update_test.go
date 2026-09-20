@@ -118,7 +118,7 @@ func (s *updateEnrollmentRepoStub) IsTutorForEnrollment(context.Context, uuid.UU
 func (s *updateEnrollmentRepoStub) GetActiveByClassID(context.Context, uuid.UUID) ([]*domain.Enrollment, error) {
 	return nil, nil
 }
-func (s *updateEnrollmentRepoStub) GetActiveByScheduleID(context.Context, uuid.UUID) ([]*domain.Enrollment, error) {
+func (s *updateEnrollmentRepoStub) GetActiveByScheduleID(context.Context, uuid.UUID, uuid.UUID) ([]*domain.Enrollment, error) {
 	return nil, nil
 }
 func (s *updateEnrollmentRepoStub) AssignSchedule(context.Context, uuid.UUID, uuid.UUID) error {
