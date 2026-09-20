@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"time"
 
 	"github.com/google/uuid"
 	"gorm.io/gorm"
@@ -64,6 +65,32 @@ func (r *classRepository) UpdatePublicationStatus(ctx context.Context, classID, 
 
 func (r *classRepository) Update(ctx context.Context, class *domain.Class) error {
 	return r.getDB(ctx).Save(class).Error
+}
+
+// UpdateByTenant persists the mutable columns of a class that the caller has
+// already loaded and authorized.
+//
+// The WHERE clause repeats the tenant scope so a concurrent tenant change (or a
+// mistake in the caller) cannot write across tenants, and a zero row count is
+// reported as gorm.ErrRecordNotFound instead of a silent no-op.
+func (r *classRepository) UpdateByTenant(ctx context.Context, class *domain.Class) error {
+	db := r.getDB(ctx).Model(&domain.Class{}).
+		Where("id = ? AND tenant_id = ?", class.ID, class.TenantID).
+		Updates(map[string]interface{}{
+			"category_id": class.CategoryID,
+			"name":        class.Name,
+			"description": class.Description,
+			"type":        class.Type,
+			"price":       class.Price,
+			"updated_at":  time.Now(),
+		})
+	if db.Error != nil {
+		return db.Error
+	}
+	if db.RowsAffected == 0 {
+		return gorm.ErrRecordNotFound
+	}
+	return nil
 }
 
 func (r *classRepository) DeleteByTenant(ctx context.Context, tenantID, id uuid.UUID) error {

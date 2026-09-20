@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"math"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -19,6 +20,7 @@ type ClassUsecase interface {
 	ListClasses(ctx context.Context, tenantID uuid.UUID, query domain.ListQuery) (*domain.ClassListResponse, error)
 	DeleteClass(ctx context.Context, tenantID, id uuid.UUID) error
 	UpdateClassPublication(ctx context.Context, tenantID, id uuid.UUID, req *domain.UpdateClassPublicationRequest) (*domain.ClassResponse, error)
+	UpdateClass(ctx context.Context, tenantID, id uuid.UUID, req *domain.UpdateClassRequest) (*domain.ClassResponse, error)
 }
 
 func (u *classUsecase) ListClasses(ctx context.Context, tenantID uuid.UUID, query domain.ListQuery) (*domain.ClassListResponse, error) {
@@ -101,6 +103,93 @@ func (u *classUsecase) UpdateClassPublication(ctx context.Context, tenantID, id 
 	if class == nil {
 		return nil, domain.ErrClassNotFound
 	}
+	return classResponseFrom(class), nil
+}
+
+// UpdateClass patches the sellable attributes of a tenant-owned class.
+//
+// Only the fields the caller actually sent are applied, so an update can never
+// wipe an attribute by omission. Class type is intentionally validated but not
+// writable: switching between private and group changes schedule and capacity
+// obligations that already exist (see domain.ErrClassTypeImmutable).
+//
+// Price changes are forward-only by design. Enrollments persist their own
+// gross_amount snapshot at creation time, so raising or lowering a class price
+// never re-prices an enrollment that already exists.
+func (u *classUsecase) UpdateClass(ctx context.Context, tenantID, id uuid.UUID, req *domain.UpdateClassRequest) (*domain.ClassResponse, error) {
+	if u.categoryRepo == nil {
+		return nil, errors.New("class update requires a category repository")
+	}
+
+	var response *domain.ClassResponse
+	err := u.txManager.WithTransaction(ctx, func(txCtx context.Context) error {
+		class, err := u.classRepo.GetByID(txCtx, id)
+		if errors.Is(err, gorm.ErrRecordNotFound) || class == nil {
+			return domain.ErrClassNotFound
+		}
+		if err != nil {
+			return err
+		}
+		// A class owned by another tenant is reported as not found rather than
+		// forbidden so the endpoint does not confirm the existence of foreign rows.
+		if class.TenantID != tenantID {
+			return domain.ErrClassNotFound
+		}
+
+		if req.CategoryID != nil && *req.CategoryID != class.CategoryID {
+			category, err := u.categoryRepo.GetByID(txCtx, *req.CategoryID)
+			if errors.Is(err, gorm.ErrRecordNotFound) || category == nil {
+				return domain.ErrCategoryNotFound
+			}
+			if err != nil {
+				return err
+			}
+			// Soft-deleted categories are excluded by GORM's default scope, so a
+			// missing row already covers the deleted-category edge case.
+			if category.TenantID != tenantID {
+				return domain.ErrCategoryForbidden
+			}
+			class.CategoryID = *req.CategoryID
+		}
+
+		if req.Type != nil && *req.Type != class.Type {
+			return domain.ErrClassTypeImmutable
+		}
+
+		if req.Name != nil {
+			if strings.TrimSpace(*req.Name) == "" {
+				return domain.ErrClassNameRequired
+			}
+			class.Name = *req.Name
+		}
+		if req.Description != nil {
+			description := *req.Description
+			class.Description = &description
+		}
+		if req.Price != nil {
+			if *req.Price < 0 {
+				return domain.ErrInvalidClassPrice
+			}
+			class.Price = *req.Price
+		}
+
+		if err := u.classRepo.UpdateByTenant(txCtx, class); err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return domain.ErrClassNotFound
+			}
+			return err
+		}
+
+		response = classResponseFrom(class)
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return response, nil
+}
+
+func classResponseFrom(class *domain.Class) *domain.ClassResponse {
 	return &domain.ClassResponse{
 		ID:               class.ID,
 		TenantID:         class.TenantID,
@@ -112,7 +201,7 @@ func (u *classUsecase) UpdateClassPublication(ctx context.Context, tenantID, id 
 		CreatedAt:        class.CreatedAt,
 		IsPublished:      class.IsPublished,
 		EnrollmentStatus: class.EnrollmentStatus,
-	}, nil
+	}
 }
 
 func (u *classUsecase) CreateClass(ctx context.Context, tenantID uuid.UUID, req *domain.CreateClassRequest) (*domain.ClassResponse, error) {

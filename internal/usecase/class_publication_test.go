@@ -34,6 +34,9 @@ func (m *publicationClassRepoMock) UpdatePublicationStatus(_ context.Context, cl
 	return m.updatedClass, m.updateErr
 }
 func (m *publicationClassRepoMock) Update(context.Context, *domain.Class) error { return nil }
+func (m *publicationClassRepoMock) UpdateByTenant(context.Context, *domain.Class) error {
+	return nil
+}
 func (m *publicationClassRepoMock) DeleteByTenant(context.Context, uuid.UUID, uuid.UUID) error {
 	return nil
 }

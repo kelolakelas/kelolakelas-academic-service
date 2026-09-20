@@ -80,6 +80,10 @@ func (m *recordingClassUsecase) UpdateClassPublication(context.Context, uuid.UUI
 	return nil, nil
 }
 
+func (m *recordingClassUsecase) UpdateClass(context.Context, uuid.UUID, uuid.UUID, *domain.UpdateClassRequest) (*domain.ClassResponse, error) {
+	return nil, nil
+}
+
 type recordingScheduleUsecase struct {
 	calls  int
 	tenant uuid.UUID

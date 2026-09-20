@@ -29,6 +29,9 @@ func (m *publicationUsecaseMock) DeleteClass(context.Context, uuid.UUID, uuid.UU
 func (m *publicationUsecaseMock) UpdateClassPublication(context.Context, uuid.UUID, uuid.UUID, *domain.UpdateClassPublicationRequest) (*domain.ClassResponse, error) {
 	return m.response, m.err
 }
+func (m *publicationUsecaseMock) UpdateClass(context.Context, uuid.UUID, uuid.UUID, *domain.UpdateClassRequest) (*domain.ClassResponse, error) {
+	return m.response, m.err
+}
 
 type publicationCreationUsecaseMock struct{}
 

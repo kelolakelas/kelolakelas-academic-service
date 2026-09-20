@@ -1004,6 +1004,98 @@ const docTemplate = `{
                         }
                     }
                 }
+            },
+            "patch": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Updates the sellable attributes (name, description, price, category) of a tenant-owned class. Existing enrollments keep their stored gross_amount.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Classes"
+                ],
+                "summary": "Update an academic class",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Class ID (UUID)",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Class update payload",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.UpdateClassRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.HTTPResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ClassResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
+                        }
+                    },
+                    "422": {
+                        "description": "Unprocessable Entity",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
+                        }
+                    }
+                }
             }
         },
         "/api/v1/classes/{id}/published": {
@@ -3963,6 +4055,36 @@ const docTemplate = `{
             "properties": {
                 "is_published": {
                     "type": "boolean"
+                }
+            }
+        },
+        "github_com_kelolakelas_kelolakelas-academic-service_internal_domain.UpdateClassRequest": {
+            "type": "object",
+            "properties": {
+                "category_id": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "name": {
+                    "type": "string",
+                    "maxLength": 255,
+                    "minLength": 1
+                },
+                "price": {
+                    "type": "integer",
+                    "minimum": 0
+                },
+                "type": {
+                    "type": "string",
+                    "enum": [
+                        "private",
+                        "group"
+                    ]
                 }
             }
         },

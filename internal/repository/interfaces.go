@@ -23,6 +23,7 @@ type ClassRepository interface {
 	ListByTenant(ctx context.Context, tenantID uuid.UUID, query domain.ListQuery) ([]domain.Class, int64, error)
 	GetByID(ctx context.Context, id uuid.UUID) (*domain.Class, error)
 	UpdatePublicationStatus(ctx context.Context, classID, tenantID uuid.UUID, isPublished bool) (*domain.Class, error)
+	UpdateByTenant(ctx context.Context, class *domain.Class) error
 	Update(ctx context.Context, class *domain.Class) error
 	DeleteByTenant(ctx context.Context, tenantID, id uuid.UUID) error
 }
