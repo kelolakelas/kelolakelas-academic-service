@@ -115,23 +115,23 @@ func (m *recordingScheduleUsecase) CreateInitialSchedules(context.Context, uuid.
 	return nil, nil
 }
 
-func (m *recordingScheduleUsecase) RescheduleSession(context.Context, *domain.RescheduleSessionRequest) (*domain.RescheduleSessionResponse, error) {
+func (m *recordingScheduleUsecase) RescheduleSession(context.Context, uuid.UUID, *domain.RescheduleSessionRequest) (*domain.RescheduleSessionResponse, error) {
 	return nil, nil
 }
 
-func (m *recordingScheduleUsecase) ChangeSchedulePermanent(context.Context, *domain.PermanentScheduleChangeRequest) (*domain.PermanentScheduleChangeResponse, error) {
+func (m *recordingScheduleUsecase) ChangeSchedulePermanent(context.Context, uuid.UUID, *domain.PermanentScheduleChangeRequest) (*domain.PermanentScheduleChangeResponse, error) {
 	return nil, nil
 }
 
-func (m *recordingScheduleUsecase) ChangeTutorTemporary(context.Context, *domain.SubstituteTutorRequest) (*domain.SubstituteTutorResponse, error) {
+func (m *recordingScheduleUsecase) ChangeTutorTemporary(context.Context, uuid.UUID, *domain.SubstituteTutorRequest) (*domain.SubstituteTutorResponse, error) {
 	return nil, nil
 }
 
-func (m *recordingScheduleUsecase) ChangeTutorPermanent(context.Context, *domain.PermanentTutorChangeRequest) (*domain.PermanentTutorChangeResponse, error) {
+func (m *recordingScheduleUsecase) ChangeTutorPermanent(context.Context, uuid.UUID, *domain.PermanentTutorChangeRequest) (*domain.PermanentTutorChangeResponse, error) {
 	return nil, nil
 }
 
-func (m *recordingScheduleUsecase) GetSessionAttendees(context.Context, uuid.UUID) ([]*domain.Enrollment, error) {
+func (m *recordingScheduleUsecase) GetSessionAttendees(context.Context, uuid.UUID, uuid.UUID) ([]*domain.Enrollment, error) {
 	return nil, nil
 }
 

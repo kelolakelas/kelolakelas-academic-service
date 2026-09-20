@@ -43,19 +43,19 @@ type ScheduleUsecase interface {
 	CreateInitialSchedules(ctx context.Context, tenantID uuid.UUID, req *domain.CreateInitialSchedulesRequest) (*domain.CreateInitialSchedulesResponse, error)
 
 	// Scenario 2: Temporary Schedule Change (One-off Reschedule / Make-up Class)
-	RescheduleSession(ctx context.Context, req *domain.RescheduleSessionRequest) (*domain.RescheduleSessionResponse, error)
+	RescheduleSession(ctx context.Context, tenantID uuid.UUID, req *domain.RescheduleSessionRequest) (*domain.RescheduleSessionResponse, error)
 
 	// Scenario 3: Permanent Schedule Change
-	ChangeSchedulePermanent(ctx context.Context, req *domain.PermanentScheduleChangeRequest) (*domain.PermanentScheduleChangeResponse, error)
+	ChangeSchedulePermanent(ctx context.Context, tenantID uuid.UUID, req *domain.PermanentScheduleChangeRequest) (*domain.PermanentScheduleChangeResponse, error)
 
 	// Scenario 4: Temporary Tutor Change (Substitute Teacher)
-	ChangeTutorTemporary(ctx context.Context, req *domain.SubstituteTutorRequest) (*domain.SubstituteTutorResponse, error)
+	ChangeTutorTemporary(ctx context.Context, tenantID uuid.UUID, req *domain.SubstituteTutorRequest) (*domain.SubstituteTutorResponse, error)
 
 	// Scenario 5: Permanent Tutor Change
-	ChangeTutorPermanent(ctx context.Context, req *domain.PermanentTutorChangeRequest) (*domain.PermanentTutorChangeResponse, error)
+	ChangeTutorPermanent(ctx context.Context, tenantID uuid.UUID, req *domain.PermanentTutorChangeRequest) (*domain.PermanentTutorChangeResponse, error)
 
 	// Attendance/Session Read Logic
-	GetSessionAttendees(ctx context.Context, sessionID uuid.UUID) ([]*domain.Enrollment, error)
+	GetSessionAttendees(ctx context.Context, tenantID, sessionID uuid.UUID) ([]*domain.Enrollment, error)
 }
 
 type ClassCreationUsecase interface {

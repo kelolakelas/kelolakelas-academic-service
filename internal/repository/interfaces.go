@@ -38,6 +38,7 @@ type ClassScheduleRepository interface {
 	ListByTenant(ctx context.Context, tenantID uuid.UUID, query domain.ListQuery) ([]domain.ClassSchedule, int64, error)
 	BatchCreate(ctx context.Context, schedules []*domain.ClassSchedule) error
 	GetByID(ctx context.Context, id uuid.UUID) (*domain.ClassSchedule, error)
+	GetByIDForTenant(ctx context.Context, tenantID, id uuid.UUID) (*domain.ClassSchedule, error)
 	Update(ctx context.Context, schedule *domain.ClassSchedule) error
 	DeleteByTenant(ctx context.Context, tenantID, id uuid.UUID) error
 	DeleteByClass(ctx context.Context, tenantID, classID uuid.UUID) error
@@ -55,9 +56,9 @@ type SessionRepository interface {
 	IsTutorForSession(ctx context.Context, tenantID, sessionID, memberID uuid.UUID) (bool, error)
 	ListByTenant(ctx context.Context, tenantID uuid.UUID, query domain.SessionQuery) ([]domain.ClassSession, int64, error)
 	Update(ctx context.Context, session *domain.ClassSession) error
-	CancelFutureSessionsBySchedule(ctx context.Context, scheduleID uuid.UUID, fromDate time.Time) error
-	CancelFutureSessionsByClass(ctx context.Context, classID uuid.UUID, fromDate time.Time) error
-	UpdateFutureSessionsTutor(ctx context.Context, scheduleID uuid.UUID, newTutorID uuid.UUID, newScheduleID uuid.UUID, fromDate time.Time) error
+	CancelFutureSessionsBySchedule(ctx context.Context, tenantID, scheduleID uuid.UUID, fromDate time.Time) error
+	CancelFutureSessionsByClass(ctx context.Context, tenantID, classID uuid.UUID, fromDate time.Time) error
+	UpdateFutureSessionsTutor(ctx context.Context, tenantID, scheduleID uuid.UUID, newTutorID uuid.UUID, newScheduleID uuid.UUID, fromDate time.Time) error
 }
 
 type TransactionManager interface {
@@ -91,7 +92,7 @@ type EnrollmentRepository interface {
 	CreateIfCapacityAvailable(ctx context.Context, enrollment *domain.Enrollment) error
 	IsTutorForEnrollment(ctx context.Context, enrollmentID, memberID uuid.UUID) (bool, error)
 	GetActiveByClassID(ctx context.Context, classID uuid.UUID) ([]*domain.Enrollment, error)
-	GetActiveByScheduleID(ctx context.Context, scheduleID uuid.UUID) ([]*domain.Enrollment, error)
+	GetActiveByScheduleID(ctx context.Context, tenantID, scheduleID uuid.UUID) ([]*domain.Enrollment, error)
 	AssignSchedule(ctx context.Context, enrollmentID, scheduleID uuid.UUID) error
 	Update(ctx context.Context, enrollment *domain.Enrollment) error
 	Delete(ctx context.Context, id uuid.UUID) error
