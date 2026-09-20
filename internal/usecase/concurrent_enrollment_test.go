@@ -62,6 +62,12 @@ func (concurrentBilling) GenerateInvoice(context.Context, billing.InvoiceRequest
 	return &billing.InvoiceResponse{TransactionID: uuid.New(), CheckoutSessionURL: "https://checkout.test"}, nil
 }
 
+// CancelEnrollmentPayment reports the enrollment as having no invoice, which is how
+// billing answers when invoice creation never completed.
+func (concurrentBilling) CancelEnrollmentPayment(context.Context, uuid.UUID) (*billing.CancelResponse, error) {
+	return nil, billing.ErrTransactionNotFound
+}
+
 type concurrentTx struct{}
 
 func (concurrentTx) WithTransaction(ctx context.Context, fn func(context.Context) error) error {

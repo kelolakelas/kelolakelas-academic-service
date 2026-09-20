@@ -172,6 +172,10 @@ func (m *recordingEnrollmentUsecase) AssignSchedule(context.Context, uuid.UUID, 
 	return nil, nil
 }
 
+func (m *recordingEnrollmentUsecase) CancelPendingEnrollment(context.Context, uuid.UUID, uuid.UUID) (*domain.EnrollmentResponse, error) {
+	return nil, nil
+}
+
 // tenantScopedRouter mirrors the real route table in cmd/server/main.go: the
 // authenticated group is built from AuthMiddleware and carries the list and
 // enrollment handlers that used to fall back to the X-Tenant-ID header.

@@ -52,6 +52,9 @@ func (s *releaseEnrollmentUsecaseStub) GetByID(context.Context, *uuid.UUID, *uui
 func (s *releaseEnrollmentUsecaseStub) AssignSchedule(context.Context, uuid.UUID, uuid.UUID, uuid.UUID) (*domain.EnrollmentResponse, error) {
 	return nil, nil
 }
+func (s *releaseEnrollmentUsecaseStub) CancelPendingEnrollment(context.Context, uuid.UUID, uuid.UUID) (*domain.EnrollmentResponse, error) {
+	return nil, nil
+}
 
 func callReleaseInternal(t *testing.T, stub *releaseEnrollmentUsecaseStub, enrollmentID string) *httptest.ResponseRecorder {
 	t.Helper()
