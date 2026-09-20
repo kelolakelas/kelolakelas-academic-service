@@ -12,14 +12,15 @@ import (
 )
 
 type permissionClientStub struct {
-	allowed bool
-	err     error
-	roleID  string
-	name    string
+	allowed  bool
+	err      error
+	tenantID string
+	roleID   string
+	name     string
 }
 
-func (s *permissionClientStub) CheckPermission(_ context.Context, roleID, permission string) (bool, error) {
-	s.roleID, s.name = roleID, permission
+func (s *permissionClientStub) CheckPermission(_ context.Context, tenantID, roleID, permission string) (bool, error) {
+	s.tenantID, s.roleID, s.name = tenantID, roleID, permission
 	return s.allowed, s.err
 }
 
@@ -28,18 +29,21 @@ func (*permissionClientStub) Close() error { return nil }
 func TestRequirePermission(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	roleID := uuid.New()
+	tenantID := uuid.New()
 	cases := []struct {
 		name       string
+		tenantID   string
 		roleID     string
 		allowed    bool
 		clientErr  error
 		wantStatus int
 		wantCalled bool
 	}{
-		{name: "missing role denies before identity lookup", wantStatus: http.StatusForbidden},
-		{name: "denied", roleID: roleID.String(), wantStatus: http.StatusForbidden},
-		{name: "allowed", roleID: roleID.String(), allowed: true, wantStatus: http.StatusNoContent, wantCalled: true},
-		{name: "identity unavailable", roleID: roleID.String(), clientErr: errors.New("identity down"), wantStatus: http.StatusServiceUnavailable},
+		{name: "missing role denies before identity lookup", tenantID: tenantID.String(), wantStatus: http.StatusForbidden},
+		{name: "missing tenant denies before identity lookup", roleID: roleID.String(), wantStatus: http.StatusForbidden},
+		{name: "denied", tenantID: tenantID.String(), roleID: roleID.String(), wantStatus: http.StatusForbidden},
+		{name: "allowed", tenantID: tenantID.String(), roleID: roleID.String(), allowed: true, wantStatus: http.StatusNoContent, wantCalled: true},
+		{name: "identity unavailable", tenantID: tenantID.String(), roleID: roleID.String(), clientErr: errors.New("identity down"), wantStatus: http.StatusServiceUnavailable},
 	}
 
 	for _, tc := range cases {
@@ -50,6 +54,9 @@ func TestRequirePermission(t *testing.T) {
 			router.Use(func(c *gin.Context) {
 				if tc.roleID != "" {
 					c.Set("role_id", tc.roleID)
+				}
+				if tc.tenantID != "" {
+					c.Set("tenant_id", tc.tenantID)
 				}
 				c.Next()
 			})
@@ -65,8 +72,8 @@ func TestRequirePermission(t *testing.T) {
 			if response.Code != tc.wantStatus || called != tc.wantCalled {
 				t.Fatalf("status=%d called=%t, want status=%d called=%t", response.Code, called, tc.wantStatus, tc.wantCalled)
 			}
-			if tc.roleID != "" && (client.roleID != tc.roleID || client.name != "class:update") {
-				t.Fatalf("identity lookup=(%s,%s)", client.roleID, client.name)
+			if tc.wantCalled && (client.tenantID != tc.tenantID || client.roleID != tc.roleID || client.name != "class:update") {
+				t.Fatalf("identity lookup=(%s,%s,%s), want (%s,%s,class:update)", client.tenantID, client.roleID, client.name, tc.tenantID, tc.roleID)
 			}
 		})
 	}

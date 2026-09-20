@@ -21,12 +21,14 @@ import (
 // middleware the production route table uses.
 type scopePermissionClientStub struct {
 	permissions []string
+	tenants     []string
 	allowed     bool
 	denyAll     bool
 }
 
-func (s *scopePermissionClientStub) CheckPermission(_ context.Context, _ string, permission string) (bool, error) {
+func (s *scopePermissionClientStub) CheckPermission(_ context.Context, tenantID, _ string, permission string) (bool, error) {
 	s.permissions = append(s.permissions, permission)
+	s.tenants = append(s.tenants, tenantID)
 	return !s.denyAll, nil
 }
 
@@ -247,6 +249,11 @@ func TestSessionScheduleMutationsResolveTenantFromToken(t *testing.T) {
 			// Requirement 4: schedule:update still runs for every mutation route.
 			if len(permissions.permissions) != 1 || permissions.permissions[0] != "schedule:update" {
 				t.Fatalf("permission checks=%v want exactly [schedule:update]", permissions.permissions)
+			}
+			// KEL-20: the permission question carries the signed token's tenant, never the
+			// caller-controlled header, so a foreign role cannot authorize this mutation.
+			if len(permissions.tenants) != 1 || permissions.tenants[0] != tenantID.String() {
+				t.Fatalf("permission tenant=%v want [%s]", permissions.tenants, tenantID)
 			}
 		})
 	}
