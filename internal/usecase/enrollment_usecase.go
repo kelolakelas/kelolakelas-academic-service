@@ -20,6 +20,7 @@ type EnrollmentUsecase interface {
 	EnrollPublic(ctx context.Context, parentID, classID uuid.UUID, req *domain.PublicEnrollmentRequest, idempotencyKey string) (*domain.PublicEnrollmentResponse, error)
 	ActivateEnrollment(ctx context.Context, enrollmentID uuid.UUID) (*domain.EnrollmentResponse, error)
 	ReleaseEnrollment(ctx context.Context, enrollmentID uuid.UUID) (*domain.EnrollmentResponse, error)
+	CancelPendingEnrollment(ctx context.Context, parentID, enrollmentID uuid.UUID) (*domain.EnrollmentResponse, error)
 	List(ctx context.Context, tenantID, parentID *uuid.UUID, query domain.EnrollmentQuery) (*domain.EnrollmentListResponse, error)
 	GetByID(ctx context.Context, tenantID, parentID *uuid.UUID, id uuid.UUID) (*domain.EnrollmentResponse, error)
 	AssignSchedule(ctx context.Context, parentID, enrollmentID, scheduleID uuid.UUID) (*domain.EnrollmentResponse, error)
@@ -42,6 +43,106 @@ func (u *enrollmentUsecase) AssignSchedule(ctx context.Context, parentID, enroll
 	}
 	enrollment.ScheduleID = &scheduleID
 	return enrollmentResponse(enrollment), nil
+}
+
+// CancelPendingEnrollment lets a parent withdraw an unpaid enrollment and gives the
+// seat back. The parent scope is applied by the repository, so an enrollment that
+// belongs to another parent is indistinguishable from one that does not exist and is
+// answered with the same not-found error — the endpoint is not an existence oracle
+// for other parents' enrollments.
+//
+// The billing withdrawal runs before the seat is dropped, and that order is the
+// safety property of this method. If the transaction has already settled, billing
+// refuses and the enrollment is left untouched, so a seat is never revoked for money
+// the parent really paid. The reverse order could drop a seat and only then discover
+// the payment, which no retry could undo.
+//
+// Only a pending enrollment is cancellable. An enrollment that is already `dropped`
+// is answered with a conflict like any other finished state: cancellation is defined
+// as "this request moved the enrollment out of pending", and a request that changes
+// nothing has not cancelled anything. The withdrawal above still runs first, so an
+// invoice that was paid after the seat was released is refused by billing and the
+// parent is never told a paid hold was cancelled.
+func (u *enrollmentUsecase) CancelPendingEnrollment(ctx context.Context, parentID, enrollmentID uuid.UUID) (*domain.EnrollmentResponse, error) {
+	if parentID == uuid.Nil {
+		return nil, domain.ErrParentRequired
+	}
+	visible, err := u.enrollmentRepo.GetByIDForAccess(ctx, nil, &parentID, enrollmentID)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, ErrEnrollmentNotFound
+		}
+		return nil, fmt.Errorf("failed to fetch enrollment: %w", err)
+	}
+	// An enrollment that already started cannot be withdrawn by the parent. This is
+	// checked before the withdrawal so an active enrollment never has its invoice
+	// torn down.
+	if visible.Status == "active" || visible.Status == "completed" {
+		return nil, domain.ErrInvalidEnrollmentTransition
+	}
+	// The withdrawal always runs, even for an enrollment that is already `dropped`.
+	// A dropped enrollment can still hold a payable invoice, and if that invoice was
+	// paid in the meantime billing must refuse rather than let the parent believe the
+	// seat was cancelled while payment was actually taken.
+	if err := u.withdrawEnrollmentPayment(ctx, visible); err != nil {
+		return nil, err
+	}
+
+	load := u.enrollmentRepo.GetByID
+	if lockingRepo, ok := u.enrollmentRepo.(repository.EnrollmentLockingRepository); ok {
+		load = lockingRepo.GetByIDForUpdate
+	}
+	var enrollment *domain.Enrollment
+	if u.txManager != nil {
+		err = u.txManager.WithTransaction(ctx, func(txCtx context.Context) error {
+			enrollment, err = load(txCtx, enrollmentID)
+			if err != nil || enrollment.Status != "pending" {
+				return err
+			}
+			enrollment.Status = "dropped"
+			enrollment.UpdatedAt = time.Now()
+			return u.enrollmentRepo.Update(txCtx, enrollment)
+		})
+	} else {
+		enrollment, err = load(ctx, enrollmentID)
+	}
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, ErrEnrollmentNotFound
+		}
+		return nil, fmt.Errorf("failed to fetch enrollment: %w", err)
+	}
+	if enrollment.Status != "pending" {
+		return nil, domain.ErrInvalidEnrollmentTransition
+	}
+	if u.txManager == nil {
+		enrollment.Status = "dropped"
+		enrollment.UpdatedAt = time.Now()
+		if err := u.enrollmentRepo.Update(ctx, enrollment); err != nil {
+			return nil, fmt.Errorf("failed to update enrollment status: %w", err)
+		}
+	}
+	return enrollmentResponse(enrollment), nil
+}
+
+// withdrawEnrollmentPayment tells billing to stop collecting for an enrollment. A
+// `pending` enrollment whose invoice creation never completed has no transaction to
+// withdraw, which billing reports as not found: that is not a failure, because there
+// is nothing to pay and the seat still has to be freed.
+func (u *enrollmentUsecase) withdrawEnrollmentPayment(ctx context.Context, enrollment *domain.Enrollment) error {
+	if u.billingClient == nil {
+		return nil
+	}
+	if _, err := u.billingClient.CancelEnrollmentPayment(ctx, enrollment.ID); err != nil {
+		if errors.Is(err, billing.ErrTransactionNotFound) {
+			return nil
+		}
+		if errors.Is(err, billing.ErrTransactionNotCancellable) {
+			return domain.ErrInvalidEnrollmentTransition
+		}
+		return fmt.Errorf("withdraw enrollment payment: %w", err)
+	}
+	return nil
 }
 
 type enrollmentUsecase struct {

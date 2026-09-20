@@ -132,6 +132,7 @@ func main() {
 		apiV1.DELETE("/reports/:id", reportHandler.Delete)
 		apiV1.POST("/tenants/:tenant_id/enrollments", enrollmentHandler.Create)
 		apiV1.POST("/catalog/classes/:class_id/enrollments", enrollmentHandler.CreateCatalogEnrollment)
+		apiV1.POST("/enrollments/:id/cancel", enrollmentHandler.Cancel)
 		apiV1.GET("/enrollments", enrollmentHandler.ListQuery)
 		apiV1.GET("/enrollments/:id", enrollmentHandler.GetQuery)
 		apiV1.PATCH("/enrollments/:id/schedule", enrollmentHandler.AssignSchedule)

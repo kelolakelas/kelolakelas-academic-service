@@ -169,6 +169,50 @@ func (h *EnrollmentHandler) CreateCatalogEnrollment(c *gin.Context) {
 	c.JSON(http.StatusCreated, gin.H{"status": "success", "message": "Enrollment created and invoice generated", "data": result})
 }
 
+// Cancel godoc
+// @Summary Cancel a parent-owned pending enrollment
+// @Description Lets a parent withdraw an enrollment that has not been paid yet. The related unpaid billing transaction is marked `cancelled` before the enrollment moves to `dropped`, so the seat returns to the catalog. An enrollment that belongs to another parent is answered as not found, an already cancelled enrollment is answered successfully, and an enrollment that is active or has already settled is refused.
+// @Tags Enrollments
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param id path string true "Enrollment ID (UUID)"
+// @Success 200 {object} domain.HTTPResponse{data=domain.EnrollmentResponse}
+// @Failure 400 {object} domain.ErrorResponse
+// @Failure 403 {object} domain.ErrorResponse
+// @Failure 404 {object} domain.ErrorResponse
+// @Failure 409 {object} domain.ErrorResponse
+// @Failure 500 {object} domain.ErrorResponse
+// @Router /api/v1/enrollments/{id}/cancel [post]
+func (h *EnrollmentHandler) Cancel(c *gin.Context) {
+	parentID, err := uuid.Parse(c.GetString("user_id"))
+	if err != nil || !c.GetBool("is_parent") {
+		c.JSON(http.StatusForbidden, gin.H{"status": "error", "message": "Parent authentication is required", "data": nil})
+		return
+	}
+	enrollmentID, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"status": "error", "message": "Invalid enrollment ID", "data": nil})
+		return
+	}
+	res, err := h.enrollmentUsecase.CancelPendingEnrollment(c.Request.Context(), parentID, enrollmentID)
+	if err != nil {
+		status := http.StatusInternalServerError
+		message := err.Error()
+		switch {
+		case errors.Is(err, usecase.ErrEnrollmentNotFound):
+			status, message = http.StatusNotFound, "Enrollment not found"
+		case errors.Is(err, domain.ErrInvalidEnrollmentTransition):
+			status, message = http.StatusConflict, "Enrollment can no longer be cancelled"
+		case errors.Is(err, domain.ErrParentRequired):
+			status, message = http.StatusForbidden, "Parent authentication is required"
+		}
+		c.JSON(status, gin.H{"status": "error", "message": message, "data": nil})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"status": "success", "message": "Enrollment cancelled successfully", "data": res})
+}
+
 func catalogEnrollmentErrorStatus(err error) int {
 	switch {
 	case errors.Is(err, domain.ErrIdempotencyConflict), errors.Is(err, domain.ErrScheduleFull):

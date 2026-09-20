@@ -111,8 +111,10 @@ func (m *marketplaceClassRepo) DeleteByTenant(context.Context, uuid.UUID, uuid.U
 }
 
 type marketplaceBilling struct {
-	err   error
-	calls int
+	err         error
+	calls       int
+	cancelErr   error
+	cancelCalls int
 }
 
 func (m *marketplaceBilling) GenerateInvoice(context.Context, billing.InvoiceRequest) (*billing.InvoiceResponse, error) {
@@ -121,6 +123,16 @@ func (m *marketplaceBilling) GenerateInvoice(context.Context, billing.InvoiceReq
 		return nil, m.err
 	}
 	return &billing.InvoiceResponse{TransactionID: uuid.New(), CheckoutSessionURL: "https://checkout.test"}, nil
+}
+
+// cancelErr lets a test drive the withdrawal outcome independently of the invoice
+// outcome; the zero value reports that no transaction exists yet.
+func (m *marketplaceBilling) CancelEnrollmentPayment(context.Context, uuid.UUID) (*billing.CancelResponse, error) {
+	m.cancelCalls++
+	if m.cancelErr != nil {
+		return nil, m.cancelErr
+	}
+	return &billing.CancelResponse{TransactionID: uuid.New(), Status: "cancelled"}, nil
 }
 
 type marketplaceTx struct{}
