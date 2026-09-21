@@ -25,6 +25,8 @@ type Config struct {
 	InternalServiceCredential string `mapstructure:"INTERNAL_SERVICE_CREDENTIAL"`
 	Port                      string `mapstructure:"PORT"`
 	JWTSecret                 string `mapstructure:"JWT_SECRET"`
+	CatalogTenantInfoTTL      int    `mapstructure:"CATALOG_TENANT_INFO_TTL_MINUTES"`
+	CatalogTenantInfoTimeout  int    `mapstructure:"CATALOG_TENANT_INFO_TIMEOUT_MS"`
 }
 
 func LoadConfig() (Config, error) {
@@ -44,6 +46,7 @@ func LoadConfig() (Config, error) {
 	for _, key := range []string{
 		"DATABASE_URL", "DB_HOST", "DB_PORT", "DB_SSLMODE", "DB_CHANNEL_BINDING", "DB_USER", "DB_PASSWORD", "DB_NAME",
 		"IDENTITY_GRPC_HOST", "BILLING_SERVICE_URL", "INTERNAL_SERVICE_CREDENTIAL", "PORT", "JWT_SECRET",
+		"CATALOG_TENANT_INFO_TTL_MINUTES", "CATALOG_TENANT_INFO_TIMEOUT_MS",
 	} {
 		if err := viper.BindEnv(key); err != nil {
 			return Config{}, err
@@ -88,6 +91,12 @@ func LoadConfig() (Config, error) {
 	}
 	if config.Port == "" {
 		config.Port = "8081"
+	}
+	if config.CatalogTenantInfoTTL == 0 {
+		config.CatalogTenantInfoTTL = 5
+	}
+	if config.CatalogTenantInfoTimeout == 0 {
+		config.CatalogTenantInfoTimeout = 2000
 	}
 	if strings.TrimSpace(config.JWTSecret) == "" {
 		return Config{}, fmt.Errorf("JWT_SECRET is required")

@@ -90,6 +90,7 @@ type CatalogListResponse struct {
 
 type CatalogRepository interface {
 	TenantIDs(ctx context.Context) ([]uuid.UUID, error)
+	FreshSnapshotTenantIDs(ctx context.Context, since time.Time) ([]uuid.UUID, error)
 	UpsertTenantSnapshots(ctx context.Context, snapshots []TenantLocationSnapshot) error
 	List(ctx context.Context, query CatalogQuery) ([]CatalogItem, int64, error)
 	GetByID(ctx context.Context, id uuid.UUID) (*CatalogItem, error)
