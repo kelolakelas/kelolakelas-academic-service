@@ -3,6 +3,7 @@ package main
 import (
 	"log/slog"
 	"os"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	swaggerFiles "github.com/swaggo/files"
@@ -46,7 +47,7 @@ func main() {
 	}
 
 	// Initialize gRPC Client
-	tenantClient, err := grpcclient.NewTenantClient(cfg.IdentityGRPCHost)
+	tenantClient, err := grpcclient.NewTenantClient(cfg.IdentityGRPCHost, time.Duration(cfg.CatalogTenantInfoTimeout)*time.Millisecond)
 	if err != nil {
 		slog.Error("Failed to initialize identity gRPC client", "error", err)
 		os.Exit(1)
@@ -88,7 +89,7 @@ func main() {
 	studentHandler := handler.NewStudentHandler(usecase.NewStudentUsecase(studentRepo, studentNoteRepo, txManager))
 	attendanceHandler := handler.NewAttendanceHandler(usecase.NewAttendanceUsecase(repository.NewAttendanceRepository(db), sessionRepo))
 	reportHandler := handler.NewReportHandler(usecase.NewReportUsecase(repository.NewReportRepository(db), enrollmentRepo))
-	catalogHandler := handler.NewCatalogHandler(usecase.NewCatalogUsecase(repository.NewCatalogRepository(db), tenantClient))
+	catalogHandler := handler.NewCatalogHandler(usecase.NewCatalogUsecase(repository.NewCatalogRepository(db), tenantClient, time.Duration(cfg.CatalogTenantInfoTTL)*time.Minute))
 
 	// Initialize Router
 	r := gin.New()
