@@ -116,11 +116,15 @@ func main() {
 		apiV1.PATCH("/classes/:id", middleware.RequirePermission(permissionClient, "class:update"), classHandler.Update)
 		apiV1.PATCH("/classes/:id/published", middleware.RequirePermission(permissionClient, "class:update"), classHandler.UpdatePublication)
 		apiV1.GET("/schedules", listHandler.ListSchedules)
-		apiV1.GET("/students", studentHandler.List)
-		apiV1.POST("/students", studentHandler.Create)
-		apiV1.GET("/students/:id", studentHandler.Get)
-		apiV1.PATCH("/students/:id", studentHandler.Update)
-		apiV1.DELETE("/students/:id", studentHandler.Delete)
+		// Student and enrollment routes are shared by tenant members and parents. Parents
+		// hold ownership rather than a role, so the permission check applies only to
+		// non-parent callers; the owned-resource rules inside each handler still decide
+		// what a parent may reach. See ADR 0002.
+		apiV1.GET("/students", middleware.RequirePermissionUnlessParent(permissionClient, "student:read"), studentHandler.List)
+		apiV1.POST("/students", middleware.RequirePermissionUnlessParent(permissionClient, "student:create"), studentHandler.Create)
+		apiV1.GET("/students/:id", middleware.RequirePermissionUnlessParent(permissionClient, "student:read"), studentHandler.Get)
+		apiV1.PATCH("/students/:id", middleware.RequirePermissionUnlessParent(permissionClient, "student:update"), studentHandler.Update)
+		apiV1.DELETE("/students/:id", middleware.RequirePermissionUnlessParent(permissionClient, "student:delete"), studentHandler.Delete)
 		apiV1.GET("/attendance", attendanceHandler.List)
 		apiV1.POST("/attendance", attendanceHandler.Create)
 		apiV1.GET("/attendance/:id", attendanceHandler.Get)
@@ -130,11 +134,11 @@ func main() {
 		apiV1.GET("/reports/:id", reportHandler.Get)
 		apiV1.PATCH("/reports/:id", reportHandler.Update)
 		apiV1.DELETE("/reports/:id", reportHandler.Delete)
-		apiV1.POST("/tenants/:tenant_id/enrollments", enrollmentHandler.Create)
+		apiV1.POST("/tenants/:tenant_id/enrollments", middleware.RequirePermissionUnlessParent(permissionClient, "enrollment:create"), enrollmentHandler.Create)
 		apiV1.POST("/catalog/classes/:class_id/enrollments", enrollmentHandler.CreateCatalogEnrollment)
 		apiV1.POST("/enrollments/:id/cancel", enrollmentHandler.Cancel)
-		apiV1.GET("/enrollments", enrollmentHandler.ListQuery)
-		apiV1.GET("/enrollments/:id", enrollmentHandler.GetQuery)
+		apiV1.GET("/enrollments", middleware.RequirePermissionUnlessParent(permissionClient, "enrollment:read"), enrollmentHandler.ListQuery)
+		apiV1.GET("/enrollments/:id", middleware.RequirePermissionUnlessParent(permissionClient, "enrollment:read"), enrollmentHandler.GetQuery)
 		apiV1.PATCH("/enrollments/:id/schedule", enrollmentHandler.AssignSchedule)
 
 		// Schedule Routes
