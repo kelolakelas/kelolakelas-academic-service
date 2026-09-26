@@ -99,7 +99,7 @@ func main() {
 
 	// Initialize Router
 	r := gin.New()
-	r.Use(gin.Recovery())
+	r.Use(middleware.RequestLog(), gin.Recovery())
 
 	// Health check endpoint
 	r.GET("/health", healthHandler("academic-service"))
