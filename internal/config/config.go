@@ -27,7 +27,16 @@ type Config struct {
 	JWTSecret                 string `mapstructure:"JWT_SECRET"`
 	CatalogTenantInfoTTL      int    `mapstructure:"CATALOG_TENANT_INFO_TTL_MINUTES"`
 	CatalogTenantInfoTimeout  int    `mapstructure:"CATALOG_TENANT_INFO_TIMEOUT_MS"`
+
+	// IdentityPermissionTimeoutMs bounds one permission check against identity. When it
+	// elapses the check fails and the permission middleware answers 503.
+	IdentityPermissionTimeoutMs int `mapstructure:"IDENTITY_PERMISSION_TIMEOUT_MS"`
 }
+
+// DefaultIdentityPermissionTimeoutMs is used when IDENTITY_PERMISSION_TIMEOUT_MS is unset,
+// zero, or negative, matching billing. A non-positive value never disables the deadline,
+// because an unbounded check would let a silent identity hold every guarded request open.
+const DefaultIdentityPermissionTimeoutMs = 3000
 
 func LoadConfig() (Config, error) {
 	if err := godotenv.Load(); err != nil {
@@ -47,6 +56,7 @@ func LoadConfig() (Config, error) {
 		"DATABASE_URL", "DB_HOST", "DB_PORT", "DB_SSLMODE", "DB_CHANNEL_BINDING", "DB_USER", "DB_PASSWORD", "DB_NAME",
 		"IDENTITY_GRPC_HOST", "BILLING_SERVICE_URL", "INTERNAL_SERVICE_CREDENTIAL", "PORT", "JWT_SECRET",
 		"CATALOG_TENANT_INFO_TTL_MINUTES", "CATALOG_TENANT_INFO_TIMEOUT_MS",
+		"IDENTITY_PERMISSION_TIMEOUT_MS",
 	} {
 		if err := viper.BindEnv(key); err != nil {
 			return Config{}, err
@@ -97,6 +107,9 @@ func LoadConfig() (Config, error) {
 	}
 	if config.CatalogTenantInfoTimeout == 0 {
 		config.CatalogTenantInfoTimeout = 2000
+	}
+	if config.IdentityPermissionTimeoutMs <= 0 {
+		config.IdentityPermissionTimeoutMs = DefaultIdentityPermissionTimeoutMs
 	}
 	if strings.TrimSpace(config.JWTSecret) == "" {
 		return Config{}, fmt.Errorf("JWT_SECRET is required")

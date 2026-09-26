@@ -2,6 +2,7 @@ package grpcclient
 
 import (
 	"context"
+	"time"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -20,18 +21,30 @@ type PermissionClient interface {
 }
 
 type permissionClient struct {
-	conn *grpc.ClientConn
+	conn    *grpc.ClientConn
+	timeout time.Duration
 }
 
-func NewPermissionClient(target string) (PermissionClient, error) {
+// NewPermissionClient creates a lazily connected client for target. Each check is bounded
+// by timeout when it is positive, so a slow or silent identity turns into an error instead
+// of holding the request open.
+func NewPermissionClient(target string, timeout time.Duration) (PermissionClient, error) {
 	conn, err := grpc.NewClient(target, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		return nil, err
 	}
-	return &permissionClient{conn: conn}, nil
+	return &permissionClient{conn: conn, timeout: timeout}, nil
 }
 
 func (c *permissionClient) CheckPermission(ctx context.Context, tenantID, roleID, permission string) (bool, error) {
+	// The deadline is derived from the caller's context, so a request the client already
+	// cancelled still ends immediately; a hung identity ends at the deadline, and the
+	// middleware reports either error as 503.
+	if c.timeout > 0 {
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(ctx, c.timeout)
+		defer cancel()
+	}
 	// tenant_id is sent alongside the existing role_id and permission keys, so identity
 	// deployments that only understand the older contract keep working during the ADR 0002
 	// transition window.
