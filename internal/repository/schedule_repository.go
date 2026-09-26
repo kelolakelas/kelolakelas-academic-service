@@ -5,6 +5,7 @@ import (
 
 	"github.com/google/uuid"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 
 	"github.com/kelolakelas/kelolakelas-academic-service/internal/domain"
 )
@@ -62,6 +63,20 @@ func (r *scheduleRepository) GetByIDForTenant(ctx context.Context, tenantID, id 
 	err := r.getDB(ctx).Joins("JOIN classes c ON c.id = class_schedules.class_id").
 		Where("class_schedules.id = ? AND c.tenant_id = ?", id, tenantID).
 		Preload("Class").Preload("Enrollment").First(&schedule).Error
+	if err != nil {
+		return nil, err
+	}
+	return &schedule, nil
+}
+
+// GetByIDForTenantForUpdate serializes permanent changes and capacity-checked
+// enrollment writes on the same schedule row.
+func (r *scheduleRepository) GetByIDForTenantForUpdate(ctx context.Context, tenantID, id uuid.UUID) (*domain.ClassSchedule, error) {
+	var schedule domain.ClassSchedule
+	err := r.getDB(ctx).Clauses(clause.Locking{Strength: "UPDATE"}).
+		Joins("JOIN classes c ON c.id = class_schedules.class_id").
+		Where("class_schedules.id = ? AND c.tenant_id = ?", id, tenantID).
+		First(&schedule).Error
 	if err != nil {
 		return nil, err
 	}

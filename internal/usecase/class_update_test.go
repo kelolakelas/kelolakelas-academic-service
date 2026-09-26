@@ -121,6 +121,9 @@ func (s *updateEnrollmentRepoStub) GetActiveByClassID(context.Context, uuid.UUID
 func (s *updateEnrollmentRepoStub) GetActiveByScheduleID(context.Context, uuid.UUID, uuid.UUID) ([]*domain.Enrollment, error) {
 	return nil, nil
 }
+func (s *updateEnrollmentRepoStub) TransferSchedule(context.Context, uuid.UUID, uuid.UUID, uuid.UUID, uuid.UUID) error {
+	return nil
+}
 func (s *updateEnrollmentRepoStub) AssignSchedule(context.Context, uuid.UUID, uuid.UUID) error {
 	return nil
 }

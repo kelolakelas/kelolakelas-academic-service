@@ -39,6 +39,7 @@ type ClassScheduleRepository interface {
 	BatchCreate(ctx context.Context, schedules []*domain.ClassSchedule) error
 	GetByID(ctx context.Context, id uuid.UUID) (*domain.ClassSchedule, error)
 	GetByIDForTenant(ctx context.Context, tenantID, id uuid.UUID) (*domain.ClassSchedule, error)
+	GetByIDForTenantForUpdate(ctx context.Context, tenantID, id uuid.UUID) (*domain.ClassSchedule, error)
 	Update(ctx context.Context, schedule *domain.ClassSchedule) error
 	DeleteByTenant(ctx context.Context, tenantID, id uuid.UUID) error
 	DeleteByClass(ctx context.Context, tenantID, classID uuid.UUID) error
@@ -93,6 +94,7 @@ type EnrollmentRepository interface {
 	IsTutorForEnrollment(ctx context.Context, enrollmentID, memberID uuid.UUID) (bool, error)
 	GetActiveByClassID(ctx context.Context, classID uuid.UUID) ([]*domain.Enrollment, error)
 	GetActiveByScheduleID(ctx context.Context, tenantID, scheduleID uuid.UUID) ([]*domain.Enrollment, error)
+	TransferSchedule(ctx context.Context, tenantID, classID, oldScheduleID, newScheduleID uuid.UUID) error
 	AssignSchedule(ctx context.Context, enrollmentID, scheduleID uuid.UUID) error
 	Update(ctx context.Context, enrollment *domain.Enrollment) error
 	Delete(ctx context.Context, id uuid.UUID) error

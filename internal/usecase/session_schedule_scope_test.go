@@ -77,6 +77,10 @@ func (m *scopeScheduleRepo) GetByIDForTenant(_ context.Context, tenantID, id uui
 	return &stored, nil
 }
 
+func (m *scopeScheduleRepo) GetByIDForTenantForUpdate(ctx context.Context, tenantID, id uuid.UUID) (*domain.ClassSchedule, error) {
+	return m.GetByIDForTenant(ctx, tenantID, id)
+}
+
 func (m *scopeScheduleRepo) Update(context.Context, *domain.ClassSchedule) error {
 	m.updates++
 	return nil
@@ -265,6 +269,18 @@ func (m *scopeEnrollmentRepo) GetActiveByScheduleID(_ context.Context, tenantID,
 	return m.bySchedule[scheduleID], nil
 }
 
+func (m *scopeEnrollmentRepo) TransferSchedule(_ context.Context, tenantID, _, oldID, newID uuid.UUID) error {
+	if tenantID != m.ownerTenant {
+		return nil
+	}
+	for _, enrollment := range m.bySchedule[oldID] {
+		if enrollment.Status == "active" || enrollment.Status == "pending" {
+			enrollment.ScheduleID = &newID
+			m.bySchedule[newID] = append(m.bySchedule[newID], enrollment)
+		}
+	}
+	return nil
+}
 func (m *scopeEnrollmentRepo) AssignSchedule(context.Context, uuid.UUID, uuid.UUID) error { return nil }
 func (m *scopeEnrollmentRepo) Update(context.Context, *domain.Enrollment) error           { return nil }
 func (m *scopeEnrollmentRepo) Delete(context.Context, uuid.UUID) error                    { return nil }
@@ -475,12 +491,9 @@ func TestSessionMutationsSucceedForTheOwningTenant(t *testing.T) {
 			t.Fatalf("schedule writes=(updates=%d creates=%d) session cancels=%d want=(1,1,1)",
 				f.schedules.updates, f.schedules.creates, f.sessions.cancelBySchedule)
 		}
-		// res.NewSessions is intentionally not asserted here. Both permanent-change
-		// use cases copy oldSchedule.ValidUntil into the new schedule *after*
-		// overwriting it with effective_date-1, so the new schedule gets an
-		// inverted valid_from/valid_until range and generateSessionsForSchedule
-		// clamps to an empty window. That predates this change, is unrelated to
-		// tenant scoping, and is tracked as a separate follow-up.
+		if len(res.NewSessions) != 3 || res.NewSchedule.Capacity != f.schedule.Capacity {
+			t.Fatalf("new sessions=%d capacity=%d want 3 and %d", len(res.NewSessions), res.NewSchedule.Capacity, f.schedule.Capacity)
+		}
 	})
 
 	t.Run("substitute tutor", func(t *testing.T) {
@@ -517,6 +530,33 @@ func TestSessionMutationsSucceedForTheOwningTenant(t *testing.T) {
 				f.schedules.updates, f.schedules.creates, f.sessions.tutorUpdates)
 		}
 	})
+}
+
+func TestPermanentChangeRejectsEffectiveDateOutsideOriginalValidity(t *testing.T) {
+	for _, tutor := range []bool{false, true} {
+		for _, date := range []time.Time{
+			time.Date(2026, 9, 10, 0, 0, 0, 0, time.UTC),
+			time.Date(2026, 10, 1, 0, 0, 0, 0, time.UTC),
+		} {
+			f := newScopeFixture()
+			start := time.Date(2026, 9, 11, 0, 0, 0, 0, time.UTC)
+			until := time.Date(2026, 9, 30, 0, 0, 0, 0, time.UTC)
+			f.schedule.ValidFrom, f.schedule.ValidUntil = &start, &until
+			var err error
+			if tutor {
+				req := permanentTutorRequest(f.schedule.ID, uuid.New())
+				req.EffectiveDate = date
+				_, err = f.usecase.ChangeTutorPermanent(context.Background(), f.ownTenant, req)
+			} else {
+				req := permanentScheduleRequest(f.schedule.ID)
+				req.EffectiveDate = date
+				_, err = f.usecase.ChangeSchedulePermanent(context.Background(), f.ownTenant, req)
+			}
+			if err == nil || f.writes() != 0 || !f.schedule.ValidUntil.Equal(until) {
+				t.Fatalf("tutor=%v date=%s err=%v writes=%d", tutor, date, err, f.writes())
+			}
+		}
+	}
 }
 
 // The private-class branch must not hand out the enrollment of another tenant

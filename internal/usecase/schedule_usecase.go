@@ -21,6 +21,7 @@ var (
 	ErrEnrollmentNotFound      = errors.New("enrollment not found")
 	ErrInvalidEnrollmentClass  = errors.New("enrollment does not belong to the specified class")
 	ErrInvalidEnrollmentTenant = errors.New("enrollment does not belong to the specified tenant")
+	ErrInvalidEffectiveDate    = errors.New("effective_date outside schedule validity")
 )
 
 type scheduleUsecase struct {
@@ -331,6 +332,17 @@ func (u *scheduleUsecase) RescheduleSession(
 	}, nil
 }
 
+// A replacement must cover a nonempty portion of the original validity window.
+func validateReplacementDate(schedule *domain.ClassSchedule, effectiveDate time.Time) error {
+	if schedule.ValidFrom != nil && effectiveDate.Before(normalizeDate(*schedule.ValidFrom)) {
+		return ErrInvalidEffectiveDate
+	}
+	if schedule.ValidUntil != nil && effectiveDate.After(normalizeDate(*schedule.ValidUntil)) {
+		return ErrInvalidEffectiveDate
+	}
+	return nil
+}
+
 // 3. Permanent Schedule Change
 func (u *scheduleUsecase) ChangeSchedulePermanent(
 	ctx context.Context,
@@ -346,7 +358,7 @@ func (u *scheduleUsecase) ChangeSchedulePermanent(
 
 	err := u.txManager.WithTransaction(ctx, func(txCtx context.Context) error {
 		var err error
-		oldSchedule, err = u.scheduleRepo.GetByIDForTenant(txCtx, tenantID, req.OldScheduleID)
+		oldSchedule, err = u.scheduleRepo.GetByIDForTenantForUpdate(txCtx, tenantID, req.OldScheduleID)
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return ErrScheduleNotFound
 		}
@@ -356,6 +368,11 @@ func (u *scheduleUsecase) ChangeSchedulePermanent(
 		if oldSchedule == nil {
 			return ErrScheduleNotFound
 		}
+
+		if err := validateReplacementDate(oldSchedule, effectiveDate); err != nil {
+			return err
+		}
+		originalValidUntil := oldSchedule.ValidUntil
 
 		// 1. Update old Class_Schedules setting valid_until = effective_date - 1 day
 		oldSchedule.ValidUntil = &prevDay
@@ -369,14 +386,18 @@ func (u *scheduleUsecase) ChangeSchedulePermanent(
 			ClassID:      oldSchedule.ClassID,
 			EnrollmentID: oldSchedule.EnrollmentID,
 			TutorID:      oldSchedule.TutorID,
+			Capacity:     oldSchedule.Capacity,
 			Location:     oldSchedule.Location,
 			DayOfWeek:    req.NewDayOfWeek,
 			StartTime:    req.NewStartTime,
 			EndTime:      req.NewEndTime,
 			ValidFrom:    &effectiveDate,
-			ValidUntil:   oldSchedule.ValidUntil,
+			ValidUntil:   originalValidUntil,
 		}
 		if err := u.scheduleRepo.Create(txCtx, newSchedule); err != nil {
+			return err
+		}
+		if err := u.enrollmentRepo.TransferSchedule(txCtx, tenantID, oldSchedule.ClassID, oldSchedule.ID, newSchedule.ID); err != nil {
 			return err
 		}
 
@@ -455,7 +476,7 @@ func (u *scheduleUsecase) ChangeTutorPermanent(
 
 	err := u.txManager.WithTransaction(ctx, func(txCtx context.Context) error {
 		var err error
-		oldSchedule, err = u.scheduleRepo.GetByIDForTenant(txCtx, tenantID, req.ScheduleID)
+		oldSchedule, err = u.scheduleRepo.GetByIDForTenantForUpdate(txCtx, tenantID, req.ScheduleID)
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return ErrScheduleNotFound
 		}
@@ -465,6 +486,11 @@ func (u *scheduleUsecase) ChangeTutorPermanent(
 		if oldSchedule == nil {
 			return ErrScheduleNotFound
 		}
+
+		if err := validateReplacementDate(oldSchedule, effectiveDate); err != nil {
+			return err
+		}
+		originalValidUntil := oldSchedule.ValidUntil
 
 		// 1. End validity of old schedule (valid_until = effective_date - 1 day)
 		oldSchedule.ValidUntil = &prevDay
@@ -479,14 +505,19 @@ func (u *scheduleUsecase) ChangeTutorPermanent(
 			ClassID:      oldSchedule.ClassID,
 			EnrollmentID: oldSchedule.EnrollmentID,
 			TutorID:      &newTutorID,
+			Capacity:     oldSchedule.Capacity,
 			Location:     oldSchedule.Location,
 			DayOfWeek:    oldSchedule.DayOfWeek,
 			StartTime:    oldSchedule.StartTime,
 			EndTime:      oldSchedule.EndTime,
 			ValidFrom:    &effectiveDate,
-			ValidUntil:   oldSchedule.ValidUntil,
+			ValidUntil:   originalValidUntil,
 		}
 		if err := u.scheduleRepo.Create(txCtx, newSchedule); err != nil {
+			return err
+		}
+
+		if err := u.enrollmentRepo.TransferSchedule(txCtx, tenantID, oldSchedule.ClassID, oldSchedule.ID, newSchedule.ID); err != nil {
 			return err
 		}
 

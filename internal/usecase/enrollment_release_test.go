@@ -54,6 +54,9 @@ func (s *releaseEnrollmentRepoStub) GetActiveByClassID(context.Context, uuid.UUI
 func (s *releaseEnrollmentRepoStub) GetActiveByScheduleID(context.Context, uuid.UUID, uuid.UUID) ([]*domain.Enrollment, error) {
 	return nil, nil
 }
+func (s *releaseEnrollmentRepoStub) TransferSchedule(context.Context, uuid.UUID, uuid.UUID, uuid.UUID, uuid.UUID) error {
+	return nil
+}
 func (s *releaseEnrollmentRepoStub) AssignSchedule(context.Context, uuid.UUID, uuid.UUID) error {
 	return nil
 }

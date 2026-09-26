@@ -240,6 +240,10 @@ func (h *ScheduleHandler) ChangeSchedulePermanent(c *gin.Context) {
 			})
 			return
 		}
+		if errors.Is(err, usecase.ErrInvalidEffectiveDate) {
+			c.JSON(http.StatusBadRequest, gin.H{"status": "error", "message": err.Error(), "data": nil})
+			return
+		}
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"status":  "error",
 			"message": "Failed to permanently change schedule: " + err.Error(),
@@ -364,6 +368,10 @@ func (h *ScheduleHandler) ChangeTutorPermanent(c *gin.Context) {
 				"message": err.Error(),
 				"data":    nil,
 			})
+			return
+		}
+		if errors.Is(err, usecase.ErrInvalidEffectiveDate) {
+			c.JSON(http.StatusBadRequest, gin.H{"status": "error", "message": err.Error(), "data": nil})
 			return
 		}
 		c.JSON(http.StatusInternalServerError, gin.H{
