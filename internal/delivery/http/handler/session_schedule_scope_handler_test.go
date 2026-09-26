@@ -22,13 +22,15 @@ import (
 type scopePermissionClientStub struct {
 	permissions []string
 	tenants     []string
+	members     []string
 	allowed     bool
 	denyAll     bool
 }
 
-func (s *scopePermissionClientStub) CheckPermission(_ context.Context, tenantID, _ string, permission string) (bool, error) {
+func (s *scopePermissionClientStub) CheckPermission(_ context.Context, tenantID, _, memberID, permission string) (bool, error) {
 	s.permissions = append(s.permissions, permission)
 	s.tenants = append(s.tenants, tenantID)
+	s.members = append(s.members, memberID)
 	return !s.denyAll, nil
 }
 
@@ -149,6 +151,7 @@ func TestSessionScheduleMutationsResolveTenantFromToken(t *testing.T) {
 		UserID:   uuid.New().String(),
 		TenantID: tenantID.String(),
 		RoleID:   uuid.New().String(),
+		MemberID: uuid.New().String(),
 	})
 	sessionID, scheduleID := uuid.New(), uuid.New()
 
@@ -272,6 +275,7 @@ func TestPathAliasCannotSupplyAMissingBodyID(t *testing.T) {
 		UserID:   uuid.New().String(),
 		TenantID: tenantID.String(),
 		RoleID:   uuid.New().String(),
+		MemberID: uuid.New().String(),
 	})
 	sessionID, scheduleID := uuid.New(), uuid.New()
 
@@ -386,6 +390,7 @@ func TestSessionScheduleMutationsMapErrorsToStatus(t *testing.T) {
 		UserID:   uuid.New().String(),
 		TenantID: tenantID.String(),
 		RoleID:   uuid.New().String(),
+		MemberID: uuid.New().String(),
 	})
 	id := uuid.New()
 
@@ -474,6 +479,7 @@ func TestScheduleUpdatePermissionRunsBeforeTenantCheck(t *testing.T) {
 		UserID:   uuid.New().String(),
 		TenantID: tenantID.String(),
 		RoleID:   uuid.New().String(),
+		MemberID: uuid.New().String(),
 	})
 
 	cases := []struct {

@@ -25,14 +25,16 @@ type studentPermissionClientStub struct {
 	permissions []string
 	tenants     []string
 	roles       []string
+	members     []string
 	allowed     bool
 	err         error
 }
 
-func (s *studentPermissionClientStub) CheckPermission(_ context.Context, tenantID, roleID, permission string) (bool, error) {
+func (s *studentPermissionClientStub) CheckPermission(_ context.Context, tenantID, roleID, memberID, permission string) (bool, error) {
 	s.permissions = append(s.permissions, permission)
 	s.tenants = append(s.tenants, tenantID)
 	s.roles = append(s.roles, roleID)
+	s.members = append(s.members, memberID)
 	if s.err != nil {
 		return false, s.err
 	}
@@ -160,10 +162,12 @@ func publicEnrollmentBody() string {
 
 // AC1: a role without the student or enrollment permission is denied on every
 // guarded route and no use-case call happens, so a denied request cannot change
-// data. This is the role that lacks the privileges, e.g. a teacher.
+// data. This is the role that lacks the privileges, e.g. a teacher. It is also
+// what identity answers for a member who was removed or whose role changed
+// (KEL-80): the question is pinned to the member_id of the verified token.
 func TestStudentAndEnrollmentPermissionDenied(t *testing.T) {
-	tenantID, roleID := uuid.New(), uuid.New()
-	token := signToken(t, middleware.Claims{UserID: uuid.New().String(), TenantID: tenantID.String(), RoleID: roleID.String()})
+	tenantID, roleID, memberID := uuid.New(), uuid.New(), uuid.New()
+	token := signToken(t, middleware.Claims{UserID: uuid.New().String(), TenantID: tenantID.String(), RoleID: roleID.String(), MemberID: memberID.String()})
 	studentID, enrollmentID := uuid.New(), uuid.New()
 
 	cases := []struct {
@@ -199,8 +203,8 @@ func TestStudentAndEnrollmentPermissionDenied(t *testing.T) {
 			if len(client.permissions) != 1 || client.permissions[0] != tc.permission {
 				t.Fatalf("permission lookups=%v want=[%s]", client.permissions, tc.permission)
 			}
-			if client.tenants[0] != tenantID.String() || client.roles[0] != roleID.String() {
-				t.Fatalf("lookup scope=(%s,%s) want=(%s,%s)", client.tenants[0], client.roles[0], tenantID, roleID)
+			if client.tenants[0] != tenantID.String() || client.roles[0] != roleID.String() || client.members[0] != memberID.String() {
+				t.Fatalf("lookup scope=(%s,%s,%s) want=(%s,%s,%s)", client.tenants[0], client.roles[0], client.members[0], tenantID, roleID, memberID)
 			}
 			if student.listCalls+student.createCalls+student.getCalls+student.updateCalls+student.deleteCalls != 0 {
 				t.Fatalf("denied request still reached the student use case: %+v", student)
@@ -216,7 +220,7 @@ func TestStudentAndEnrollmentPermissionDenied(t *testing.T) {
 // guarded route.
 func TestStudentAndEnrollmentPermissionAllowed(t *testing.T) {
 	tenantID, roleID := uuid.New(), uuid.New()
-	token := signToken(t, middleware.Claims{UserID: uuid.New().String(), TenantID: tenantID.String(), RoleID: roleID.String()})
+	token := signToken(t, middleware.Claims{UserID: uuid.New().String(), TenantID: tenantID.String(), RoleID: roleID.String(), MemberID: uuid.New().String()})
 	studentID, enrollmentID := uuid.New(), uuid.New()
 
 	cases := []struct {
@@ -317,6 +321,7 @@ func TestParentWithTenantMembershipBypassesPermission(t *testing.T) {
 		IsParent: true,
 		TenantID: uuid.New().String(),
 		RoleID:   uuid.New().String(),
+		MemberID: uuid.New().String(),
 	})
 	studentID := uuid.New()
 
@@ -432,11 +437,58 @@ func TestTenantMemberWithoutRoleIDIsDenied(t *testing.T) {
 	}
 }
 
+// KEL-80 AC3: a tenant token without a usable member_id claim cannot be pinned
+// to a membership, so every guarded route denies it before identity is
+// consulted, even when identity would have allowed the role.
+func TestTenantMemberWithoutValidMemberIDIsDenied(t *testing.T) {
+	tenantID, roleID := uuid.New(), uuid.New()
+	memberIDs := map[string]string{
+		"missing member_id":  "",
+		"non-UUID member_id": "member-42",
+		"nil member_id":      uuid.Nil.String(),
+	}
+	for label, memberID := range memberIDs {
+		token := signToken(t, middleware.Claims{UserID: uuid.New().String(), TenantID: tenantID.String(), RoleID: roleID.String(), MemberID: memberID})
+		for _, tc := range []struct {
+			name   string
+			method string
+			path   string
+			body   string
+		}{
+			{name: "list students", method: http.MethodGet, path: "/api/v1/students"},
+			{name: "delete student", method: http.MethodDelete, path: "/api/v1/students/" + uuid.New().String()},
+			{name: "create enrollment", method: http.MethodPost, path: "/api/v1/tenants/" + tenantID.String() + "/enrollments", body: enrollmentBody()},
+			{name: "list enrollments", method: http.MethodGet, path: "/api/v1/enrollments"},
+		} {
+			t.Run(label+"/"+tc.name, func(t *testing.T) {
+				client := &studentPermissionClientStub{allowed: true}
+				student, enrollment := &studentPermissionUsecase{}, &studentEnrollmentPermissionUsecase{}
+				router := studentPermissionRouter(student, enrollment, client)
+
+				res := doJSONRequest(router, tc.method, tc.path, token, tc.body)
+
+				if res.Code != http.StatusForbidden {
+					t.Fatalf("status=%d want=%d body=%s", res.Code, http.StatusForbidden, res.Body.String())
+				}
+				if len(client.permissions) != 0 {
+					t.Fatalf("member without a valid member_id reached identity: %v", client.permissions)
+				}
+				if student.listCalls+student.createCalls+student.getCalls+student.updateCalls+student.deleteCalls != 0 {
+					t.Fatalf("member without a valid member_id reached the student use case: %+v", student)
+				}
+				if enrollment.listCalls+enrollment.getCalls+enrollment.enrollCalls+enrollment.publicCalls != 0 {
+					t.Fatalf("member without a valid member_id reached the enrollment use case: %+v", enrollment)
+				}
+			})
+		}
+	}
+}
+
 // AC4: an unusable permission decision fails closed with 503, matching the
 // catalogue mutations, and no data is touched.
 func TestStudentAndEnrollmentPermissionIdentityUnavailable(t *testing.T) {
 	tenantID, roleID := uuid.New(), uuid.New()
-	token := signToken(t, middleware.Claims{UserID: uuid.New().String(), TenantID: tenantID.String(), RoleID: roleID.String()})
+	token := signToken(t, middleware.Claims{UserID: uuid.New().String(), TenantID: tenantID.String(), RoleID: roleID.String(), MemberID: uuid.New().String()})
 
 	cases := []struct {
 		name   string

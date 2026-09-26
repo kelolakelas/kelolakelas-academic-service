@@ -49,11 +49,12 @@ func startIdentityPermissionServer(t *testing.T, handler func(context.Context, *
 func permissionRouterWithClient(t *testing.T, client grpcclient.PermissionClient, called *bool) *gin.Engine {
 	t.Helper()
 	gin.SetMode(gin.TestMode)
-	roleID, tenantID := uuid.New(), uuid.New()
+	roleID, tenantID, memberID := uuid.New(), uuid.New(), uuid.New()
 	router := gin.New()
 	router.Use(func(c *gin.Context) {
 		c.Set("role_id", roleID.String())
 		c.Set("tenant_id", tenantID.String())
+		c.Set("member_id", memberID.String())
 		c.Next()
 	})
 	router.POST("/mutate", RequirePermission(client, "class:update"), func(c *gin.Context) {
@@ -119,6 +120,9 @@ func TestRequirePermissionDecisionsUnchangedWithResponsiveIdentity(t *testing.T)
 			addr := startIdentityPermissionServer(t, func(_ context.Context, req *structpb.Struct) (*structpb.Struct, error) {
 				if _, ok := req.GetFields()["tenant_id"]; !ok {
 					t.Error("identity request is missing tenant_id")
+				}
+				if _, ok := req.GetFields()["member_id"]; !ok {
+					t.Error("identity request is missing member_id")
 				}
 				return structpb.NewStruct(map[string]interface{}{"allowed": tc.allowed})
 			})

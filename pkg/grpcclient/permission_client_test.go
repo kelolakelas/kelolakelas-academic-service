@@ -18,8 +18,10 @@ import (
 type fakeIdentityServer struct {
 	lastTenantID string
 	lastRoleID   string
+	lastMemberID string
 	lastPerm     string
 	sawTenantID  bool
+	sawMemberID  bool
 	allowed      bool
 }
 
@@ -30,6 +32,10 @@ func (s *fakeIdentityServer) checkPermission(req *structpb.Struct) (*structpb.St
 	if tenant, ok := fields["tenant_id"]; ok {
 		s.sawTenantID = true
 		s.lastTenantID = tenant.GetStringValue()
+	}
+	if member, ok := fields["member_id"]; ok {
+		s.sawMemberID = true
+		s.lastMemberID = member.GetStringValue()
 	}
 	return structpb.NewStruct(map[string]interface{}{"allowed": s.allowed})
 }
@@ -84,7 +90,30 @@ func newPermissionClientWithHandler(t *testing.T, timeout time.Duration, handler
 const (
 	testTenantID = "11111111-1111-1111-1111-111111111111"
 	testRoleID   = "22222222-2222-2222-2222-222222222222"
+	testMemberID = "33333333-3333-3333-3333-333333333333"
 )
+
+// TestCheckPermissionSendsMemberIDFromClaim is the KEL-80 contract test: the membership the
+// verified token names reaches identity unchanged next to the existing keys, so identity can
+// deny a removed member or a member whose role changed.
+func TestCheckPermissionSendsMemberIDFromClaim(t *testing.T) {
+	server := &fakeIdentityServer{allowed: true}
+	client := newPermissionClientForTest(t, server)
+
+	allowed, err := client.CheckPermission(context.Background(), testTenantID, testRoleID, testMemberID, "class:update")
+	if err != nil {
+		t.Fatalf("CheckPermission: %v", err)
+	}
+	if !allowed {
+		t.Fatal("allowed=false, want true")
+	}
+	if !server.sawMemberID || server.lastMemberID != testMemberID {
+		t.Fatalf("identity received member_id=%q (present=%t), want %q", server.lastMemberID, server.sawMemberID, testMemberID)
+	}
+	if server.lastTenantID != testTenantID || server.lastRoleID != testRoleID || server.lastPerm != "class:update" {
+		t.Fatalf("identity received (tenant=%s role=%s permission=%s)", server.lastTenantID, server.lastRoleID, server.lastPerm)
+	}
+}
 
 // TestCheckPermissionSendsTenantAlongsideRole is the contract test for KEL-20: academic must
 // ask identity about a permission inside a specific tenant, and it must keep sending role_id
@@ -93,7 +122,7 @@ func TestCheckPermissionSendsTenantAlongsideRole(t *testing.T) {
 	server := &fakeIdentityServer{allowed: true}
 	client := newPermissionClientForTest(t, server)
 
-	allowed, err := client.CheckPermission(context.Background(), testTenantID, testRoleID, "class:update")
+	allowed, err := client.CheckPermission(context.Background(), testTenantID, testRoleID, testMemberID, "class:update")
 	if err != nil {
 		t.Fatalf("CheckPermission: %v", err)
 	}
@@ -115,7 +144,7 @@ func TestCheckPermissionSurvivesIdentityIgnoringTenant(t *testing.T) {
 	server := &fakeIdentityServer{allowed: true}
 	client := newPermissionClientForTest(t, server)
 
-	allowed, err := client.CheckPermission(context.Background(), testTenantID, testRoleID, "class:update")
+	allowed, err := client.CheckPermission(context.Background(), testTenantID, testRoleID, testMemberID, "class:update")
 	if err != nil {
 		t.Fatalf("an older identity deployment must still answer: %v", err)
 	}
@@ -133,7 +162,7 @@ func TestCheckPermissionReportsDenial(t *testing.T) {
 	server := &fakeIdentityServer{allowed: false}
 	client := newPermissionClientForTest(t, server)
 
-	allowed, err := client.CheckPermission(context.Background(), testTenantID, testRoleID, "class:update")
+	allowed, err := client.CheckPermission(context.Background(), testTenantID, testRoleID, testMemberID, "class:update")
 	if err != nil {
 		t.Fatalf("CheckPermission: %v", err)
 	}
