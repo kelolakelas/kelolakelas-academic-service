@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"errors"
+	"time"
 
 	"github.com/google/uuid"
 	"gorm.io/gorm"
@@ -33,6 +34,16 @@ func (r *enrollmentRepository) GetByIdempotencyKey(ctx context.Context, parentID
 	return &enrollment, err
 }
 
+func scheduleHasEnded(validUntil *time.Time) bool {
+	if validUntil == nil {
+		return false
+	}
+	today := time.Now()
+	endDate := time.Date(validUntil.Year(), validUntil.Month(), validUntil.Day(), 0, 0, 0, 0, today.Location())
+	startOfToday := time.Date(today.Year(), today.Month(), today.Day(), 0, 0, 0, 0, today.Location())
+	return endDate.Before(startOfToday)
+}
+
 func (r *enrollmentRepository) CreateIfCapacityAvailable(ctx context.Context, enrollment *domain.Enrollment) error {
 	db := r.getDB(ctx)
 	var class domain.Class
@@ -49,6 +60,9 @@ func (r *enrollmentRepository) CreateIfCapacityAvailable(ctx context.Context, en
 				return domain.ErrScheduleClassMismatch
 			}
 			return err
+		}
+		if scheduleHasEnded(schedule.ValidUntil) {
+			return domain.ErrScheduleEnded
 		}
 		var count int64
 		if err := db.Model(&domain.Enrollment{}).Where("schedule_id = ? AND status IN ? AND deleted_at IS NULL", *enrollment.ScheduleID, []string{"pending", "active"}).Count(&count).Error; err != nil {
@@ -201,6 +215,9 @@ func (r *enrollmentRepository) AssignSchedule(ctx context.Context, enrollmentID,
 	}
 	if schedule.ClassID != enrollment.ClassID {
 		return domain.ErrScheduleClassMismatch
+	}
+	if scheduleHasEnded(schedule.ValidUntil) {
+		return domain.ErrScheduleEnded
 	}
 	var count int64
 	if err := db.Model(&domain.Enrollment{}).Where("schedule_id = ? AND status IN ? AND deleted_at IS NULL", scheduleID, []string{"pending", "active"}).Count(&count).Error; err != nil {

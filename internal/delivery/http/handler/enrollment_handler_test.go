@@ -18,6 +18,7 @@ func TestCatalogEnrollmentErrorStatus(t *testing.T) {
 		{name: "idempotency conflict", err: domain.ErrIdempotencyConflict, want: http.StatusConflict},
 		{name: "ownership is unprocessable", err: domain.ErrStudentOwnership, want: http.StatusUnprocessableEntity},
 		{name: "schedule required is unprocessable", err: domain.ErrScheduleRequired, want: http.StatusUnprocessableEntity},
+		{name: "ended schedule is unprocessable", err: domain.ErrScheduleEnded, want: http.StatusUnprocessableEntity},
 		{name: "class not found", err: domain.ErrClassNotFound, want: http.StatusNotFound},
 		{name: "billing failure is server error", err: errors.New("generate enrollment invoice: provider unavailable"), want: http.StatusInternalServerError},
 	}

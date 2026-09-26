@@ -16,6 +16,7 @@ var ErrInvalidEnrollmentTransition = errors.New("invalid enrollment transition")
 var ErrScheduleNotFound = errors.New("schedule not found")
 var ErrScheduleClassMismatch = errors.New("schedule does not belong to enrollment class")
 var ErrScheduleFull = errors.New("schedule capacity is full")
+var ErrScheduleEnded = errors.New("schedule has ended")
 var ErrScheduleRequired = errors.New("a schedule is required for group enrollment")
 
 type Enrollment struct {
