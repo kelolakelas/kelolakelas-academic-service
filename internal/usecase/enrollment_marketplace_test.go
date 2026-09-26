@@ -56,6 +56,9 @@ func (m *marketplaceEnrollmentRepo) GetActiveByClassID(context.Context, uuid.UUI
 func (m *marketplaceEnrollmentRepo) GetActiveByScheduleID(context.Context, uuid.UUID, uuid.UUID) ([]*domain.Enrollment, error) {
 	return nil, nil
 }
+func (m *marketplaceEnrollmentRepo) TransferSchedule(context.Context, uuid.UUID, uuid.UUID, uuid.UUID, uuid.UUID) error {
+	return nil
+}
 func (m *marketplaceEnrollmentRepo) AssignSchedule(context.Context, uuid.UUID, uuid.UUID) error {
 	return nil
 }

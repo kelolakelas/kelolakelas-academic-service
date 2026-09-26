@@ -94,6 +94,9 @@ func (m *deleteScheduleRepoMock) GetByID(context.Context, uuid.UUID) (*domain.Cl
 func (m *deleteScheduleRepoMock) GetByIDForTenant(context.Context, uuid.UUID, uuid.UUID) (*domain.ClassSchedule, error) {
 	return m.schedule, m.getErr
 }
+func (m *deleteScheduleRepoMock) GetByIDForTenantForUpdate(ctx context.Context, tenantID, id uuid.UUID) (*domain.ClassSchedule, error) {
+	return m.GetByIDForTenant(ctx, tenantID, id)
+}
 func (m *deleteScheduleRepoMock) Update(context.Context, *domain.ClassSchedule) error { return nil }
 func (m *deleteScheduleRepoMock) DeleteByTenant(context.Context, uuid.UUID, uuid.UUID) error {
 	m.deleted = true
@@ -179,6 +182,9 @@ func (m *deleteEnrollmentRepoMock) GetActiveByClassID(context.Context, uuid.UUID
 }
 func (m *deleteEnrollmentRepoMock) GetActiveByScheduleID(context.Context, uuid.UUID, uuid.UUID) ([]*domain.Enrollment, error) {
 	return nil, nil
+}
+func (m *deleteEnrollmentRepoMock) TransferSchedule(context.Context, uuid.UUID, uuid.UUID, uuid.UUID, uuid.UUID) error {
+	return nil
 }
 func (m *deleteEnrollmentRepoMock) AssignSchedule(context.Context, uuid.UUID, uuid.UUID) error {
 	return nil

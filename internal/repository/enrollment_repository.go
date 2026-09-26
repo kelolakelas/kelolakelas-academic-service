@@ -175,6 +175,14 @@ func (r *enrollmentRepository) GetActiveByScheduleID(ctx context.Context, tenant
 	return enrollments, err
 }
 
+// TransferSchedule moves only live enrollments; the caller holds the old schedule
+// row lock in the same transaction, serializing this with capacity-checked signups.
+func (r *enrollmentRepository) TransferSchedule(ctx context.Context, tenantID, classID, oldScheduleID, newScheduleID uuid.UUID) error {
+	return r.getDB(ctx).Model(&domain.Enrollment{}).
+		Where("tenant_id = ? AND class_id = ? AND schedule_id = ? AND status IN ? AND deleted_at IS NULL", tenantID, classID, oldScheduleID, []string{"pending", "active"}).
+		Update("schedule_id", newScheduleID).Error
+}
+
 func (r *enrollmentRepository) AssignSchedule(ctx context.Context, enrollmentID, scheduleID uuid.UUID) error {
 	db := r.getDB(ctx)
 	var enrollment domain.Enrollment

@@ -419,6 +419,16 @@ func TestSessionScheduleMutationsMapErrorsToStatus(t *testing.T) {
 			wantStatus: http.StatusNotFound, wantMessage: "class schedule not found",
 		},
 		{
+			name: "schedule effective date outside validity", verb: http.MethodPut, path: "/api/v1/schedules/" + id.String() + "/permanent",
+			body: permanentScheduleBody(id), usecaseErr: usecase.ErrInvalidEffectiveDate,
+			wantStatus: http.StatusBadRequest,
+		},
+		{
+			name: "tutor effective date outside validity", verb: http.MethodPatch, path: "/api/v1/schedules/" + id.String() + "/tutor-permanent",
+			body: permanentTutorBody(id), usecaseErr: usecase.ErrInvalidEffectiveDate,
+			wantStatus: http.StatusBadRequest,
+		},
+		{
 			name: "attendees session not found", verb: http.MethodGet, path: "/api/v1/sessions/" + id.String() + "/attendees",
 			usecaseErr: usecase.ErrSessionNotFound, wantStatus: http.StatusNotFound,
 		},
