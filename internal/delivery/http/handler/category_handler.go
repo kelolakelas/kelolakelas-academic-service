@@ -62,9 +62,10 @@ func (h *CategoryHandler) Create(c *gin.Context) {
 			})
 			return
 		}
+		logInternalError(c.Request.Context(), "create category", err)
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"status":  "error",
-			"message": "Failed to create category: " + err.Error(),
+			"message": "Failed to create category",
 			"data":    nil,
 		})
 		return
@@ -113,6 +114,7 @@ func (h *CategoryHandler) Delete(c *gin.Context) {
 		case errors.Is(err, domain.ErrCategoryActiveClasses):
 			c.JSON(http.StatusConflict, gin.H{"status": "error", "message": err.Error(), "data": nil})
 		default:
+			logInternalError(c.Request.Context(), "delete category", err)
 			c.JSON(http.StatusInternalServerError, gin.H{"status": "error", "message": "Failed to delete category", "data": nil})
 		}
 		return

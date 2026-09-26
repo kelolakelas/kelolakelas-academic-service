@@ -58,7 +58,8 @@ func (h *ClassHandler) CreateWithCategory(c *gin.Context) {
 			c.JSON(http.StatusBadRequest, gin.H{"status": "error", "message": err.Error(), "data": nil})
 			return
 		}
-		c.JSON(http.StatusInternalServerError, gin.H{"status": "error", "message": "Failed to create class: " + err.Error(), "data": nil})
+		logInternalError(c.Request.Context(), "create class with category", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"status": "error", "message": "Failed to create class", "data": nil})
 		return
 	}
 	c.JSON(http.StatusCreated, gin.H{"status": "success", "message": "Class created successfully", "data": res})
@@ -105,9 +106,10 @@ func (h *ClassHandler) Create(c *gin.Context) {
 			})
 			return
 		}
+		logInternalError(c.Request.Context(), "create class", err)
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"status":  "error",
-			"message": "Failed to create class: " + err.Error(),
+			"message": "Failed to create class",
 			"data":    nil,
 		})
 		return
@@ -156,6 +158,7 @@ func (h *ClassHandler) Delete(c *gin.Context) {
 		case errors.Is(err, domain.ErrClassActiveEnrollments):
 			c.JSON(http.StatusConflict, gin.H{"status": "error", "message": err.Error(), "data": nil})
 		default:
+			logInternalError(c.Request.Context(), "delete class", err)
 			c.JSON(http.StatusInternalServerError, gin.H{"status": "error", "message": "Failed to delete class", "data": nil})
 		}
 		return
@@ -210,6 +213,7 @@ func (h *ClassHandler) Update(c *gin.Context) {
 			errors.Is(err, domain.ErrInvalidClassPrice):
 			c.JSON(http.StatusUnprocessableEntity, gin.H{"status": "error", "message": err.Error(), "data": nil})
 		default:
+			logInternalError(c.Request.Context(), "update class", err)
 			c.JSON(http.StatusInternalServerError, gin.H{"status": "error", "message": "Failed to update class", "data": nil})
 		}
 		return
@@ -254,6 +258,7 @@ func (h *ClassHandler) UpdatePublication(c *gin.Context) {
 			c.JSON(http.StatusNotFound, gin.H{"status": "error", "message": err.Error(), "data": nil})
 			return
 		}
+		logInternalError(c.Request.Context(), "update class publication status", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"status": "error", "message": "Failed to update class publication status", "data": nil})
 		return
 	}
