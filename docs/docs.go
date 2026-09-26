@@ -341,7 +341,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Creates a pending enrollment and generates a billing invoice. The tenant is resolved from the selected class.",
+                "description": "Creates a pending enrollment and generates a billing invoice. The tenant is resolved from the selected class. Retrying with the same Idempotency-Key returns the same enrollment. A 409 with ` + "`" + `code` + "`" + ` ` + "`" + `duplicate_enrollment` + "`" + ` means the student already has a pending or active enrollment in this class (including a concurrent request that won the race); a 409 without ` + "`" + `code` + "`" + ` is a full schedule or an Idempotency-Key reused with a different request. A dropped or completed enrollment does not block a new one.",
                 "consumes": [
                     "application/json"
                 ],
@@ -2712,6 +2712,7 @@ const docTemplate = `{
         },
         "/api/v1/tenants/{tenant_id}/enrollments": {
             "post": {
+                "description": "A 409 with ` + "`" + `code` + "`" + ` ` + "`" + `duplicate_enrollment` + "`" + ` means the student already has a pending or active enrollment in this class; a 409 without ` + "`" + `code` + "`" + ` is an Idempotency-Key reused with a different request.",
                 "consumes": [
                     "application/json"
                 ],
@@ -2757,6 +2758,12 @@ const docTemplate = `{
                                     }
                                 }
                             ]
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
                         }
                     }
                 }
@@ -3679,6 +3686,11 @@ const docTemplate = `{
         "github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse": {
             "type": "object",
             "properties": {
+                "code": {
+                    "description": "Code is a stable machine-readable reason, present only on errors a client\nmust tell apart from others with the same HTTP status (e.g. ` + "`" + `duplicate_enrollment` + "`" + `).",
+                    "type": "string",
+                    "example": "duplicate_enrollment"
+                },
                 "data": {},
                 "message": {
                     "type": "string",

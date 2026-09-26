@@ -19,6 +19,17 @@ var ErrScheduleFull = errors.New("schedule capacity is full")
 var ErrScheduleEnded = errors.New("schedule has ended")
 var ErrScheduleRequired = errors.New("a schedule is required for group enrollment")
 
+// ErrDuplicateEnrollment reports that the student already holds a pending or
+// active enrollment in the class (the rows covered by the partial unique index
+// idx_student_class_active). A dropped, completed, or soft-deleted enrollment
+// does not count, so a student can enroll again after cancelling or expiring.
+var ErrDuplicateEnrollment = errors.New("student already has a pending or active enrollment in this class")
+
+// DuplicateEnrollmentErrorCode is the machine-readable `code` returned with the
+// HTTP 409 for ErrDuplicateEnrollment, so clients can tell it apart from a full
+// schedule or an idempotency conflict without parsing the message.
+const DuplicateEnrollmentErrorCode = "duplicate_enrollment"
+
 type Enrollment struct {
 	ID                   uuid.UUID      `gorm:"type:uuid;primaryKey;default:gen_random_uuid()" json:"id"`
 	TenantID             uuid.UUID      `gorm:"type:uuid;not null;index:idx_tenant_status" json:"tenant_id"` // Cross-service, ordinary UUID

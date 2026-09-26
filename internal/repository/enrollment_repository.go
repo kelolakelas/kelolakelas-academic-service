@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgconn"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 
@@ -64,6 +65,12 @@ func (r *enrollmentRepository) CreateIfCapacityAvailable(ctx context.Context, en
 		if scheduleHasEnded(schedule.ValidUntil) {
 			return domain.ErrScheduleEnded
 		}
+		// Checked after the schedule lock and before capacity: a request that waited
+		// on the lock behind the same student's signup then sees that committed row,
+		// and the student's own seat must not be misreported as a full schedule.
+		if err := rejectLiveEnrollment(db, enrollment); err != nil {
+			return err
+		}
 		var count int64
 		if err := db.Model(&domain.Enrollment{}).Where("schedule_id = ? AND status IN ? AND deleted_at IS NULL", *enrollment.ScheduleID, []string{"pending", "active"}).Count(&count).Error; err != nil {
 			return err
@@ -73,9 +80,50 @@ func (r *enrollmentRepository) CreateIfCapacityAvailable(ctx context.Context, en
 		}
 	} else if class.Type == "group" {
 		return domain.ErrScheduleRequired
+	} else if err := rejectLiveEnrollment(db, enrollment); err != nil {
+		return err
 	}
-	return db.Create(enrollment).Error
+	return mapDuplicateEnrollment(db.Create(enrollment).Error)
 }
+
+// studentClassActiveIndex is the partial unique index on (student_id, class_id)
+// for pending/active, non-deleted enrollments (migrations/00000000000000_init_schema.up.sql).
+const studentClassActiveIndex = "idx_student_class_active"
+
+// rejectLiveEnrollment returns domain.ErrDuplicateEnrollment when the student already
+// holds a pending or active enrollment in the class, using the same predicate as
+// idx_student_class_active.
+func rejectLiveEnrollment(db *gorm.DB, enrollment *domain.Enrollment) error {
+	var count int64
+	if err := db.Model(&domain.Enrollment{}).
+		Where("student_id = ? AND class_id = ? AND status IN ? AND deleted_at IS NULL", enrollment.StudentID, enrollment.ClassID, []string{"pending", "active"}).
+		Count(&count).Error; err != nil {
+		return err
+	}
+	if count > 0 {
+		return domain.ErrDuplicateEnrollment
+	}
+	return nil
+}
+
+// mapDuplicateEnrollment turns a unique violation of idx_student_class_active into
+// domain.ErrDuplicateEnrollment. The pre-check is not a lock, so two concurrent
+// requests for the same student and class (on different schedules, or a private
+// class with no schedule row to lock) can both pass it; the index decides that race.
+// The mapping is local on purpose: GORM's global TranslateError would also rewrite
+// errors other callers inspect. A unique violation on any other index (e.g. the
+// idempotency key) is returned unchanged so the use case can resolve it as a
+// same-key retry.
+func mapDuplicateEnrollment(err error) error {
+	var pgErr *pgconn.PgError
+	if errors.As(err, &pgErr) && pgErr.Code == uniqueViolationCode && pgErr.ConstraintName == studentClassActiveIndex {
+		return domain.ErrDuplicateEnrollment
+	}
+	return err
+}
+
+// uniqueViolationCode is PostgreSQL SQLSTATE unique_violation.
+const uniqueViolationCode = "23505"
 
 func (r *enrollmentRepository) GetByIDForUpdate(ctx context.Context, id uuid.UUID) (*domain.Enrollment, error) {
 	var enrollment domain.Enrollment

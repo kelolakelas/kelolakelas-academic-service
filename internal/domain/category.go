@@ -25,6 +25,9 @@ type ErrorResponse struct {
 	Status  string      `json:"status" example:"error"`
 	Message string      `json:"message" example:"An error occurred"`
 	Data    interface{} `json:"data,omitempty"`
+	// Code is a stable machine-readable reason, present only on errors a client
+	// must tell apart from others with the same HTTP status (e.g. `duplicate_enrollment`).
+	Code string `json:"code,omitempty" example:"duplicate_enrollment"`
 }
 
 type Category struct {
