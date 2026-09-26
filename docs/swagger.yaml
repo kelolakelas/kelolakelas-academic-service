@@ -531,6 +531,12 @@ definitions:
     type: object
   github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse:
     properties:
+      code:
+        description: |-
+          Code is a stable machine-readable reason, present only on errors a client
+          must tell apart from others with the same HTTP status (e.g. `duplicate_enrollment`).
+        example: duplicate_enrollment
+        type: string
       data: {}
       message:
         example: An error occurred
@@ -1123,7 +1129,12 @@ paths:
       consumes:
       - application/json
       description: Creates a pending enrollment and generates a billing invoice. The
-        tenant is resolved from the selected class.
+        tenant is resolved from the selected class. Retrying with the same Idempotency-Key
+        returns the same enrollment. A 409 with `code` `duplicate_enrollment` means
+        the student already has a pending or active enrollment in this class (including
+        a concurrent request that won the race); a 409 without `code` is a full schedule
+        or an Idempotency-Key reused with a different request. A dropped or completed
+        enrollment does not block a new one.
       parameters:
       - description: Class UUID
         in: path
@@ -2571,6 +2582,9 @@ paths:
     post:
       consumes:
       - application/json
+      description: A 409 with `code` `duplicate_enrollment` means the student already
+        has a pending or active enrollment in this class; a 409 without `code` is
+        an Idempotency-Key reused with a different request.
       parameters:
       - description: Tenant ID
         in: path
@@ -2595,6 +2609,10 @@ paths:
                 data:
                   $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.EnrollmentResponse'
               type: object
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
       summary: Enroll a student in a class
       tags:
       - Enrollments

@@ -68,12 +68,14 @@ func (h *EnrollmentHandler) AssignSchedule(c *gin.Context) {
 
 // Create godoc
 // @Summary Enroll a student in a class
+// @Description A 409 with `code` `duplicate_enrollment` means the student already has a pending or active enrollment in this class; a 409 without `code` is an Idempotency-Key reused with a different request.
 // @Tags Enrollments
 // @Accept json
 // @Produce json
 // @Param tenant_id path string true "Tenant ID"
 // @Param request body domain.EnrollStudentRequest true "Enrollment request"
 // @Success 201 {object} domain.HTTPResponse{data=domain.EnrollmentResponse}
+// @Failure 409 {object} domain.ErrorResponse
 // @Router /api/v1/tenants/{tenant_id}/enrollments [post]
 func (h *EnrollmentHandler) Create(c *gin.Context) {
 	pathTenantID, err := uuid.Parse(c.Param("tenant_id"))
@@ -121,12 +123,17 @@ func (h *EnrollmentHandler) Create(c *gin.Context) {
 	if err != nil {
 		status := http.StatusInternalServerError
 		message := "Failed to create enrollment"
+		body := gin.H{"status": "error"}
 		if errors.Is(err, domain.ErrIdempotencyConflict) {
 			status = http.StatusConflict
+		} else if errors.Is(err, domain.ErrDuplicateEnrollment) {
+			status, message = http.StatusConflict, domain.ErrDuplicateEnrollment.Error()
+			body["code"] = domain.DuplicateEnrollmentErrorCode
 		} else {
 			logInternalError(c.Request.Context(), "create tenant enrollment", err)
 		}
-		c.JSON(status, gin.H{"status": "error", "message": message})
+		body["message"] = message
+		c.JSON(status, body)
 		return
 	}
 	c.JSON(http.StatusCreated, gin.H{"status": "success", "message": "Enrollment created and invoice generated", "data": res})
@@ -134,7 +141,7 @@ func (h *EnrollmentHandler) Create(c *gin.Context) {
 
 // CreateCatalogEnrollment godoc
 // @Summary Enroll a parent-owned student in a public class
-// @Description Creates a pending enrollment and generates a billing invoice. The tenant is resolved from the selected class.
+// @Description Creates a pending enrollment and generates a billing invoice. The tenant is resolved from the selected class. Retrying with the same Idempotency-Key returns the same enrollment. A 409 with `code` `duplicate_enrollment` means the student already has a pending or active enrollment in this class (including a concurrent request that won the race); a 409 without `code` is a full schedule or an Idempotency-Key reused with a different request. A dropped or completed enrollment does not block a new one.
 // @Tags Enrollments
 // @Accept json
 // @Produce json
@@ -184,7 +191,11 @@ func (h *EnrollmentHandler) CreateCatalogEnrollment(c *gin.Context) {
 			logInternalError(c.Request.Context(), "create catalog enrollment", err)
 			message = "Failed to create enrollment"
 		}
-		c.JSON(status, gin.H{"status": "error", "message": message, "data": nil})
+		body := gin.H{"status": "error", "message": message, "data": nil}
+		if code := enrollmentErrorCode(err); code != "" {
+			body["code"] = code
+		}
+		c.JSON(status, body)
 		return
 	}
 	c.JSON(http.StatusCreated, gin.H{"status": "success", "message": "Enrollment created and invoice generated", "data": result})
@@ -238,7 +249,7 @@ func (h *EnrollmentHandler) Cancel(c *gin.Context) {
 
 func catalogEnrollmentErrorStatus(err error) int {
 	switch {
-	case errors.Is(err, domain.ErrIdempotencyConflict), errors.Is(err, domain.ErrScheduleFull):
+	case errors.Is(err, domain.ErrIdempotencyConflict), errors.Is(err, domain.ErrScheduleFull), errors.Is(err, domain.ErrDuplicateEnrollment):
 		return http.StatusConflict
 	case errors.Is(err, domain.ErrStudentOwnership), errors.Is(err, domain.ErrClassNotEnrollable), errors.Is(err, domain.ErrScheduleClassMismatch), errors.Is(err, domain.ErrScheduleRequired), errors.Is(err, domain.ErrScheduleEnded):
 		return http.StatusUnprocessableEntity
@@ -249,6 +260,17 @@ func catalogEnrollmentErrorStatus(err error) int {
 	default:
 		return http.StatusInternalServerError
 	}
+}
+
+// enrollmentErrorCode returns the machine-readable `code` for enrollment errors that
+// share an HTTP status with other errors and must stay distinguishable. Only the
+// duplicate enrollment has one; a full schedule and an idempotency conflict keep
+// their existing 409 body without a code.
+func enrollmentErrorCode(err error) string {
+	if errors.Is(err, domain.ErrDuplicateEnrollment) {
+		return domain.DuplicateEnrollmentErrorCode
+	}
+	return ""
 }
 
 func NewEnrollmentHandler(enrollmentUsecase usecase.EnrollmentUsecase) *EnrollmentHandler {
