@@ -4,6 +4,7 @@ import (
 	"context"
 	"net"
 	"testing"
+	"time"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -35,6 +36,16 @@ func (s *fakeIdentityServer) checkPermission(req *structpb.Struct) (*structpb.St
 
 func newPermissionClientForTest(t *testing.T, server *fakeIdentityServer) PermissionClient {
 	t.Helper()
+	// A generous bound proves a normal identity answer is unaffected by the deadline.
+	return newPermissionClientWithHandler(t, time.Second, func(_ context.Context, req *structpb.Struct) (*structpb.Struct, error) {
+		return server.checkPermission(req)
+	})
+}
+
+// newPermissionClientWithHandler serves CheckPermission with handler over an in-memory
+// connection and returns a client bounded by timeout, as NewPermissionClient would build it.
+func newPermissionClientWithHandler(t *testing.T, timeout time.Duration, handler func(context.Context, *structpb.Struct) (*structpb.Struct, error)) PermissionClient {
+	t.Helper()
 
 	listener := bufconn.Listen(1024 * 1024)
 	grpcServer := grpc.NewServer()
@@ -48,10 +59,10 @@ func newPermissionClientForTest(t *testing.T, server *fakeIdentityServer) Permis
 				if err := dec(req); err != nil {
 					return nil, err
 				}
-				return server.checkPermission(req)
+				return handler(ctx, req)
 			},
 		}},
-	}, server)
+	}, struct{}{})
 
 	go func() { _ = grpcServer.Serve(listener) }()
 	t.Cleanup(grpcServer.Stop)
@@ -67,7 +78,7 @@ func newPermissionClientForTest(t *testing.T, server *fakeIdentityServer) Permis
 	}
 	t.Cleanup(func() { _ = conn.Close() })
 
-	return &permissionClient{conn: conn}
+	return &permissionClient{conn: conn, timeout: timeout}
 }
 
 const (

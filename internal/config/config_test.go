@@ -1,6 +1,7 @@
 package config
 
 import (
+	"os"
 	"testing"
 
 	"github.com/spf13/viper"
@@ -110,6 +111,60 @@ func TestLoadConfigReadsDisabledChannelBindingFromDatabaseURL(t *testing.T) {
 	}
 	if config.DBChannelBinding != "disable" {
 		t.Fatalf("channel binding=%q, want disable", config.DBChannelBinding)
+	}
+}
+
+func TestLoadConfigIdentityPermissionTimeout(t *testing.T) {
+	tests := []struct {
+		name    string
+		value   *string
+		want    int
+		wantErr bool
+	}{
+		{name: "unset uses default", want: DefaultIdentityPermissionTimeoutMs},
+		{name: "valid value is used", value: strPtr("1500"), want: 1500},
+		{name: "zero falls back to default", value: strPtr("0"), want: DefaultIdentityPermissionTimeoutMs},
+		{name: "negative falls back to default", value: strPtr("-250"), want: DefaultIdentityPermissionTimeoutMs},
+		{name: "non-numeric value is rejected", value: strPtr("soon"), wantErr: true},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			viper.Reset()
+			t.Chdir(t.TempDir())
+			t.Setenv("JWT_SECRET", "test-jwt-secret")
+			t.Setenv("INTERNAL_SERVICE_CREDENTIAL", "test-internal-credential")
+			if test.value != nil {
+				t.Setenv("IDENTITY_PERMISSION_TIMEOUT_MS", *test.value)
+			} else {
+				unsetEnv(t, "IDENTITY_PERMISSION_TIMEOUT_MS")
+			}
+
+			config, err := LoadConfig()
+			if test.wantErr {
+				if err == nil {
+					t.Fatalf("expected IDENTITY_PERMISSION_TIMEOUT_MS configuration error, got %d", config.IdentityPermissionTimeoutMs)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatal(err)
+			}
+			if config.IdentityPermissionTimeoutMs != test.want {
+				t.Fatalf("IdentityPermissionTimeoutMs=%d, want %d", config.IdentityPermissionTimeoutMs, test.want)
+			}
+		})
+	}
+}
+
+func strPtr(value string) *string { return &value }
+
+// unsetEnv removes key for the duration of the test and restores its previous value.
+func unsetEnv(t *testing.T, key string) {
+	t.Helper()
+	t.Setenv(key, "")
+	if err := os.Unsetenv(key); err != nil {
+		t.Fatal(err)
 	}
 }
 

@@ -53,7 +53,7 @@ func main() {
 		os.Exit(1)
 	}
 	defer tenantClient.Close()
-	permissionClient, err := grpcclient.NewPermissionClient(cfg.IdentityGRPCHost)
+	permissionClient, err := grpcclient.NewPermissionClient(cfg.IdentityGRPCHost, time.Duration(cfg.IdentityPermissionTimeoutMs)*time.Millisecond)
 	if err != nil {
 		slog.Error("Failed to initialize identity permission client", "error", err)
 		os.Exit(1)
