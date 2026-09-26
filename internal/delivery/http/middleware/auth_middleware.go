@@ -25,6 +25,7 @@ func InternalServiceAuth(credential string) gin.HandlerFunc {
 
 type Claims struct {
 	UserID   string `json:"user_id"`
+	Email    string `json:"email"`
 	TenantID string `json:"tenant_id"`
 	RoleID   string `json:"role_id"`
 	MemberID string `json:"member_id"`
@@ -52,7 +53,12 @@ func AuthMiddleware(secret string) gin.HandlerFunc {
 			c.Abort()
 			return
 		}
+		// The email claim is the billing contact for parent checkouts (KEL-75). It is
+		// normalised here, once, at the only boundary that reads the verified token:
+		// surrounding whitespace is stripped, the case is preserved. Handlers must take
+		// the email from this context and never from the request body or headers.
 		c.Set("user_id", claims.UserID)
+		c.Set("email", strings.TrimSpace(claims.Email))
 		c.Set("tenant_id", claims.TenantID)
 		c.Set("role_id", claims.RoleID)
 		c.Set("member_id", claims.MemberID)

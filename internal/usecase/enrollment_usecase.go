@@ -181,7 +181,7 @@ func (u *enrollmentUsecase) EnrollPublic(ctx context.Context, parentID, classID 
 			if studentErr != nil || classErr != nil {
 				return nil, fmt.Errorf("recover enrollment dependencies")
 			}
-			invoice, invoiceErr := u.billingClient.GenerateInvoice(ctx, billing.InvoiceRequest{TenantID: existing.TenantID, StudentID: existing.StudentID, ClassID: existing.ClassID, EnrollmentID: existing.ID, ParentID: parentID, BillingCycle: existing.BillingCycle, SubtotalAmount: class.Price, IdempotencyKey: idempotencyKey, Title: class.Name})
+			invoice, invoiceErr := u.billingClient.GenerateInvoice(ctx, billing.InvoiceRequest{TenantID: existing.TenantID, StudentID: existing.StudentID, ClassID: existing.ClassID, EnrollmentID: existing.ID, ParentID: parentID, BillingCycle: existing.BillingCycle, SubtotalAmount: class.Price, IdempotencyKey: idempotencyKey, Title: class.Name, SenderEmail: req.SenderEmail})
 			if invoiceErr != nil {
 				return nil, fmt.Errorf("generate enrollment invoice: %w", invoiceErr)
 			}
@@ -241,7 +241,7 @@ func (u *enrollmentUsecase) EnrollPublic(ctx context.Context, parentID, classID 
 		}
 		return nil, err
 	}
-	invoice, err := u.billingClient.GenerateInvoice(ctx, billing.InvoiceRequest{TenantID: class.TenantID, StudentID: student.ID, ClassID: class.ID, EnrollmentID: enrollment.ID, ParentID: parentID, BillingCycle: req.BillingCycle, SubtotalAmount: class.Price, IdempotencyKey: idempotencyKey, Title: class.Name})
+	invoice, err := u.billingClient.GenerateInvoice(ctx, billing.InvoiceRequest{TenantID: class.TenantID, StudentID: student.ID, ClassID: class.ID, EnrollmentID: enrollment.ID, ParentID: parentID, BillingCycle: req.BillingCycle, SubtotalAmount: class.Price, IdempotencyKey: idempotencyKey, Title: class.Name, SenderEmail: req.SenderEmail})
 	if err != nil {
 		return nil, fmt.Errorf("generate enrollment invoice: %w", err)
 	}

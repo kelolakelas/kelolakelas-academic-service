@@ -34,6 +34,10 @@ type InvoiceRequest struct {
 	PlatformFee    int64     `json:"platform_fee"`
 	IdempotencyKey string    `json:"idempotency_key,omitempty"`
 	Title          string    `json:"title"`
+	// SenderEmail is the parent's email claim forwarded so billing can address
+	// invoices and payment reminders. Empty means unknown and keeps the request
+	// compatible with rollouts whose tokens do not carry the claim yet.
+	SenderEmail string `json:"sender_email,omitempty"`
 }
 
 type InvoiceResponse struct {
