@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"errors"
 	"net/http"
 	"strconv"
 
@@ -24,6 +25,7 @@ func NewCatalogHandler(uc usecase.CatalogUsecase) *CatalogHandler {
 // @Param id path string true "Class UUID"
 // @Success 200 {object} domain.HTTPResponse{data=domain.CatalogItem}
 // @Failure 404 {object} domain.ErrorResponse
+// @Failure 503 {object} domain.ErrorResponse
 // @Failure 500 {object} domain.ErrorResponse
 // @Router /api/v1/catalog/classes/{id} [get]
 func (h *CatalogHandler) GetClass(c *gin.Context) {
@@ -34,6 +36,14 @@ func (h *CatalogHandler) GetClass(c *gin.Context) {
 	}
 	item, err := h.usecase.GetClass(c.Request.Context(), id)
 	if err != nil {
+		if errors.Is(err, domain.ErrCatalogClosed) {
+			c.JSON(http.StatusNotFound, gin.H{"status": "error", "message": "Public catalog is closed", "data": nil})
+			return
+		}
+		if errors.Is(err, domain.ErrCatalogPolicyUnavailable) {
+			c.JSON(http.StatusServiceUnavailable, gin.H{"status": "error", "message": "Public catalog policy unavailable", "data": nil})
+			return
+		}
 		status := http.StatusInternalServerError
 		if err == gorm.ErrRecordNotFound {
 			status = http.StatusNotFound
@@ -64,6 +74,7 @@ func (h *CatalogHandler) GetClass(c *gin.Context) {
 // @Success 200 {object} domain.HTTPResponse{data=domain.CatalogListResponse}
 // @Failure 400 {object} domain.ErrorResponse
 // @Failure 422 {object} domain.ErrorResponse
+// @Failure 503 {object} domain.ErrorResponse
 // @Failure 500 {object} domain.ErrorResponse
 // @Router /api/v1/catalog/classes [get]
 func (h *CatalogHandler) ListClasses(c *gin.Context) {
@@ -125,6 +136,10 @@ func (h *CatalogHandler) ListClasses(c *gin.Context) {
 		status := http.StatusInternalServerError
 		if err == domain.ErrInvalidCatalogQuery {
 			status = http.StatusBadRequest
+		}
+		if errors.Is(err, domain.ErrCatalogPolicyUnavailable) {
+			c.JSON(http.StatusServiceUnavailable, gin.H{"status": "error", "message": "Public catalog policy unavailable", "data": nil})
+			return
 		}
 		c.JSON(status, gin.H{"status": "error", "message": "Failed to fetch public classes", "data": nil})
 		return

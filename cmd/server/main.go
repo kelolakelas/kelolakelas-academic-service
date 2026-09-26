@@ -59,6 +59,12 @@ func main() {
 		os.Exit(1)
 	}
 	defer permissionClient.Close()
+	catalogPolicyClient, err := grpcclient.NewCatalogPolicyClient(cfg.IdentityGRPCHost, time.Duration(cfg.CatalogPolicyTimeout)*time.Millisecond)
+	if err != nil {
+		slog.Error("Failed to initialize public catalog policy client", "error", err)
+		os.Exit(1)
+	}
+	defer catalogPolicyClient.Close()
 
 	// Initialize Repositories
 	txManager := repository.NewTransactionManager(db)
@@ -89,7 +95,7 @@ func main() {
 	studentHandler := handler.NewStudentHandler(usecase.NewStudentUsecase(studentRepo, studentNoteRepo, txManager))
 	attendanceHandler := handler.NewAttendanceHandler(usecase.NewAttendanceUsecase(repository.NewAttendanceRepository(db), sessionRepo))
 	reportHandler := handler.NewReportHandler(usecase.NewReportUsecase(repository.NewReportRepository(db), enrollmentRepo))
-	catalogHandler := handler.NewCatalogHandler(usecase.NewCatalogUsecase(repository.NewCatalogRepository(db), tenantClient, time.Duration(cfg.CatalogTenantInfoTTL)*time.Minute))
+	catalogHandler := handler.NewCatalogHandler(usecase.NewCatalogUsecase(repository.NewCatalogRepository(db), tenantClient, time.Duration(cfg.CatalogTenantInfoTTL)*time.Minute, catalogPolicyClient, time.Duration(cfg.CatalogPolicyCacheTTL)*time.Second))
 
 	// Initialize Router
 	r := gin.New()
