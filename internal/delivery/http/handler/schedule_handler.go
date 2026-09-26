@@ -54,6 +54,7 @@ func (h *ScheduleHandler) Delete(c *gin.Context) {
 		case errors.Is(err, usecase.ErrScheduleNotFound):
 			c.JSON(http.StatusNotFound, gin.H{"status": "error", "message": err.Error(), "data": nil})
 		default:
+			logInternalError(c.Request.Context(), "delete schedule", err)
 			c.JSON(http.StatusInternalServerError, gin.H{"status": "error", "message": "Failed to delete schedule", "data": nil})
 		}
 		return
@@ -114,9 +115,10 @@ func (h *ScheduleHandler) CreateInitialSchedules(c *gin.Context) {
 			})
 			return
 		}
+		logInternalError(c.Request.Context(), "create initial schedules", err)
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"status":  "error",
-			"message": "Failed to create initial schedules: " + err.Error(),
+			"message": "Failed to create initial schedules",
 			"data":    nil,
 		})
 		return
@@ -177,9 +179,10 @@ func (h *ScheduleHandler) RescheduleSession(c *gin.Context) {
 			})
 			return
 		}
+		logInternalError(c.Request.Context(), "reschedule session", err)
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"status":  "error",
-			"message": "Failed to reschedule session: " + err.Error(),
+			"message": "Failed to reschedule session",
 			"data":    nil,
 		})
 		return
@@ -244,9 +247,10 @@ func (h *ScheduleHandler) ChangeSchedulePermanent(c *gin.Context) {
 			c.JSON(http.StatusBadRequest, gin.H{"status": "error", "message": err.Error(), "data": nil})
 			return
 		}
+		logInternalError(c.Request.Context(), "permanently change schedule", err)
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"status":  "error",
-			"message": "Failed to permanently change schedule: " + err.Error(),
+			"message": "Failed to permanently change schedule",
 			"data":    nil,
 		})
 		return
@@ -307,9 +311,10 @@ func (h *ScheduleHandler) ChangeTutorTemporary(c *gin.Context) {
 			})
 			return
 		}
+		logInternalError(c.Request.Context(), "update substitute tutor", err)
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"status":  "error",
-			"message": "Failed to update substitute tutor: " + err.Error(),
+			"message": "Failed to update substitute tutor",
 			"data":    nil,
 		})
 		return
@@ -374,9 +379,10 @@ func (h *ScheduleHandler) ChangeTutorPermanent(c *gin.Context) {
 			c.JSON(http.StatusBadRequest, gin.H{"status": "error", "message": err.Error(), "data": nil})
 			return
 		}
+		logInternalError(c.Request.Context(), "permanently change tutor", err)
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"status":  "error",
-			"message": "Failed to permanently change tutor: " + err.Error(),
+			"message": "Failed to permanently change tutor",
 			"data":    nil,
 		})
 		return
@@ -431,9 +437,10 @@ func (h *ScheduleHandler) GetSessionAttendees(c *gin.Context) {
 			})
 			return
 		}
+		logInternalError(c.Request.Context(), "get session attendees", err)
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"status":  "error",
-			"message": "Failed to get session attendees: " + err.Error(),
+			"message": "Failed to get session attendees",
 			"data":    nil,
 		})
 		return

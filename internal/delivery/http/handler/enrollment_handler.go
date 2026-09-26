@@ -55,7 +55,12 @@ func (h *EnrollmentHandler) AssignSchedule(c *gin.Context) {
 		if errors.Is(err, domain.ErrScheduleNotFound) || errors.Is(err, domain.ErrScheduleClassMismatch) {
 			status = http.StatusUnprocessableEntity
 		}
-		c.JSON(status, gin.H{"status": "error", "message": err.Error(), "data": nil})
+		message := err.Error()
+		if status == http.StatusInternalServerError {
+			logInternalError(c.Request.Context(), "assign enrollment schedule", err)
+			message = "Failed to assign schedule"
+		}
+		c.JSON(status, gin.H{"status": "error", "message": message, "data": nil})
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"status": "success", "message": "Schedule assigned successfully", "data": res})
@@ -115,10 +120,13 @@ func (h *EnrollmentHandler) Create(c *gin.Context) {
 	res, err := h.enrollmentUsecase.EnrollStudent(c.Request.Context(), pathTenantID, &req)
 	if err != nil {
 		status := http.StatusInternalServerError
+		message := "Failed to create enrollment"
 		if errors.Is(err, domain.ErrIdempotencyConflict) {
 			status = http.StatusConflict
+		} else {
+			logInternalError(c.Request.Context(), "create tenant enrollment", err)
 		}
-		c.JSON(status, gin.H{"status": "error", "message": "Failed to create enrollment"})
+		c.JSON(status, gin.H{"status": "error", "message": message})
 		return
 	}
 	c.JSON(http.StatusCreated, gin.H{"status": "success", "message": "Enrollment created and invoice generated", "data": res})
@@ -171,7 +179,12 @@ func (h *EnrollmentHandler) CreateCatalogEnrollment(c *gin.Context) {
 	result, err := h.enrollmentUsecase.EnrollPublic(c.Request.Context(), parentID, classID, &req, key)
 	if err != nil {
 		status := catalogEnrollmentErrorStatus(err)
-		c.JSON(status, gin.H{"status": "error", "message": err.Error(), "data": nil})
+		message := err.Error()
+		if status == http.StatusInternalServerError {
+			logInternalError(c.Request.Context(), "create catalog enrollment", err)
+			message = "Failed to create enrollment"
+		}
+		c.JSON(status, gin.H{"status": "error", "message": message, "data": nil})
 		return
 	}
 	c.JSON(http.StatusCreated, gin.H{"status": "success", "message": "Enrollment created and invoice generated", "data": result})
@@ -206,7 +219,7 @@ func (h *EnrollmentHandler) Cancel(c *gin.Context) {
 	res, err := h.enrollmentUsecase.CancelPendingEnrollment(c.Request.Context(), parentID, enrollmentID)
 	if err != nil {
 		status := http.StatusInternalServerError
-		message := err.Error()
+		message := "Failed to cancel enrollment"
 		switch {
 		case errors.Is(err, usecase.ErrEnrollmentNotFound):
 			status, message = http.StatusNotFound, "Enrollment not found"
@@ -214,6 +227,8 @@ func (h *EnrollmentHandler) Cancel(c *gin.Context) {
 			status, message = http.StatusConflict, "Enrollment can no longer be cancelled"
 		case errors.Is(err, domain.ErrParentRequired):
 			status, message = http.StatusForbidden, "Parent authentication is required"
+		default:
+			logInternalError(c.Request.Context(), "cancel enrollment", err)
 		}
 		c.JSON(status, gin.H{"status": "error", "message": message, "data": nil})
 		return
@@ -278,12 +293,16 @@ func (h *EnrollmentHandler) ReleaseInternal(c *gin.Context) {
 			return
 		}
 		status := http.StatusInternalServerError
+		message := "Failed to release enrollment"
 		if errors.Is(err, domain.ErrInvalidEnrollmentTransition) {
 			status = http.StatusConflict
+			message = "Failed to release enrollment: " + err.Error()
+		} else {
+			logInternalError(c.Request.Context(), "release enrollment", err)
 		}
 		c.JSON(status, gin.H{
 			"status":  "error",
-			"message": "Failed to release enrollment: " + err.Error(),
+			"message": message,
 			"data":    nil,
 		})
 		return
@@ -331,12 +350,16 @@ func (h *EnrollmentHandler) ActivateInternal(c *gin.Context) {
 			return
 		}
 		status := http.StatusInternalServerError
+		message := "Failed to update enrollment status"
 		if errors.Is(err, domain.ErrInvalidEnrollmentTransition) {
 			status = http.StatusConflict
+			message = "Failed to update enrollment status: " + err.Error()
+		} else {
+			logInternalError(c.Request.Context(), "activate enrollment", err)
 		}
 		c.JSON(status, gin.H{
 			"status":  "error",
-			"message": "Failed to update enrollment status: " + err.Error(),
+			"message": message,
 			"data":    nil,
 		})
 		return
