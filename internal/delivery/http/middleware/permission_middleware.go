@@ -43,6 +43,28 @@ func RequirePermissionUnlessParent(client grpcclient.PermissionClient, permissio
 	}
 }
 
+// RequirePermissionForTenantResource guards handlers which first parse the tenant
+// context. Keep invalid tenant claims on that existing handler path (401 before any
+// usecase), including parent tokens without a tenant. Parent tokens with a valid
+// tenant also retain their existing handler behavior; tenant members require permission.
+func RequirePermissionForTenantResource(client grpcclient.PermissionClient, permission string) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		if _, err := uuid.Parse(c.GetString("tenant_id")); err != nil {
+			c.Next()
+			return
+		}
+		if c.GetBool("is_parent") {
+			c.Next()
+			return
+		}
+		if !permissionAllowed(c, client, permission) {
+			c.Abort()
+			return
+		}
+		c.Next()
+	}
+}
+
 // permissionAllowed writes the failure response and reports false when the caller
 // must not proceed. A denial is a 403 without any data change, and an unreachable
 // or unusable authorization service is a 503, matching the catalogue mutations.
