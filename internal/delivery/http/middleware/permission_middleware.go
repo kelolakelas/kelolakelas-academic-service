@@ -10,9 +10,9 @@ import (
 )
 
 // RequirePermission applies the persisted permission check described in ADR 0002
-// to the route it guards: the role and the tenant are both read from the verified
-// JWT claim, so a caller without a role or a tenant claim is denied before
-// identity is consulted.
+// to the route it guards: the role, the tenant, and the membership are all read
+// from the verified JWT claim, so a caller without a role, tenant, or member_id
+// claim is denied before identity is consulted.
 func RequirePermission(client grpcclient.PermissionClient, permission string) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		if !permissionAllowed(c, client, permission) {
@@ -64,8 +64,17 @@ func permissionAllowed(c *gin.Context, client grpcclient.PermissionClient, permi
 		c.JSON(http.StatusForbidden, gin.H{"status": "error", "message": "Permission denied", "data": nil})
 		return false
 	}
+	// KEL-80: the check is pinned to the membership the verified token was issued for, so
+	// identity can deny a member who was removed or moved to another role while the token
+	// is still valid. A tenant token without a usable member_id claim cannot be pinned and
+	// is rejected here, before identity is consulted.
+	memberID, err := uuid.Parse(c.GetString("member_id"))
+	if err != nil || memberID == uuid.Nil {
+		c.JSON(http.StatusForbidden, gin.H{"status": "error", "message": "Permission denied", "data": nil})
+		return false
+	}
 
-	allowed, err := client.CheckPermission(c.Request.Context(), tenantID.String(), roleID.String(), permission)
+	allowed, err := client.CheckPermission(c.Request.Context(), tenantID.String(), roleID.String(), memberID.String(), permission)
 	if err != nil {
 		c.JSON(http.StatusServiceUnavailable, gin.H{"status": "error", "message": "Authorization service unavailable", "data": nil})
 		return false

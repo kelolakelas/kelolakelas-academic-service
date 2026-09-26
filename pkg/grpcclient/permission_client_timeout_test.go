@@ -36,7 +36,7 @@ func TestCheckPermissionTimesOutWhenIdentityNeverAnswers(t *testing.T) {
 	client := newPermissionClientWithHandler(t, timeout, hungIdentity)
 
 	started := time.Now()
-	allowed, err := client.CheckPermission(context.Background(), testTenantID, testRoleID, "class:update")
+	allowed, err := client.CheckPermission(context.Background(), testTenantID, testRoleID, testMemberID, "class:update")
 	elapsed := time.Since(started)
 
 	if err == nil {
@@ -64,7 +64,7 @@ func TestCheckPermissionHonoursCallerCancellationBeforeDeadline(t *testing.T) {
 	cancel()
 
 	started := time.Now()
-	allowed, err := client.CheckPermission(ctx, testTenantID, testRoleID, "class:update")
+	allowed, err := client.CheckPermission(ctx, testTenantID, testRoleID, testMemberID, "class:update")
 	elapsed := time.Since(started)
 
 	if err == nil || allowed {
@@ -87,7 +87,7 @@ func TestCheckPermissionKeepsShorterCallerDeadline(t *testing.T) {
 	defer cancel()
 
 	started := time.Now()
-	_, err := client.CheckPermission(ctx, testTenantID, testRoleID, "class:update")
+	_, err := client.CheckPermission(ctx, testTenantID, testRoleID, testMemberID, "class:update")
 	if code := status.Code(err); code != codes.DeadlineExceeded {
 		t.Fatalf("status code=%s, want %s (err=%v)", code, codes.DeadlineExceeded, err)
 	}
@@ -116,7 +116,7 @@ func TestCheckPermissionAroundTimeoutBoundary(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			client := newPermissionClientWithHandler(t, tc.timeout, delayedIdentity(tc.delay, tc.allowed))
 
-			allowed, err := client.CheckPermission(context.Background(), testTenantID, testRoleID, "class:update")
+			allowed, err := client.CheckPermission(context.Background(), testTenantID, testRoleID, testMemberID, "class:update")
 			if code := status.Code(err); code != tc.wantCode {
 				t.Fatalf("status code=%s, want %s (err=%v)", code, tc.wantCode, err)
 			}
