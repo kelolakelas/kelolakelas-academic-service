@@ -79,6 +79,8 @@ definitions:
     type: object
   github_com_kelolakelas_kelolakelas-academic-service_internal_domain.CatalogListResponse:
     properties:
+      catalog_open:
+        type: boolean
       items:
         items:
           $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.CatalogItem'
@@ -1109,6 +1111,10 @@ paths:
           description: Internal Server Error
           schema:
             $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
       summary: List public catalog classes
       tags:
       - Catalog
@@ -1206,6 +1212,10 @@ paths:
             $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
         "500":
           description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+        "503":
+          description: Service Unavailable
           schema:
             $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
       summary: Get a public catalog class

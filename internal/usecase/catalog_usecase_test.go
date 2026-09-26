@@ -95,7 +95,7 @@ func TestCatalogServesFromFreshSnapshotWithoutCallingIdentity(t *testing.T) {
 	tenantID := uuid.New()
 	repo := &catalogRepoStub{tenantIDs: []uuid.UUID{tenantID}, freshIDs: []uuid.UUID{tenantID}}
 	client := &tenantClientStub{info: map[string]grpcclient.TenantPublicInfo{tenantID.String(): tenantInfo(tenantID, true, "Tenant")}}
-	uc := NewCatalogUsecase(repo, client, time.Minute)
+	uc := NewCatalogUsecase(repo, client, time.Minute, &catalogPolicyClientStub{policy: grpcclient.CatalogPolicy{Open: true}}, time.Second)
 
 	if _, err := uc.ListClasses(context.Background(), validCatalogQuery()); err != nil {
 		t.Fatalf("ListClasses error: %v", err)
@@ -121,7 +121,7 @@ func TestCatalogSecondRequestInsideTTLDoesNotRefreshAgain(t *testing.T) {
 	// fresh snapshot, which is what the repository reports after the first upsert lands.
 	repo := &catalogRepoStub{tenantIDs: []uuid.UUID{tenantID}}
 	client := &tenantClientStub{info: map[string]grpcclient.TenantPublicInfo{tenantID.String(): tenantInfo(tenantID, true, "Tenant")}}
-	uc := NewCatalogUsecase(repo, client, time.Minute)
+	uc := NewCatalogUsecase(repo, client, time.Minute, &catalogPolicyClientStub{policy: grpcclient.CatalogPolicy{Open: true}}, time.Second)
 
 	if _, err := uc.ListClasses(context.Background(), validCatalogQuery()); err != nil {
 		t.Fatalf("first ListClasses error: %v", err)
@@ -147,7 +147,7 @@ func TestCatalogRefreshesOnlyMissingOrStaleTenants(t *testing.T) {
 	freshID, staleID := uuid.New(), uuid.New()
 	repo := &catalogRepoStub{tenantIDs: []uuid.UUID{freshID, staleID}, freshIDs: []uuid.UUID{freshID}, items: []domain.CatalogItem{{ID: uuid.New()}}}
 	client := &tenantClientStub{info: map[string]grpcclient.TenantPublicInfo{staleID.String(): tenantInfo(staleID, true, "Stale")}}
-	uc := NewCatalogUsecase(repo, client, time.Minute)
+	uc := NewCatalogUsecase(repo, client, time.Minute, &catalogPolicyClientStub{policy: grpcclient.CatalogPolicy{Open: true}}, time.Second)
 
 	if _, err := uc.GetClass(context.Background(), uuid.New()); err != nil {
 		t.Fatalf("GetClass error: %v", err)
@@ -170,7 +170,7 @@ func TestCatalogServesSnapshotWhenIdentityIsUnavailable(t *testing.T) {
 	tenantID := uuid.New()
 	repo := &catalogRepoStub{tenantIDs: []uuid.UUID{tenantID}}
 	client := &tenantClientStub{err: errors.New("identity unreachable")}
-	uc := NewCatalogUsecase(repo, client, time.Minute)
+	uc := NewCatalogUsecase(repo, client, time.Minute, &catalogPolicyClientStub{policy: grpcclient.CatalogPolicy{Open: true}}, time.Second)
 
 	response, err := uc.ListClasses(context.Background(), validCatalogQuery())
 	if err != nil {
@@ -191,7 +191,7 @@ func TestCatalogDropsTenantInfoWithInvalidID(t *testing.T) {
 		tenantID.String(): tenantInfo(tenantID, true, "Tenant"),
 		"not-a-uuid":      {ID: "not-a-uuid", Name: "Bogus", IsActive: true},
 	}}
-	uc := NewCatalogUsecase(repo, client, time.Minute)
+	uc := NewCatalogUsecase(repo, client, time.Minute, &catalogPolicyClientStub{policy: grpcclient.CatalogPolicy{Open: true}}, time.Second)
 
 	if _, err := uc.ListClasses(context.Background(), validCatalogQuery()); err != nil {
 		t.Fatalf("ListClasses error: %v", err)
@@ -207,7 +207,7 @@ func TestCatalogDropsTenantInfoWithInvalidID(t *testing.T) {
 }
 
 func TestCatalogUsecaseAppliesDefaultTTLForNonPositiveValue(t *testing.T) {
-	usecase, ok := NewCatalogUsecase(&catalogRepoStub{}, &tenantClientStub{}, 0).(*catalogUsecase)
+	usecase, ok := NewCatalogUsecase(&catalogRepoStub{}, &tenantClientStub{}, 0, &catalogPolicyClientStub{policy: grpcclient.CatalogPolicy{Open: true}}, 0).(*catalogUsecase)
 	if !ok {
 		t.Fatal("NewCatalogUsecase did not return a *catalogUsecase")
 	}
@@ -220,7 +220,7 @@ func TestCatalogRefreshPassesCallerContextToIdentity(t *testing.T) {
 	tenantID := uuid.New()
 	repo := &catalogRepoStub{tenantIDs: []uuid.UUID{tenantID}, items: []domain.CatalogItem{{ID: uuid.New()}}}
 	client := &tenantClientStub{info: map[string]grpcclient.TenantPublicInfo{tenantID.String(): tenantInfo(tenantID, true, "Tenant")}}
-	uc := NewCatalogUsecase(repo, client, time.Minute)
+	uc := NewCatalogUsecase(repo, client, time.Minute, &catalogPolicyClientStub{policy: grpcclient.CatalogPolicy{Open: true}}, time.Second)
 
 	if _, err := uc.GetClass(context.Background(), uuid.New()); err != nil {
 		t.Fatalf("GetClass error: %v", err)

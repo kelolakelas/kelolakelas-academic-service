@@ -324,6 +324,12 @@ const docTemplate = `{
                         "schema": {
                             "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
                         }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
+                        }
                     }
                 }
             }
@@ -480,6 +486,12 @@ const docTemplate = `{
                     },
                     "500": {
                         "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
                         "schema": {
                             "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
                         }
@@ -3002,6 +3014,9 @@ const docTemplate = `{
         "github_com_kelolakelas_kelolakelas-academic-service_internal_domain.CatalogListResponse": {
             "type": "object",
             "properties": {
+                "catalog_open": {
+                    "type": "boolean"
+                },
                 "items": {
                     "type": "array",
                     "items": {

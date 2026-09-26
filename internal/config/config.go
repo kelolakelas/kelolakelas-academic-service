@@ -27,6 +27,8 @@ type Config struct {
 	JWTSecret                 string `mapstructure:"JWT_SECRET"`
 	CatalogTenantInfoTTL      int    `mapstructure:"CATALOG_TENANT_INFO_TTL_MINUTES"`
 	CatalogTenantInfoTimeout  int    `mapstructure:"CATALOG_TENANT_INFO_TIMEOUT_MS"`
+	CatalogPolicyCacheTTL     int    `mapstructure:"CATALOG_POLICY_CACHE_TTL_SECONDS"`
+	CatalogPolicyTimeout      int    `mapstructure:"CATALOG_POLICY_TIMEOUT_MS"`
 
 	// IdentityPermissionTimeoutMs bounds one permission check against identity. When it
 	// elapses the check fails and the permission middleware answers 503.
@@ -56,6 +58,7 @@ func LoadConfig() (Config, error) {
 		"DATABASE_URL", "DB_HOST", "DB_PORT", "DB_SSLMODE", "DB_CHANNEL_BINDING", "DB_USER", "DB_PASSWORD", "DB_NAME",
 		"IDENTITY_GRPC_HOST", "BILLING_SERVICE_URL", "INTERNAL_SERVICE_CREDENTIAL", "PORT", "JWT_SECRET",
 		"CATALOG_TENANT_INFO_TTL_MINUTES", "CATALOG_TENANT_INFO_TIMEOUT_MS",
+		"CATALOG_POLICY_CACHE_TTL_SECONDS", "CATALOG_POLICY_TIMEOUT_MS",
 		"IDENTITY_PERMISSION_TIMEOUT_MS",
 	} {
 		if err := viper.BindEnv(key); err != nil {
@@ -107,6 +110,12 @@ func LoadConfig() (Config, error) {
 	}
 	if config.CatalogTenantInfoTimeout == 0 {
 		config.CatalogTenantInfoTimeout = 2000
+	}
+	if config.CatalogPolicyCacheTTL <= 0 {
+		config.CatalogPolicyCacheTTL = 15
+	}
+	if config.CatalogPolicyTimeout <= 0 {
+		config.CatalogPolicyTimeout = 2000
 	}
 	if config.IdentityPermissionTimeoutMs <= 0 {
 		config.IdentityPermissionTimeoutMs = DefaultIdentityPermissionTimeoutMs

@@ -83,10 +83,22 @@ type CatalogItem struct {
 	CreatedAt       time.Time        `json:"created_at"`
 }
 
+// CatalogOpen is true when the platform public catalog policy (KEL-98) lets
+// classes be listed. A closed catalog answers with no items, zero totals, and
+// CatalogOpen=false, so clients can tell "closed" apart from "no results".
 type CatalogListResponse struct {
-	Items      []CatalogItem `json:"items"`
-	Pagination Pagination    `json:"pagination"`
+	Items       []CatalogItem `json:"items"`
+	Pagination  Pagination    `json:"pagination"`
+	CatalogOpen bool          `json:"catalog_open"`
 }
+
+// ErrCatalogClosed means the platform closed the public catalog; class and
+// tenant data are untouched and simply not shown.
+var ErrCatalogClosed = errors.New("public catalog is closed")
+
+// ErrCatalogPolicyUnavailable means the effective catalog policy could not be
+// read or trusted, so the catalog is hidden (fail closed) until it can be.
+var ErrCatalogPolicyUnavailable = errors.New("public catalog policy unavailable")
 
 type CatalogRepository interface {
 	TenantIDs(ctx context.Context) ([]uuid.UUID, error)
