@@ -41,6 +41,10 @@ func (r *catalogRepository) UpsertTenantSnapshots(ctx context.Context, snapshots
 	}).Create(&snapshots).Error
 }
 
+func catalogValidityDateSQL() string {
+	return "DATE '" + time.Now().Format("2006-01-02") + "'"
+}
+
 func (r *catalogRepository) List(ctx context.Context, query domain.CatalogQuery) ([]domain.CatalogItem, int64, error) {
 	// An inner join on an active tenant snapshot keeps list and detail consistent: a class
 	// of an inactive (or unknown) tenant is not visible on either path.
@@ -86,7 +90,7 @@ func (r *catalogRepository) List(ctx context.Context, query domain.CatalogQuery)
 		order = "c.price DESC"
 	}
 	items := make([]domain.CatalogItem, 0)
-	schedules := "COALESCE((SELECT jsonb_agg(jsonb_build_object('id', cs.id, 'day_of_week', cs.day_of_week, 'start_time', cs.start_time, 'end_time', cs.end_time, 'location', cs.location, 'capacity', cs.capacity, 'available_slots', GREATEST(cs.capacity - (SELECT COUNT(*) FROM enrollments e WHERE e.schedule_id = cs.id AND e.status IN ('pending', 'active') AND e.deleted_at IS NULL), 0), 'is_available', GREATEST(cs.capacity - (SELECT COUNT(*) FROM enrollments e WHERE e.schedule_id = cs.id AND e.status IN ('pending', 'active') AND e.deleted_at IS NULL), 0) > 0)) FROM class_schedules cs WHERE cs.class_id = c.id AND cs.deleted_at IS NULL), '[]'::jsonb)"
+	schedules := "COALESCE((SELECT jsonb_agg(jsonb_build_object('id', cs.id, 'day_of_week', cs.day_of_week, 'start_time', cs.start_time, 'end_time', cs.end_time, 'location', cs.location, 'capacity', cs.capacity, 'available_slots', GREATEST(cs.capacity - (SELECT COUNT(*) FROM enrollments e WHERE e.schedule_id = cs.id AND e.status IN ('pending', 'active') AND e.deleted_at IS NULL), 0), 'is_available', GREATEST(cs.capacity - (SELECT COUNT(*) FROM enrollments e WHERE e.schedule_id = cs.id AND e.status IN ('pending', 'active') AND e.deleted_at IS NULL), 0) > 0)) FROM class_schedules cs WHERE cs.class_id = c.id AND cs.deleted_at IS NULL AND (cs.valid_until IS NULL OR cs.valid_until >= " + catalogValidityDateSQL() + ")), '[]'::jsonb)"
 	selectSQL := "c.id, c.tenant_id, t.name AS tenant_name, t.address_formatted AS tenant_address, c.category_id, cat.name AS category_name, c.name, c.description, c.type, c.price, " + schedules + " AS schedules, " + distance + " AS distance_km, c.enrollment_status = 'open' AS is_enrollable, c.created_at"
 	args := []interface{}{}
 	if query.Latitude != nil {
@@ -100,7 +104,7 @@ func (r *catalogRepository) List(ctx context.Context, query domain.CatalogQuery)
 
 func (r *catalogRepository) GetByID(ctx context.Context, id uuid.UUID) (*domain.CatalogItem, error) {
 	var item domain.CatalogItem
-	schedules := "COALESCE((SELECT jsonb_agg(jsonb_build_object('id', cs.id, 'day_of_week', cs.day_of_week, 'start_time', cs.start_time, 'end_time', cs.end_time, 'location', cs.location, 'capacity', cs.capacity, 'available_slots', GREATEST(cs.capacity - (SELECT COUNT(*) FROM enrollments e WHERE e.schedule_id = cs.id AND e.status IN ('pending', 'active') AND e.deleted_at IS NULL), 0), 'is_available', GREATEST(cs.capacity - (SELECT COUNT(*) FROM enrollments e WHERE e.schedule_id = cs.id AND e.status IN ('pending', 'active') AND e.deleted_at IS NULL), 0) > 0)) FROM class_schedules cs WHERE cs.class_id = c.id AND cs.deleted_at IS NULL), '[]'::jsonb)"
+	schedules := "COALESCE((SELECT jsonb_agg(jsonb_build_object('id', cs.id, 'day_of_week', cs.day_of_week, 'start_time', cs.start_time, 'end_time', cs.end_time, 'location', cs.location, 'capacity', cs.capacity, 'available_slots', GREATEST(cs.capacity - (SELECT COUNT(*) FROM enrollments e WHERE e.schedule_id = cs.id AND e.status IN ('pending', 'active') AND e.deleted_at IS NULL), 0), 'is_available', GREATEST(cs.capacity - (SELECT COUNT(*) FROM enrollments e WHERE e.schedule_id = cs.id AND e.status IN ('pending', 'active') AND e.deleted_at IS NULL), 0) > 0)) FROM class_schedules cs WHERE cs.class_id = c.id AND cs.deleted_at IS NULL AND (cs.valid_until IS NULL OR cs.valid_until >= " + catalogValidityDateSQL() + ")), '[]'::jsonb)"
 	err := r.db.WithContext(ctx).Table("classes c").Joins("JOIN categories cat ON cat.id = c.category_id AND cat.deleted_at IS NULL").Joins("JOIN tenant_location_snapshots t ON t.tenant_id = c.tenant_id AND t.is_active = ?", true).Where("c.id = ? AND c.deleted_at IS NULL AND c.is_published = ? AND c.enrollment_status = ?", id, true, "open").Select("c.id, c.tenant_id, t.name AS tenant_name, t.address_formatted AS tenant_address, c.category_id, cat.name AS category_name, c.name, c.description, c.type, c.price, " + schedules + " AS schedules, c.enrollment_status = 'open' AS is_enrollable, c.created_at").Scan(&item).Error
 	if err != nil {
 		return nil, err

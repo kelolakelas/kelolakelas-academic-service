@@ -52,7 +52,7 @@ func (h *EnrollmentHandler) AssignSchedule(c *gin.Context) {
 		if errors.Is(err, domain.ErrScheduleFull) || errors.Is(err, domain.ErrInvalidEnrollmentTransition) {
 			status = http.StatusConflict
 		}
-		if errors.Is(err, domain.ErrScheduleNotFound) || errors.Is(err, domain.ErrScheduleClassMismatch) {
+		if errors.Is(err, domain.ErrScheduleNotFound) || errors.Is(err, domain.ErrScheduleClassMismatch) || errors.Is(err, domain.ErrScheduleEnded) {
 			status = http.StatusUnprocessableEntity
 		}
 		message := err.Error()
@@ -240,7 +240,7 @@ func catalogEnrollmentErrorStatus(err error) int {
 	switch {
 	case errors.Is(err, domain.ErrIdempotencyConflict), errors.Is(err, domain.ErrScheduleFull):
 		return http.StatusConflict
-	case errors.Is(err, domain.ErrStudentOwnership), errors.Is(err, domain.ErrClassNotEnrollable), errors.Is(err, domain.ErrScheduleClassMismatch), errors.Is(err, domain.ErrScheduleRequired):
+	case errors.Is(err, domain.ErrStudentOwnership), errors.Is(err, domain.ErrClassNotEnrollable), errors.Is(err, domain.ErrScheduleClassMismatch), errors.Is(err, domain.ErrScheduleRequired), errors.Is(err, domain.ErrScheduleEnded):
 		return http.StatusUnprocessableEntity
 	case errors.Is(err, domain.ErrClassNotFound), errors.Is(err, domain.ErrStudentNotFound):
 		return http.StatusNotFound
