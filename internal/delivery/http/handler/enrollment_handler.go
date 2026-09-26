@@ -89,7 +89,11 @@ func (h *EnrollmentHandler) Create(c *gin.Context) {
 			return
 		}
 		key := c.GetHeader("Idempotency-Key")
-		result, enrollErr := h.enrollmentUsecase.EnrollPublic(c.Request.Context(), parentID, req.ClassID, &domain.PublicEnrollmentRequest{StudentID: req.StudentID, BillingCycle: req.BillingCycle, ScheduleID: req.ScheduleID}, key)
+		// KEL-75: the email claim from the verified token is the only source for the
+		// billing contact; the request body and headers are never consulted. The
+		// middleware has already normalised the value (TrimSpace, case preserved).
+		publicReq := &domain.PublicEnrollmentRequest{StudentID: req.StudentID, BillingCycle: req.BillingCycle, ScheduleID: req.ScheduleID, SenderEmail: c.GetString("email")}
+		result, enrollErr := h.enrollmentUsecase.EnrollPublic(c.Request.Context(), parentID, req.ClassID, publicReq, key)
 		if enrollErr != nil {
 			c.JSON(http.StatusUnprocessableEntity, gin.H{"status": "error", "message": enrollErr.Error(), "data": nil})
 			return
@@ -160,6 +164,10 @@ func (h *EnrollmentHandler) CreateCatalogEnrollment(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"status": "error", "message": "Invalid enrollment request", "data": nil})
 		return
 	}
+	// KEL-75: the billing contact comes from the verified token's email claim, never
+	// from client input, so it is injected after the body has been bound. The
+	// middleware has already normalised the value (TrimSpace, case preserved).
+	req.SenderEmail = c.GetString("email")
 	result, err := h.enrollmentUsecase.EnrollPublic(c.Request.Context(), parentID, classID, &req, key)
 	if err != nil {
 		status := catalogEnrollmentErrorStatus(err)

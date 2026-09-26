@@ -51,6 +51,10 @@ type PublicEnrollmentRequest struct {
 	StudentID    uuid.UUID  `json:"student_id" binding:"required"`
 	BillingCycle string     `json:"billing_cycle" binding:"required,oneof=monthly quarterly yearly"`
 	ScheduleID   *uuid.UUID `json:"schedule_id,omitempty"`
+	// SenderEmail is filled in by the handler from the verified JWT email claim
+	// (KEL-75). The `json:"-"` binding keeps a client from supplying it through
+	// the request body; it is never read from headers either.
+	SenderEmail string `json:"-"`
 }
 
 type AssignEnrollmentScheduleRequest struct {
