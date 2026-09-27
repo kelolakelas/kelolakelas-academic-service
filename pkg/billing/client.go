@@ -64,8 +64,13 @@ type client struct {
 	httpClient *http.Client
 }
 
+// RequestTimeout bounds one call to billing, connection and response body included.
+// The academic HTTP server's WriteTimeout is validated to exceed it, so a request waiting
+// on a slow billing answer is never cut by the server first.
+const RequestTimeout = 10 * time.Second
+
 func NewClient(baseURL, credential string) Client {
-	return &client{baseURL: strings.TrimRight(baseURL, "/"), credential: credential, httpClient: &http.Client{Timeout: 10 * time.Second}}
+	return &client{baseURL: strings.TrimRight(baseURL, "/"), credential: credential, httpClient: &http.Client{Timeout: RequestTimeout}}
 }
 
 func (c *client) GenerateInvoice(ctx context.Context, request InvoiceRequest) (*InvoiceResponse, error) {

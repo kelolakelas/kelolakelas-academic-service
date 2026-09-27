@@ -1,8 +1,12 @@
 package main
 
 import (
+	"context"
 	"log/slog"
+	"net"
 	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -171,9 +175,31 @@ func main() {
 	internal.PUT("/enrollments/:id/activate", enrollmentHandler.ActivateInternal)
 	internal.PUT("/enrollments/:id/release", enrollmentHandler.ReleaseInternal)
 
-	slog.Info("Starting academic service", "port", cfg.Port)
-	if err := r.Run("0.0.0.0:" + cfg.Port); err != nil {
+	httpServer := newHTTPServer(cfg, r)
+	listener, err := net.Listen("tcp", httpServer.Addr)
+	if err != nil {
 		slog.Error("Failed to start academic service", "error", err)
+		os.Exit(1)
+	}
+	// The signal handler stays registered for the whole shutdown, so a second SIGTERM
+	// does not cut the drain short; the shutdown timeout still bounds the exit.
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer stop()
+
+	slog.Info("Starting academic service",
+		"port", cfg.Port,
+		"server_read_header_timeout_seconds", cfg.ServerReadHeaderTimeout,
+		"server_read_timeout_seconds", cfg.ServerReadTimeout,
+		"server_write_timeout_seconds", cfg.ServerWriteTimeout,
+		"server_idle_timeout_seconds", cfg.ServerIdleTimeout,
+		"server_shutdown_timeout_seconds", cfg.ServerShutdownTimeout,
+	)
+	if err := serveUntilDone(ctx, httpServer, listener, time.Duration(cfg.ServerShutdownTimeout)*time.Second); err != nil {
+		slog.Error("Academic service stopped with error", "error", err)
+		// os.Exit skips deferred calls, so release the identity clients first.
+		tenantClient.Close()
+		permissionClient.Close()
+		catalogPolicyClient.Close()
 		os.Exit(1)
 	}
 }

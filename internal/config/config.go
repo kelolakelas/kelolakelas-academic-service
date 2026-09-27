@@ -6,9 +6,12 @@ import (
 	"net/url"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/joho/godotenv"
 	"github.com/spf13/viper"
+
+	"github.com/kelolakelas/kelolakelas-academic-service/pkg/billing"
 )
 
 type Config struct {
@@ -33,7 +36,37 @@ type Config struct {
 	// IdentityPermissionTimeoutMs bounds one permission check against identity. When it
 	// elapses the check fails and the permission middleware answers 503.
 	IdentityPermissionTimeoutMs int `mapstructure:"IDENTITY_PERMISSION_TIMEOUT_MS"`
+
+	// ServerReadHeaderTimeout, ServerReadTimeout, ServerWriteTimeout and ServerIdleTimeout
+	// configure the HTTP server in seconds. ServerShutdownTimeout bounds how long in-flight
+	// requests may drain after SIGINT/SIGTERM before remaining connections are closed.
+	ServerReadHeaderTimeout int `mapstructure:"SERVER_READ_HEADER_TIMEOUT_SECONDS"`
+	ServerReadTimeout       int `mapstructure:"SERVER_READ_TIMEOUT_SECONDS"`
+	ServerWriteTimeout      int `mapstructure:"SERVER_WRITE_TIMEOUT_SECONDS"`
+	ServerIdleTimeout       int `mapstructure:"SERVER_IDLE_TIMEOUT_SECONDS"`
+	ServerShutdownTimeout   int `mapstructure:"SERVER_SHUTDOWN_TIMEOUT_SECONDS"`
 }
+
+// Defaults for the server timeouts, in seconds. The HTTP values follow the gateway. A
+// zero, negative, or unset value uses the default; zero never disables a bound.
+const (
+	// DefaultServerReadHeaderTimeout closes a connection that stalls before sending its
+	// headers (slowloris).
+	DefaultServerReadHeaderTimeout = 5
+	// DefaultServerReadTimeout bounds reading the whole request, body included.
+	DefaultServerReadTimeout = 30
+	// DefaultServerWriteTimeout must exceed billing.RequestTimeout; see applyServerTimeouts.
+	DefaultServerWriteTimeout = 60
+	// DefaultServerIdleTimeout bounds how long a kept-alive connection may sit idle.
+	DefaultServerIdleTimeout = 120
+	// DefaultServerShutdownTimeout exceeds billing.RequestTimeout, so a checkout that has
+	// just called billing can still finish, and stays inside a typical 30-second
+	// termination grace period.
+	DefaultServerShutdownTimeout = 15
+)
+
+// maxDurationSeconds is the largest number of seconds a time.Duration can hold.
+const maxDurationSeconds = int(int64(1<<63-1) / int64(time.Second))
 
 // DefaultIdentityPermissionTimeoutMs is used when IDENTITY_PERMISSION_TIMEOUT_MS is unset,
 // zero, or negative, matching billing. A non-positive value never disables the deadline,
@@ -60,6 +93,8 @@ func LoadConfig() (Config, error) {
 		"CATALOG_TENANT_INFO_TTL_MINUTES", "CATALOG_TENANT_INFO_TIMEOUT_MS",
 		"CATALOG_POLICY_CACHE_TTL_SECONDS", "CATALOG_POLICY_TIMEOUT_MS",
 		"IDENTITY_PERMISSION_TIMEOUT_MS",
+		"SERVER_READ_HEADER_TIMEOUT_SECONDS", "SERVER_READ_TIMEOUT_SECONDS", "SERVER_WRITE_TIMEOUT_SECONDS",
+		"SERVER_IDLE_TIMEOUT_SECONDS", "SERVER_SHUTDOWN_TIMEOUT_SECONDS",
 	} {
 		if err := viper.BindEnv(key); err != nil {
 			return Config{}, err
@@ -130,8 +165,41 @@ func LoadConfig() (Config, error) {
 	if config.InternalServiceCredential == "" {
 		return Config{}, fmt.Errorf("INTERNAL_SERVICE_CREDENTIAL is required")
 	}
+	if err := applyServerTimeouts(&config); err != nil {
+		return Config{}, err
+	}
 
 	return config, nil
+}
+
+// applyServerTimeouts replaces non-positive server timeouts with their defaults, rejects
+// values too large to become a time.Duration, and requires the write timeout to exceed the
+// billing client timeout. A shorter write timeout would cut an enrollment response that is
+// still waiting on billing, so loading fails instead of clamping silently.
+func applyServerTimeouts(config *Config) error {
+	for _, timeout := range []struct {
+		key      string
+		value    *int
+		fallback int
+	}{
+		{"SERVER_READ_HEADER_TIMEOUT_SECONDS", &config.ServerReadHeaderTimeout, DefaultServerReadHeaderTimeout},
+		{"SERVER_READ_TIMEOUT_SECONDS", &config.ServerReadTimeout, DefaultServerReadTimeout},
+		{"SERVER_WRITE_TIMEOUT_SECONDS", &config.ServerWriteTimeout, DefaultServerWriteTimeout},
+		{"SERVER_IDLE_TIMEOUT_SECONDS", &config.ServerIdleTimeout, DefaultServerIdleTimeout},
+		{"SERVER_SHUTDOWN_TIMEOUT_SECONDS", &config.ServerShutdownTimeout, DefaultServerShutdownTimeout},
+	} {
+		if *timeout.value <= 0 {
+			*timeout.value = timeout.fallback
+		}
+		if *timeout.value > maxDurationSeconds {
+			return fmt.Errorf("%s (%d) is too large for a duration", timeout.key, *timeout.value)
+		}
+	}
+	if time.Duration(config.ServerWriteTimeout)*time.Second <= billing.RequestTimeout {
+		return fmt.Errorf("SERVER_WRITE_TIMEOUT_SECONDS (%d) must be greater than the billing client timeout (%s)",
+			config.ServerWriteTimeout, billing.RequestTimeout)
+	}
+	return nil
 }
 
 func applyDatabaseURL(config *Config) error {
