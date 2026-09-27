@@ -516,6 +516,14 @@ definitions:
         type: string
       joined_at:
         type: string
+      schedule:
+        allOf:
+        - $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.EnrollmentScheduleSummary'
+        description: |-
+          Schedule summarises the weekly slot behind ScheduleID (KEL-70). It is
+          omitted when the enrollment has no schedule (private class) or when the
+          schedule is no longer live (soft-deleted), so clients must treat it as
+          optional even when schedule_id is present.
       schedule_id:
         type: string
       status:
@@ -527,6 +535,24 @@ definitions:
       tenant_id:
         type: string
       updated_at:
+        type: string
+    type: object
+  github_com_kelolakelas_kelolakelas-academic-service_internal_domain.EnrollmentScheduleSummary:
+    properties:
+      day_of_week:
+        description: 1 = Senin, 7 = Minggu (ISO 8601)
+        example: 1
+        type: integer
+      end_time:
+        description: HH:MM:SS
+        example: "17:30:00"
+        type: string
+      location:
+        example: Ruang A
+        type: string
+      start_time:
+        description: HH:MM:SS
+        example: "16:00:00"
         type: string
     type: object
   github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse:

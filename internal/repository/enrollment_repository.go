@@ -153,8 +153,14 @@ func (r *enrollmentRepository) GetByID(ctx context.Context, id uuid.UUID) (*doma
 	return &enrollment, nil
 }
 
+// The scoped read paths below also preload the enrollment's schedule (KEL-70).
+// The preload is a single `id IN (...)` query keyed by the schedule ids of rows
+// that already passed the tenant/parent filter, so it adds one round trip per
+// call (no N+1) and can never surface a schedule that is not referenced by an
+// enrollment the caller may see. GORM's soft-delete scope on class_schedules
+// leaves Schedule nil for a deleted schedule.
 func (r *enrollmentRepository) GetByIDForAccess(ctx context.Context, tenantID, parentID *uuid.UUID, id uuid.UUID) (*domain.Enrollment, error) {
-	db := r.getDB(ctx).Preload("Student").Preload("Class").Where("enrollments.id = ?", id)
+	db := r.getDB(ctx).Preload("Student").Preload("Class").Preload("Schedule").Where("enrollments.id = ?", id)
 	if tenantID != nil {
 		db = db.Where("enrollments.tenant_id = ?", *tenantID)
 	}
@@ -170,7 +176,7 @@ func (r *enrollmentRepository) GetByIDForAccess(ctx context.Context, tenantID, p
 }
 
 func (r *enrollmentRepository) List(ctx context.Context, tenantID, parentID *uuid.UUID, query domain.EnrollmentQuery) ([]*domain.Enrollment, int64, error) {
-	db := r.getDB(ctx).Model(&domain.Enrollment{}).Preload("Student").Preload("Class")
+	db := r.getDB(ctx).Model(&domain.Enrollment{}).Preload("Student").Preload("Class").Preload("Schedule")
 	if tenantID != nil {
 		db = db.Where("enrollments.tenant_id = ?", *tenantID)
 	}
