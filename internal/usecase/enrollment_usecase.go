@@ -176,6 +176,9 @@ func (u *enrollmentUsecase) EnrollPublic(ctx context.Context, parentID, classID 
 		if existing.ClassID != classID || existing.StudentID != req.StudentID || existing.BillingCycle != req.BillingCycle {
 			return nil, domain.ErrIdempotencyConflict
 		}
+		if platformFeeRejected(existing) {
+			return nil, domain.ErrPlatformFeeExceedsGross
+		}
 		if existing.PaymentTransactionID == nil {
 			_, studentErr := u.studentRepo.GetByID(ctx, existing.StudentID)
 			class, classErr := u.classRepo.GetByID(ctx, existing.ClassID)
@@ -184,7 +187,7 @@ func (u *enrollmentUsecase) EnrollPublic(ctx context.Context, parentID, classID 
 			}
 			invoice, invoiceErr := u.billingClient.GenerateInvoice(ctx, billing.InvoiceRequest{TenantID: existing.TenantID, StudentID: existing.StudentID, ClassID: existing.ClassID, EnrollmentID: existing.ID, ParentID: parentID, BillingCycle: existing.BillingCycle, SubtotalAmount: class.Price, IdempotencyKey: idempotencyKey, Title: class.Name, SenderEmail: req.SenderEmail})
 			if invoiceErr != nil {
-				return nil, fmt.Errorf("generate enrollment invoice: %w", invoiceErr)
+				return nil, u.invoiceFailure(ctx, existing.ID, invoiceErr)
 			}
 			existing.PaymentTransactionID = &invoice.TransactionID
 			existing.CheckoutSessionURL = &invoice.CheckoutSessionURL
@@ -226,6 +229,9 @@ func (u *enrollmentUsecase) EnrollPublic(ctx context.Context, parentID, classID 
 					if existing.StudentID != req.StudentID || existing.ClassID != classID || existing.BillingCycle != req.BillingCycle {
 						return nil, domain.ErrIdempotencyConflict
 					}
+					if platformFeeRejected(existing) {
+						return nil, domain.ErrPlatformFeeExceedsGross
+					}
 					return u.publicEnrollmentResponse(existing)
 				}
 			}
@@ -237,6 +243,9 @@ func (u *enrollmentUsecase) EnrollPublic(ctx context.Context, parentID, classID 
 				if existing.StudentID != req.StudentID || existing.ClassID != classID || existing.BillingCycle != req.BillingCycle {
 					return nil, domain.ErrIdempotencyConflict
 				}
+				if platformFeeRejected(existing) {
+					return nil, domain.ErrPlatformFeeExceedsGross
+				}
 				return u.publicEnrollmentResponse(existing)
 			}
 		}
@@ -244,7 +253,7 @@ func (u *enrollmentUsecase) EnrollPublic(ctx context.Context, parentID, classID 
 	}
 	invoice, err := u.billingClient.GenerateInvoice(ctx, billing.InvoiceRequest{TenantID: class.TenantID, StudentID: student.ID, ClassID: class.ID, EnrollmentID: enrollment.ID, ParentID: parentID, BillingCycle: req.BillingCycle, SubtotalAmount: class.Price, IdempotencyKey: idempotencyKey, Title: class.Name, SenderEmail: req.SenderEmail})
 	if err != nil {
-		return nil, fmt.Errorf("generate enrollment invoice: %w", err)
+		return nil, u.invoiceFailure(ctx, enrollment.ID, err)
 	}
 	enrollment.PaymentTransactionID = &invoice.TransactionID
 	enrollment.CheckoutSessionURL = &invoice.CheckoutSessionURL
@@ -253,6 +262,59 @@ func (u *enrollmentUsecase) EnrollPublic(ctx context.Context, parentID, classID 
 		return nil, err
 	}
 	return u.publicEnrollmentResponse(enrollment)
+}
+
+// platformFeeRejected reports whether an enrollment was dropped because billing
+// refused its invoice for the platform fee (see invoiceFailure).
+func platformFeeRejected(enrollment *domain.Enrollment) bool {
+	return enrollment.Status == "dropped" && enrollment.PaymentStatus == domain.PaymentStatusPlatformFeeRejected
+}
+
+// invoiceFailure turns a failed invoice request into the error the caller answers.
+// Most failures are transient and keep the pending enrollment, so a same-key retry
+// can still request the invoice. A platform fee rejection is permanent: billing
+// wrote no transaction and would refuse the same invoice again, so the enrollment
+// created for the attempt is dropped. It then holds no seat in the capacity count
+// and no longer blocks a new enrollment for the same student and class (both count
+// only pending and active rows), while its payment status keeps a same-key replay
+// answering the rejection instead of a success.
+func (u *enrollmentUsecase) invoiceFailure(ctx context.Context, enrollmentID uuid.UUID, invoiceErr error) error {
+	if !errors.Is(invoiceErr, billing.ErrPlatformFeeExceedsGross) {
+		return fmt.Errorf("generate enrollment invoice: %w", invoiceErr)
+	}
+	if err := u.dropPlatformFeeRejected(ctx, enrollmentID); err != nil {
+		// The rejection stands, but the seat could not be released. Answer an
+		// internal error so it is logged; the enrollment still has no transaction,
+		// so a same-key retry asks billing again and retries the release.
+		return fmt.Errorf("release enrollment after platform fee rejection: %w", err)
+	}
+	return domain.ErrPlatformFeeExceedsGross
+}
+
+// dropPlatformFeeRejected moves the enrollment from pending to dropped under a row
+// lock. An enrollment that already left pending is left as it is.
+func (u *enrollmentUsecase) dropPlatformFeeRejected(ctx context.Context, enrollmentID uuid.UUID) error {
+	load := u.enrollmentRepo.GetByID
+	if lockingRepo, ok := u.enrollmentRepo.(repository.EnrollmentLockingRepository); ok {
+		load = lockingRepo.GetByIDForUpdate
+	}
+	drop := func(txCtx context.Context) error {
+		enrollment, err := load(txCtx, enrollmentID)
+		if err != nil {
+			return err
+		}
+		if enrollment.Status != "pending" {
+			return nil
+		}
+		enrollment.Status = "dropped"
+		enrollment.PaymentStatus = domain.PaymentStatusPlatformFeeRejected
+		enrollment.UpdatedAt = time.Now()
+		return u.enrollmentRepo.Update(txCtx, enrollment)
+	}
+	if u.txManager != nil {
+		return u.txManager.WithTransaction(ctx, drop)
+	}
+	return drop(ctx)
 }
 
 func (u *enrollmentUsecase) publicEnrollmentResponse(enrollment *domain.Enrollment) (*domain.PublicEnrollmentResponse, error) {
@@ -274,6 +336,9 @@ func (u *enrollmentUsecase) EnrollStudent(ctx context.Context, tenantID uuid.UUI
 		if existing, lookupErr := lockingRepo.GetByIdempotencyKeyForTenant(ctx, tenantID, req.IdempotencyKey); lookupErr == nil {
 			if existing.StudentID != req.StudentID || existing.ClassID != req.ClassID || existing.BillingCycle != req.BillingCycle {
 				return nil, domain.ErrIdempotencyConflict
+			}
+			if platformFeeRejected(existing) {
+				return nil, domain.ErrPlatformFeeExceedsGross
 			}
 			return enrollmentResponse(existing), nil
 		} else if !errors.Is(lookupErr, gorm.ErrRecordNotFound) {
@@ -308,7 +373,7 @@ func (u *enrollmentUsecase) EnrollStudent(ctx context.Context, tenantID uuid.UUI
 	}
 	invoice, err := u.billingClient.GenerateInvoice(ctx, billing.InvoiceRequest{TenantID: tenantID, StudentID: req.StudentID, ClassID: req.ClassID, EnrollmentID: enrollment.ID, ParentID: student.ParentID, BillingCycle: req.BillingCycle, SubtotalAmount: class.Price, IdempotencyKey: req.IdempotencyKey, Title: class.Name})
 	if err != nil {
-		return nil, fmt.Errorf("generate enrollment invoice: %w", err)
+		return nil, u.invoiceFailure(ctx, enrollment.ID, err)
 	}
 	enrollment.PaymentTransactionID = &invoice.TransactionID
 	enrollment.CheckoutSessionURL = &invoice.CheckoutSessionURL

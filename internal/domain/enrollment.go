@@ -30,6 +30,24 @@ var ErrDuplicateEnrollment = errors.New("student already has a pending or active
 // schedule or an idempotency conflict without parsing the message.
 const DuplicateEnrollmentErrorCode = "duplicate_enrollment"
 
+// ErrPlatformFeeExceedsGross reports that billing permanently refused the
+// enrollment invoice because the platform fee plus the payment gateway fee exceed
+// the gross amount (billing KEL-99). The enrollment created for the attempt is
+// dropped so it holds no seat and does not block a new attempt, and a replay of
+// the same Idempotency-Key answers this error again instead of a success. The
+// message equals billing's, the owner-approved text for this rejection.
+var ErrPlatformFeeExceedsGross = errors.New("Biaya platform melebihi jumlah pembayaran")
+
+// PlatformFeeExceedsGrossErrorCode is the machine-readable `code` returned with
+// the HTTP 422 for ErrPlatformFeeExceedsGross. It equals billing's code on purpose.
+const PlatformFeeExceedsGrossErrorCode = "platform_fee_exceeds_gross"
+
+// PaymentStatusPlatformFeeRejected marks an enrollment dropped because billing
+// refused its invoice for ErrPlatformFeeExceedsGross. It is what lets an
+// Idempotency-Key replay answer the rejection rather than retry the invoice, and it
+// tells this drop apart from a parent cancellation or an expired payment.
+const PaymentStatusPlatformFeeRejected = "platform_fee_rejected"
+
 type Enrollment struct {
 	ID                   uuid.UUID      `gorm:"type:uuid;primaryKey;default:gen_random_uuid()" json:"id"`
 	TenantID             uuid.UUID      `gorm:"type:uuid;not null;index:idx_tenant_status" json:"tenant_id"` // Cross-service, ordinary UUID

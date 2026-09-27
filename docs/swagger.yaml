@@ -1206,13 +1206,16 @@ paths:
     post:
       consumes:
       - application/json
-      description: Creates a pending enrollment and generates a billing invoice. The
-        tenant is resolved from the selected class. Retrying with the same Idempotency-Key
+      description: 'Creates a pending enrollment and generates a billing invoice.
+        The tenant is resolved from the selected class. Retrying with the same Idempotency-Key
         returns the same enrollment. A 409 with `code` `duplicate_enrollment` means
         the student already has a pending or active enrollment in this class (including
         a concurrent request that won the race); a 409 without `code` is a full schedule
-        or an Idempotency-Key reused with a different request. A dropped or completed
-        enrollment does not block a new one.
+        or an Idempotency-Key reused with a different request. A 422 with `code` `platform_fee_exceeds_gross`
+        means billing refused the invoice because the platform fee exceeds the payment
+        amount: the attempt holds no seat and does not block a new attempt, and a
+        replay with the same Idempotency-Key answers the same 422. A dropped or completed
+        enrollment does not block a new one.'
       parameters:
       - description: Class UUID
         in: path
@@ -3278,12 +3281,15 @@ paths:
     post:
       consumes:
       - application/json
-      description: A tenant-member token must carry `tenant_id` equal to the path
+      description: 'A tenant-member token must carry `tenant_id` equal to the path
         and hold `enrollment:create`; a parent token skips the permission check and
         is enrolled through the public-enrollment flow (its errors answer 422). A
         409 with `code` `duplicate_enrollment` means the student already has a pending
         or active enrollment in this class; a 409 without `code` is an Idempotency-Key
-        reused with a different request.
+        reused with a different request. A 422 with `code` `platform_fee_exceeds_gross`
+        means billing refused the invoice because the platform fee exceeds the payment
+        amount: the attempt holds no seat, and a replay with the same Idempotency-Key
+        answers the same 422.'
       parameters:
       - description: Tenant ID
         in: path
