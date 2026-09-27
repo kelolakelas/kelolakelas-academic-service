@@ -28,6 +28,7 @@ func NewScheduleHandler(scheduleUsecase usecase.ScheduleUsecase) *ScheduleHandle
 // @Accept json
 // @Produce json
 // @Security BearerAuth
+// @x-permission {"permission":"schedule:delete","parent_tokens":"denied"}
 // @Param id path string true "Schedule ID (UUID)"
 // @Success 200 {object} domain.HTTPResponse
 // @Failure 400 {object} domain.ErrorResponse
@@ -35,6 +36,7 @@ func NewScheduleHandler(scheduleUsecase usecase.ScheduleUsecase) *ScheduleHandle
 // @Failure 403 {object} domain.ErrorResponse
 // @Failure 404 {object} domain.ErrorResponse
 // @Failure 500 {object} domain.ErrorResponse
+// @Failure 503 {object} domain.ErrorResponse
 // @Router /api/v1/schedules/{id} [delete]
 func (h *ScheduleHandler) Delete(c *gin.Context) {
 	tenantID, err := tenantIDFromContext(c)
@@ -70,12 +72,15 @@ func (h *ScheduleHandler) Delete(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Security BearerAuth
+// @x-permission {"permission":"schedule:create","parent_tokens":"denied"}
 // @Param request body domain.CreateInitialSchedulesRequest true "Create initial schedules request"
 // @Success 201 {object} domain.HTTPResponse{data=domain.CreateInitialSchedulesResponse}
 // @Failure 400 {object} domain.ErrorResponse
 // @Failure 401 {object} domain.ErrorResponse
 // @Failure 404 {object} domain.ErrorResponse
 // @Failure 500 {object} domain.ErrorResponse
+// @Failure 403 {object} domain.ErrorResponse
+// @Failure 503 {object} domain.ErrorResponse
 // @Router /api/v1/schedules [post]
 func (h *ScheduleHandler) CreateInitialSchedules(c *gin.Context) {
 	tenantID, err := tenantIDFromContext(c)
@@ -134,11 +139,12 @@ func (h *ScheduleHandler) CreateInitialSchedules(c *gin.Context) {
 // 2. Temporary Schedule Change (One-off Reschedule / Make-up Class)
 // RescheduleSession godoc
 // @Summary Reschedule a specific session
-// @Description One-off reschedule or make-up class for an existing session
+// @Description One-off reschedule or make-up class for an existing session. `session_id` in the body is required and is the session that changes; the `{id}` path segment is accepted for compatibility and never overrides it. `/api/v1/sessions/reschedule` is the same operation without the path segment.
 // @Tags Sessions
 // @Accept json
 // @Produce json
 // @Security BearerAuth
+// @x-permission {"permission":"schedule:update","parent_tokens":"denied"}
 // @Param id path string true "Session ID (UUID)"
 // @Param request body domain.RescheduleSessionRequest true "Reschedule session payload"
 // @Success 200 {object} domain.HTTPResponse{data=domain.RescheduleSessionResponse}
@@ -146,7 +152,10 @@ func (h *ScheduleHandler) CreateInitialSchedules(c *gin.Context) {
 // @Failure 401 {object} domain.ErrorResponse
 // @Failure 404 {object} domain.ErrorResponse
 // @Failure 500 {object} domain.ErrorResponse
+// @Failure 403 {object} domain.ErrorResponse
+// @Failure 503 {object} domain.ErrorResponse
 // @Router /api/v1/sessions/{id}/reschedule [post]
+// @Router /api/v1/sessions/reschedule [post]
 func (h *ScheduleHandler) RescheduleSession(c *gin.Context) {
 	tenantID, err := tenantIDFromContext(c)
 	if err != nil {
@@ -198,11 +207,12 @@ func (h *ScheduleHandler) RescheduleSession(c *gin.Context) {
 // 3. Permanent Schedule Change
 // ChangeSchedulePermanent godoc
 // @Summary Permanently change schedule
-// @Description Apply permanent day/time schedule change and regenerate upcoming sessions
+// @Description Apply permanent day/time schedule change and regenerate upcoming sessions. `old_schedule_id` in the body is required and is the schedule that changes; the `{id}` path segment is accepted for compatibility and never overrides it. `/api/v1/schedules/permanent` is the same operation without the path segment.
 // @Tags Schedules
 // @Accept json
 // @Produce json
 // @Security BearerAuth
+// @x-permission {"permission":"schedule:update","parent_tokens":"denied"}
 // @Param id path string true "Schedule ID (UUID)"
 // @Param request body domain.PermanentScheduleChangeRequest true "Permanent schedule change payload"
 // @Success 200 {object} domain.HTTPResponse{data=domain.PermanentScheduleChangeResponse}
@@ -210,7 +220,10 @@ func (h *ScheduleHandler) RescheduleSession(c *gin.Context) {
 // @Failure 401 {object} domain.ErrorResponse
 // @Failure 404 {object} domain.ErrorResponse
 // @Failure 500 {object} domain.ErrorResponse
+// @Failure 403 {object} domain.ErrorResponse
+// @Failure 503 {object} domain.ErrorResponse
 // @Router /api/v1/schedules/{id}/permanent [put]
+// @Router /api/v1/schedules/permanent [put]
 func (h *ScheduleHandler) ChangeSchedulePermanent(c *gin.Context) {
 	tenantID, err := tenantIDFromContext(c)
 	if err != nil {
@@ -266,11 +279,12 @@ func (h *ScheduleHandler) ChangeSchedulePermanent(c *gin.Context) {
 // 4. Temporary Tutor Change (Substitute Teacher)
 // ChangeTutorTemporary godoc
 // @Summary Assign substitute tutor
-// @Description Assign a temporary substitute tutor for a single session
+// @Description Assign a temporary substitute tutor for a single session. `session_id` in the body is required and is the session that changes; the `{id}` path segment is accepted for compatibility and never overrides it. `/api/v1/sessions/substitute-tutor` is the same operation without the path segment.
 // @Tags Sessions
 // @Accept json
 // @Produce json
 // @Security BearerAuth
+// @x-permission {"permission":"schedule:update","parent_tokens":"denied"}
 // @Param id path string true "Session ID (UUID)"
 // @Param request body domain.SubstituteTutorRequest true "Substitute tutor payload"
 // @Success 200 {object} domain.HTTPResponse{data=domain.SubstituteTutorResponse}
@@ -278,7 +292,10 @@ func (h *ScheduleHandler) ChangeSchedulePermanent(c *gin.Context) {
 // @Failure 401 {object} domain.ErrorResponse
 // @Failure 404 {object} domain.ErrorResponse
 // @Failure 500 {object} domain.ErrorResponse
+// @Failure 403 {object} domain.ErrorResponse
+// @Failure 503 {object} domain.ErrorResponse
 // @Router /api/v1/sessions/{id}/substitute-tutor [patch]
+// @Router /api/v1/sessions/substitute-tutor [patch]
 func (h *ScheduleHandler) ChangeTutorTemporary(c *gin.Context) {
 	tenantID, err := tenantIDFromContext(c)
 	if err != nil {
@@ -330,11 +347,12 @@ func (h *ScheduleHandler) ChangeTutorTemporary(c *gin.Context) {
 // 5. Permanent Tutor Change
 // ChangeTutorPermanent godoc
 // @Summary Permanently change tutor
-// @Description Permanently reassign tutor for a schedule
+// @Description Permanently reassign tutor for a schedule. `schedule_id` in the body is required and is the schedule that changes; the `{id}` path segment is accepted for compatibility and never overrides it. The operation answers on PATCH and PUT, with or without the path segment.
 // @Tags Schedules
 // @Accept json
 // @Produce json
 // @Security BearerAuth
+// @x-permission {"permission":"schedule:update","parent_tokens":"denied"}
 // @Param id path string true "Schedule ID (UUID)"
 // @Param request body domain.PermanentTutorChangeRequest true "Permanent tutor change payload"
 // @Success 200 {object} domain.HTTPResponse{data=domain.PermanentTutorChangeResponse}
@@ -342,7 +360,12 @@ func (h *ScheduleHandler) ChangeTutorTemporary(c *gin.Context) {
 // @Failure 401 {object} domain.ErrorResponse
 // @Failure 404 {object} domain.ErrorResponse
 // @Failure 500 {object} domain.ErrorResponse
+// @Failure 403 {object} domain.ErrorResponse
+// @Failure 503 {object} domain.ErrorResponse
 // @Router /api/v1/schedules/{id}/tutor-permanent [patch]
+// @Router /api/v1/schedules/tutor-permanent [patch]
+// @Router /api/v1/schedules/{id}/tutor-permanent [put]
+// @Router /api/v1/schedules/tutor-permanent [put]
 func (h *ScheduleHandler) ChangeTutorPermanent(c *gin.Context) {
 	tenantID, err := tenantIDFromContext(c)
 	if err != nil {

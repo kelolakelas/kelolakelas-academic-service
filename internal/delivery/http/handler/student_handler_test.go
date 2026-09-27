@@ -2,6 +2,7 @@ package handler
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"net/http"
 	"net/http/httptest"
@@ -20,6 +21,8 @@ type studentHandlerUsecaseStub struct {
 	tenantID  *uuid.UUID
 	parentID  *uuid.UUID
 	listQuery domain.StudentQuery
+	items     []domain.Student
+	student   *domain.Student
 }
 
 func (s *studentHandlerUsecaseStub) List(_ context.Context, tenantID, parentID *uuid.UUID, query domain.StudentQuery) (*domain.StudentListResponse, error) {
@@ -27,13 +30,17 @@ func (s *studentHandlerUsecaseStub) List(_ context.Context, tenantID, parentID *
 	if s.listErr != nil {
 		return nil, s.listErr
 	}
-	return &domain.StudentListResponse{Items: []domain.Student{}, Pagination: domain.Pagination{Page: query.Page, PageSize: query.PageSize}}, nil
+	items := s.items
+	if items == nil {
+		items = []domain.Student{}
+	}
+	return &domain.StudentListResponse{Items: items, Pagination: domain.Pagination{Page: query.Page, PageSize: query.PageSize}}, nil
 }
 func (s *studentHandlerUsecaseStub) Create(context.Context, *uuid.UUID, *uuid.UUID, *domain.CreateStudentRequest) (*domain.Student, error) {
-	return nil, s.createErr
+	return s.student, s.createErr
 }
-func (*studentHandlerUsecaseStub) GetByID(context.Context, *uuid.UUID, *uuid.UUID, uuid.UUID) (*domain.Student, error) {
-	return nil, nil
+func (s *studentHandlerUsecaseStub) GetByID(context.Context, *uuid.UUID, *uuid.UUID, uuid.UUID) (*domain.Student, error) {
+	return s.student, nil
 }
 func (*studentHandlerUsecaseStub) Update(context.Context, *uuid.UUID, *uuid.UUID, *uuid.UUID, uuid.UUID, *domain.UpdateStudentRequest) (*domain.Student, error) {
 	return nil, nil
@@ -159,6 +166,81 @@ func TestStudentCreateParentScopeAndOwnership(t *testing.T) {
 			}
 		})
 	}
+}
+
+// KEL-43: every student response spells the surname key `last_name`; the legacy
+// `lastå_name` key must never come back, and a missing surname stays an explicit null.
+func TestStudentResponsesUseLastNameKey(t *testing.T) {
+	userID := uuid.New()
+	parent := true
+	surname := "Putri"
+	named := domain.Student{ID: uuid.New(), ParentID: userID, FirstName: "Ayu", LastName: &surname}
+	unnamed := domain.Student{ID: uuid.New(), ParentID: userID, FirstName: "Budi"}
+	stub := &studentHandlerUsecaseStub{items: []domain.Student{named, unnamed}, student: &named}
+	handler := NewStudentHandler(stub)
+
+	decode := func(t *testing.T, recorder *httptest.ResponseRecorder) json.RawMessage {
+		t.Helper()
+		if recorder.Code != http.StatusOK && recorder.Code != http.StatusCreated {
+			t.Fatalf("status=%d body=%s", recorder.Code, recorder.Body.String())
+		}
+		if strings.Contains(recorder.Body.String(), "last\u00e5_name") {
+			t.Fatalf("response still carries the legacy key: %s", recorder.Body.String())
+		}
+		var body struct {
+			Data json.RawMessage `json:"data"`
+		}
+		if err := json.Unmarshal(recorder.Body.Bytes(), &body); err != nil {
+			t.Fatal(err)
+		}
+		return body.Data
+	}
+	lastName := func(t *testing.T, raw json.RawMessage) any {
+		t.Helper()
+		var fields map[string]any
+		if err := json.Unmarshal(raw, &fields); err != nil {
+			t.Fatal(err)
+		}
+		value, ok := fields["last_name"]
+		if !ok {
+			t.Fatalf("student has no last_name key: %s", raw)
+		}
+		return value
+	}
+
+	t.Run("list", func(t *testing.T) {
+		c, recorder := newStudentHandlerContext(userID.String(), "", &parent)
+		handler.List(c)
+		var list struct {
+			Items []json.RawMessage `json:"items"`
+		}
+		if err := json.Unmarshal(decode(t, recorder), &list); err != nil || len(list.Items) != 2 {
+			t.Fatalf("items=%d err=%v", len(list.Items), err)
+		}
+		if got := lastName(t, list.Items[0]); got != surname {
+			t.Fatalf("last_name=%v want %q", got, surname)
+		}
+		if got := lastName(t, list.Items[1]); got != nil {
+			t.Fatalf("last_name=%v want null", got)
+		}
+	})
+	t.Run("get", func(t *testing.T) {
+		c, recorder := newStudentHandlerContext(userID.String(), "", &parent)
+		c.Params = gin.Params{{Key: "id", Value: named.ID.String()}}
+		handler.Get(c)
+		if got := lastName(t, decode(t, recorder)); got != surname {
+			t.Fatalf("last_name=%v want %q", got, surname)
+		}
+	})
+	t.Run("create", func(t *testing.T) {
+		c, recorder := newStudentHandlerContext(userID.String(), uuid.Nil.String(), &parent)
+		c.Request = httptest.NewRequest(http.MethodPost, "/api/v1/students", strings.NewReader(`{"parent_id":"`+userID.String()+`","first_name":"Ayu","last_name":"Putri","date_of_birth":"2015-01-01"}`))
+		c.Request.Header.Set("Content-Type", "application/json")
+		handler.Create(c)
+		if got := lastName(t, decode(t, recorder)); got != surname {
+			t.Fatalf("last_name=%v want %q", got, surname)
+		}
+	})
 }
 
 func sameUUIDPointer(left, right *uuid.UUID) bool {

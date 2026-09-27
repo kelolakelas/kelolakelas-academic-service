@@ -10,8 +10,6 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	swaggerFiles "github.com/swaggo/files"
-	ginSwagger "github.com/swaggo/gin-swagger"
 
 	_ "github.com/kelolakelas/kelolakelas-academic-service/docs"
 	"github.com/kelolakelas/kelolakelas-academic-service/internal/config"
@@ -31,6 +29,11 @@ import (
 // @securityDefinitions.apikey BearerAuth
 // @in header
 // @name Authorization
+// @description User JWT as `Bearer <token>`. Tenant-member tokens are also checked against the permission named in each operation's `x-permission`.
+// @securityDefinitions.apikey InternalServiceCredential
+// @in header
+// @name X-Internal-Service-Credential
+// @description Shared service-to-service credential; accepted only on `/internal` routes.
 func main() {
 	// Initialize JSON logging
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
@@ -102,78 +105,27 @@ func main() {
 	catalogHandler := handler.NewCatalogHandler(usecase.NewCatalogUsecase(repository.NewCatalogRepository(db), tenantClient, time.Duration(cfg.CatalogTenantInfoTTL)*time.Minute, catalogPolicyClient, time.Duration(cfg.CatalogPolicyCacheTTL)*time.Second))
 
 	// Initialize Router
-	r := gin.New()
-	r.Use(middleware.RequestLog(), gin.Recovery())
-
-	// Health check endpoint
-	r.GET("/health", healthHandler("academic-service"))
 	sqlDB, err := db.DB()
 	if err != nil {
 		slog.Error("Failed to access database pool", "error", err)
 		os.Exit(1)
 	}
-	r.GET("/ready", readinessHandler(sqlDB, cfg.IdentityGRPCHost))
-
-	// Swagger UI
-	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
-
-	// Routes
-	apiV1 := r.Group("/api/v1")
-	apiV1.GET("/catalog/classes", catalogHandler.ListClasses)
-	apiV1.GET("/catalog/classes/:id", catalogHandler.GetClass)
-	apiV1.Use(middleware.AuthMiddleware(cfg.JWTSecret))
-	{
-		apiV1.GET("/categories", listHandler.ListCategories)
-		apiV1.POST("/categories", middleware.RequirePermission(permissionClient, "category:create"), categoryHandler.Create)
-		apiV1.DELETE("/categories/:id", middleware.RequirePermission(permissionClient, "category:delete"), categoryHandler.Delete)
-		apiV1.GET("/classes", listHandler.ListClasses)
-		apiV1.POST("/classes", middleware.RequirePermission(permissionClient, "class:create"), classHandler.Create)
-		apiV1.POST("/classes/with-category", middleware.RequirePermission(permissionClient, "class:create"), classHandler.CreateWithCategory)
-		apiV1.DELETE("/classes/:id", middleware.RequirePermission(permissionClient, "class:delete"), classHandler.Delete)
-		apiV1.PATCH("/classes/:id", middleware.RequirePermission(permissionClient, "class:update"), classHandler.Update)
-		apiV1.PATCH("/classes/:id/published", middleware.RequirePermission(permissionClient, "class:update"), classHandler.UpdatePublication)
-		apiV1.GET("/schedules", listHandler.ListSchedules)
-		// Student and enrollment routes are shared by tenant members and parents. Parents
-		// hold ownership rather than a role, so the permission check applies only to
-		// non-parent callers; the owned-resource rules inside each handler still decide
-		// what a parent may reach. See ADR 0002.
-		apiV1.GET("/students", middleware.RequirePermissionUnlessParent(permissionClient, "student:read"), studentHandler.List)
-		apiV1.POST("/students", middleware.RequirePermissionUnlessParent(permissionClient, "student:create"), studentHandler.Create)
-		apiV1.GET("/students/:id", middleware.RequirePermissionUnlessParent(permissionClient, "student:read"), studentHandler.Get)
-		apiV1.PATCH("/students/:id", middleware.RequirePermissionUnlessParent(permissionClient, "student:update"), studentHandler.Update)
-		apiV1.DELETE("/students/:id", middleware.RequirePermissionUnlessParent(permissionClient, "student:delete"), studentHandler.Delete)
-		registerAttendanceReportRoutes(apiV1, permissionClient, attendanceHandler, reportHandler)
-		apiV1.POST("/tenants/:tenant_id/enrollments", middleware.RequirePermissionUnlessParent(permissionClient, "enrollment:create"), enrollmentHandler.Create)
-		apiV1.POST("/catalog/classes/:class_id/enrollments", enrollmentHandler.CreateCatalogEnrollment)
-		apiV1.POST("/enrollments/:id/cancel", enrollmentHandler.Cancel)
-		apiV1.GET("/enrollments", middleware.RequirePermissionUnlessParent(permissionClient, "enrollment:read"), enrollmentHandler.ListQuery)
-		apiV1.GET("/enrollments/:id", middleware.RequirePermissionUnlessParent(permissionClient, "enrollment:read"), enrollmentHandler.GetQuery)
-		apiV1.PATCH("/enrollments/:id/schedule", enrollmentHandler.AssignSchedule)
-
-		// Schedule Routes
-		apiV1.POST("/schedules", middleware.RequirePermission(permissionClient, "schedule:create"), scheduleHandler.CreateInitialSchedules)
-		apiV1.DELETE("/schedules/:id", middleware.RequirePermission(permissionClient, "schedule:delete"), scheduleHandler.Delete)
-		apiV1.PUT("/schedules/permanent", middleware.RequirePermission(permissionClient, "schedule:update"), scheduleHandler.ChangeSchedulePermanent)
-		apiV1.PUT("/schedules/:id/permanent", middleware.RequirePermission(permissionClient, "schedule:update"), scheduleHandler.ChangeSchedulePermanent)
-		apiV1.PATCH("/schedules/tutor-permanent", middleware.RequirePermission(permissionClient, "schedule:update"), scheduleHandler.ChangeTutorPermanent)
-		apiV1.PATCH("/schedules/:id/tutor-permanent", middleware.RequirePermission(permissionClient, "schedule:update"), scheduleHandler.ChangeTutorPermanent)
-		apiV1.PUT("/schedules/tutor-permanent", middleware.RequirePermission(permissionClient, "schedule:update"), scheduleHandler.ChangeTutorPermanent)
-		apiV1.PUT("/schedules/:id/tutor-permanent", middleware.RequirePermission(permissionClient, "schedule:update"), scheduleHandler.ChangeTutorPermanent)
-
-		// Session Routes
-		apiV1.GET("/sessions", sessionHandler.ListSessions)
-		apiV1.GET("/sessions/:id", sessionHandler.GetSession)
-		apiV1.DELETE("/sessions/:id", middleware.RequirePermission(permissionClient, "schedule:update"), sessionHandler.DeleteSession)
-		apiV1.POST("/sessions/reschedule", middleware.RequirePermission(permissionClient, "schedule:update"), scheduleHandler.RescheduleSession)
-		apiV1.POST("/sessions/:id/reschedule", middleware.RequirePermission(permissionClient, "schedule:update"), scheduleHandler.RescheduleSession)
-		apiV1.PATCH("/sessions/substitute-tutor", middleware.RequirePermission(permissionClient, "schedule:update"), scheduleHandler.ChangeTutorTemporary)
-		apiV1.PATCH("/sessions/:id/substitute-tutor", middleware.RequirePermission(permissionClient, "schedule:update"), scheduleHandler.ChangeTutorTemporary)
-		apiV1.GET("/sessions/:id/attendees", scheduleHandler.GetSessionAttendees)
-	}
-	internal := r.Group("/internal")
-	internal.Use(middleware.InternalServiceAuth(cfg.InternalServiceCredential))
-	internal.PUT("/enrollments/:id/activate", enrollmentHandler.ActivateInternal)
-	internal.PUT("/enrollments/:id/release", enrollmentHandler.ReleaseInternal)
+	r := gin.New()
+	r.Use(middleware.RequestLog(), gin.Recovery())
+	registerRoutes(r, routeHandlers{
+		health:     healthHandler("academic-service"),
+		ready:      readinessHandler(sqlDB, cfg.IdentityGRPCHost),
+		catalog:    catalogHandler,
+		category:   categoryHandler,
+		class:      classHandler,
+		list:       listHandler,
+		student:    studentHandler,
+		attendance: attendanceHandler,
+		report:     reportHandler,
+		enrollment: enrollmentHandler,
+		schedule:   scheduleHandler,
+		session:    sessionHandler,
+	}, cfg.JWTSecret, cfg.InternalServiceCredential, permissionClient)
 
 	httpServer := newHTTPServer(cfg, r)
 	listener, err := net.Listen("tcp", httpServer.Addr)

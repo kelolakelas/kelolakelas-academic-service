@@ -55,7 +55,10 @@ func parseReportQuery(c *gin.Context) (domain.ReportQuery, error) {
 // @Tags Reports
 // @Produce json
 // @Security BearerAuth
+// @x-permission {"permission":"report:read","parent_tokens":"skipped"}
 // @Success 200 {object} domain.HTTPResponse{data=domain.ReportListResponse}
+// @Failure 403 {object} domain.ErrorResponse
+// @Failure 503 {object} domain.ErrorResponse
 // @Router /api/v1/reports [get]
 func (h *ReportHandler) List(c *gin.Context) {
 	tenant, e := reportTenant(c)
@@ -81,8 +84,11 @@ func (h *ReportHandler) List(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Security BearerAuth
+// @x-permission {"permission":"report:create","parent_tokens":"skipped"}
 // @Param request body domain.CreateReportRequest true "Report payload"
 // @Success 201 {object} domain.HTTPResponse{data=domain.Report}
+// @Failure 403 {object} domain.ErrorResponse
+// @Failure 503 {object} domain.ErrorResponse
 // @Router /api/v1/reports [post]
 func (h *ReportHandler) Create(c *gin.Context) {
 	tenant, e := reportTenant(c)
@@ -116,8 +122,11 @@ func (h *ReportHandler) Create(c *gin.Context) {
 // @Tags Reports
 // @Produce json
 // @Security BearerAuth
+// @x-permission {"permission":"report:read","parent_tokens":"skipped"}
 // @Param id path string true "Report UUID"
 // @Success 200 {object} domain.HTTPResponse{data=domain.Report}
+// @Failure 403 {object} domain.ErrorResponse
+// @Failure 503 {object} domain.ErrorResponse
 // @Router /api/v1/reports/{id} [get]
 func (h *ReportHandler) Get(c *gin.Context) {
 	tenant, e := reportTenant(c)
@@ -147,9 +156,12 @@ func (h *ReportHandler) Get(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Security BearerAuth
+// @x-permission {"permission":"report:update","parent_tokens":"skipped"}
 // @Param id path string true "Report UUID"
 // @Param request body domain.UpdateReportRequest true "Report payload"
 // @Success 200 {object} domain.HTTPResponse{data=domain.Report}
+// @Failure 403 {object} domain.ErrorResponse
+// @Failure 503 {object} domain.ErrorResponse
 // @Router /api/v1/reports/{id} [patch]
 func (h *ReportHandler) Update(c *gin.Context) {
 	tenant, e := reportTenant(c)
@@ -183,8 +195,11 @@ func (h *ReportHandler) Update(c *gin.Context) {
 // @Tags Reports
 // @Produce json
 // @Security BearerAuth
+// @x-permission {"permission":"report:delete","parent_tokens":"skipped"}
 // @Param id path string true "Report UUID"
 // @Success 200 {object} domain.HTTPResponse
+// @Failure 403 {object} domain.ErrorResponse
+// @Failure 503 {object} domain.ErrorResponse
 // @Router /api/v1/reports/{id} [delete]
 func (h *ReportHandler) Delete(c *gin.Context) {
 	tenant, e := reportTenant(c)

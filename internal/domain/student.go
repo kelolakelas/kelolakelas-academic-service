@@ -21,7 +21,7 @@ type Student struct {
 	ID          uuid.UUID      `gorm:"type:uuid;primaryKey;default:gen_random_uuid()" json:"id"`
 	ParentID    uuid.UUID      `gorm:"type:uuid;not null;index" json:"parent_id"` // Cross-service, ordinary UUID
 	FirstName   string         `gorm:"type:varchar(255);not null" json:"first_name"`
-	LastName    *string        `gorm:"type:varchar(255)" json:"lastå_name"`
+	LastName    *string        `gorm:"type:varchar(255)" json:"last_name"`
 	Nickname    *string        `gorm:"type:varchar(100)" json:"nickname"`
 	Gender      *string        `gorm:"type:varchar(10)" json:"gender"`
 	DateOfBirth *time.Time     `gorm:"type:date" json:"date_of_birth,omitempty"`

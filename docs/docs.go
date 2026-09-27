@@ -47,7 +47,23 @@ const docTemplate = `{
                                 }
                             ]
                         }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
+                        }
                     }
+                },
+                "x-permission": {
+                    "parent_tokens": "skipped",
+                    "permission": "attendance:read"
                 }
             },
             "post": {
@@ -95,7 +111,23 @@ const docTemplate = `{
                                 }
                             ]
                         }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
+                        }
                     }
+                },
+                "x-permission": {
+                    "parent_tokens": "skipped",
+                    "permission": "attendance:create"
                 }
             }
         },
@@ -140,7 +172,23 @@ const docTemplate = `{
                                 }
                             ]
                         }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
+                        }
                     }
+                },
+                "x-permission": {
+                    "parent_tokens": "skipped",
+                    "permission": "attendance:read"
                 }
             },
             "patch": {
@@ -195,7 +243,23 @@ const docTemplate = `{
                                 }
                             ]
                         }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
+                        }
                     }
+                },
+                "x-permission": {
+                    "parent_tokens": "skipped",
+                    "permission": "attendance:update"
                 }
             }
         },
@@ -644,7 +708,17 @@ const docTemplate = `{
                         "schema": {
                             "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
                         }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
+                        }
                     }
+                },
+                "x-permission": {
+                    "parent_tokens": "denied",
+                    "permission": "category:create"
                 }
             }
         },
@@ -717,7 +791,17 @@ const docTemplate = `{
                         "schema": {
                             "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
                         }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
+                        }
                     }
+                },
+                "x-permission": {
+                    "parent_tokens": "denied",
+                    "permission": "category:delete"
                 }
             }
         },
@@ -866,7 +950,17 @@ const docTemplate = `{
                         "schema": {
                             "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
                         }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
+                        }
                     }
+                },
+                "x-permission": {
+                    "parent_tokens": "denied",
+                    "permission": "class:create"
                 }
             }
         },
@@ -941,7 +1035,17 @@ const docTemplate = `{
                         "schema": {
                             "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
                         }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
+                        }
                     }
+                },
+                "x-permission": {
+                    "parent_tokens": "denied",
+                    "permission": "class:create"
                 }
             }
         },
@@ -1014,7 +1118,17 @@ const docTemplate = `{
                         "schema": {
                             "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
                         }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
+                        }
                     }
+                },
+                "x-permission": {
+                    "parent_tokens": "denied",
+                    "permission": "class:delete"
                 }
             },
             "patch": {
@@ -1106,7 +1220,17 @@ const docTemplate = `{
                         "schema": {
                             "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
                         }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
+                        }
                     }
+                },
+                "x-permission": {
+                    "parent_tokens": "denied",
+                    "permission": "class:update"
                 }
             }
         },
@@ -1177,6 +1301,12 @@ const docTemplate = `{
                             "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
                         }
                     },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
+                        }
+                    },
                     "404": {
                         "description": "Not Found",
                         "schema": {
@@ -1188,7 +1318,17 @@ const docTemplate = `{
                         "schema": {
                             "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
                         }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
+                        }
                     }
+                },
+                "x-permission": {
+                    "parent_tokens": "denied",
+                    "permission": "class:update"
                 }
             }
         },
@@ -1224,7 +1364,23 @@ const docTemplate = `{
                                 }
                             ]
                         }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
+                        }
                     }
+                },
+                "x-permission": {
+                    "parent_tokens": "skipped",
+                    "permission": "enrollment:read"
                 }
             }
         },
@@ -1269,7 +1425,23 @@ const docTemplate = `{
                                 }
                             ]
                         }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
+                        }
                     }
+                },
+                "x-permission": {
+                    "parent_tokens": "skipped",
+                    "permission": "enrollment:read"
                 }
             }
         },
@@ -1466,7 +1638,23 @@ const docTemplate = `{
                                 }
                             ]
                         }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
+                        }
                     }
+                },
+                "x-permission": {
+                    "parent_tokens": "skipped",
+                    "permission": "report:read"
                 }
             },
             "post": {
@@ -1514,7 +1702,23 @@ const docTemplate = `{
                                 }
                             ]
                         }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
+                        }
                     }
+                },
+                "x-permission": {
+                    "parent_tokens": "skipped",
+                    "permission": "report:create"
                 }
             }
         },
@@ -1559,7 +1763,23 @@ const docTemplate = `{
                                 }
                             ]
                         }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
+                        }
                     }
+                },
+                "x-permission": {
+                    "parent_tokens": "skipped",
+                    "permission": "report:read"
                 }
             },
             "delete": {
@@ -1590,7 +1810,23 @@ const docTemplate = `{
                         "schema": {
                             "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.HTTPResponse"
                         }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
+                        }
                     }
+                },
+                "x-permission": {
+                    "parent_tokens": "skipped",
+                    "permission": "report:delete"
                 }
             },
             "patch": {
@@ -1645,7 +1881,23 @@ const docTemplate = `{
                                 }
                             ]
                         }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
+                        }
                     }
+                },
+                "x-permission": {
+                    "parent_tokens": "skipped",
+                    "permission": "report:update"
                 }
             }
         },
@@ -1777,6 +2029,12 @@ const docTemplate = `{
                             "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
                         }
                     },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
+                        }
+                    },
                     "404": {
                         "description": "Not Found",
                         "schema": {
@@ -1788,7 +2046,288 @@ const docTemplate = `{
                         "schema": {
                             "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
                         }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
+                        }
                     }
+                },
+                "x-permission": {
+                    "parent_tokens": "denied",
+                    "permission": "schedule:create"
+                }
+            }
+        },
+        "/api/v1/schedules/permanent": {
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Apply permanent day/time schedule change and regenerate upcoming sessions. ` + "`" + `old_schedule_id` + "`" + ` in the body is required and is the schedule that changes; the ` + "`" + `{id}` + "`" + ` path segment is accepted for compatibility and never overrides it. ` + "`" + `/api/v1/schedules/permanent` + "`" + ` is the same operation without the path segment.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Schedules"
+                ],
+                "summary": "Permanently change schedule",
+                "parameters": [
+                    {
+                        "description": "Permanent schedule change payload",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.PermanentScheduleChangeRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.HTTPResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.PermanentScheduleChangeResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
+                        }
+                    }
+                },
+                "x-permission": {
+                    "parent_tokens": "denied",
+                    "permission": "schedule:update"
+                }
+            }
+        },
+        "/api/v1/schedules/tutor-permanent": {
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Permanently reassign tutor for a schedule. ` + "`" + `schedule_id` + "`" + ` in the body is required and is the schedule that changes; the ` + "`" + `{id}` + "`" + ` path segment is accepted for compatibility and never overrides it. The operation answers on PATCH and PUT, with or without the path segment.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Schedules"
+                ],
+                "summary": "Permanently change tutor",
+                "parameters": [
+                    {
+                        "description": "Permanent tutor change payload",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.PermanentTutorChangeRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.HTTPResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.PermanentTutorChangeResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
+                        }
+                    }
+                },
+                "x-permission": {
+                    "parent_tokens": "denied",
+                    "permission": "schedule:update"
+                }
+            },
+            "patch": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Permanently reassign tutor for a schedule. ` + "`" + `schedule_id` + "`" + ` in the body is required and is the schedule that changes; the ` + "`" + `{id}` + "`" + ` path segment is accepted for compatibility and never overrides it. The operation answers on PATCH and PUT, with or without the path segment.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Schedules"
+                ],
+                "summary": "Permanently change tutor",
+                "parameters": [
+                    {
+                        "description": "Permanent tutor change payload",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.PermanentTutorChangeRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.HTTPResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.PermanentTutorChangeResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
+                        }
+                    }
+                },
+                "x-permission": {
+                    "parent_tokens": "denied",
+                    "permission": "schedule:update"
                 }
             }
         },
@@ -1855,7 +2394,17 @@ const docTemplate = `{
                         "schema": {
                             "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
                         }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
+                        }
                     }
+                },
+                "x-permission": {
+                    "parent_tokens": "denied",
+                    "permission": "schedule:delete"
                 }
             }
         },
@@ -1866,7 +2415,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Apply permanent day/time schedule change and regenerate upcoming sessions",
+                "description": "Apply permanent day/time schedule change and regenerate upcoming sessions. ` + "`" + `old_schedule_id` + "`" + ` in the body is required and is the schedule that changes; the ` + "`" + `{id}` + "`" + ` path segment is accepted for compatibility and never overrides it. ` + "`" + `/api/v1/schedules/permanent` + "`" + ` is the same operation without the path segment.",
                 "consumes": [
                     "application/json"
                 ],
@@ -1926,6 +2475,12 @@ const docTemplate = `{
                             "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
                         }
                     },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
+                        }
+                    },
                     "404": {
                         "description": "Not Found",
                         "schema": {
@@ -1937,18 +2492,28 @@ const docTemplate = `{
                         "schema": {
                             "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
                         }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
+                        }
                     }
+                },
+                "x-permission": {
+                    "parent_tokens": "denied",
+                    "permission": "schedule:update"
                 }
             }
         },
         "/api/v1/schedules/{id}/tutor-permanent": {
-            "patch": {
+            "put": {
                 "security": [
                     {
                         "BearerAuth": []
                     }
                 ],
-                "description": "Permanently reassign tutor for a schedule",
+                "description": "Permanently reassign tutor for a schedule. ` + "`" + `schedule_id` + "`" + ` in the body is required and is the schedule that changes; the ` + "`" + `{id}` + "`" + ` path segment is accepted for compatibility and never overrides it. The operation answers on PATCH and PUT, with or without the path segment.",
                 "consumes": [
                     "application/json"
                 ],
@@ -2008,6 +2573,12 @@ const docTemplate = `{
                             "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
                         }
                     },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
+                        }
+                    },
                     "404": {
                         "description": "Not Found",
                         "schema": {
@@ -2019,7 +2590,113 @@ const docTemplate = `{
                         "schema": {
                             "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
                         }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
+                        }
                     }
+                },
+                "x-permission": {
+                    "parent_tokens": "denied",
+                    "permission": "schedule:update"
+                }
+            },
+            "patch": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Permanently reassign tutor for a schedule. ` + "`" + `schedule_id` + "`" + ` in the body is required and is the schedule that changes; the ` + "`" + `{id}` + "`" + ` path segment is accepted for compatibility and never overrides it. The operation answers on PATCH and PUT, with or without the path segment.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Schedules"
+                ],
+                "summary": "Permanently change tutor",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Schedule ID (UUID)",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Permanent tutor change payload",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.PermanentTutorChangeRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.HTTPResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.PermanentTutorChangeResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
+                        }
+                    }
+                },
+                "x-permission": {
+                    "parent_tokens": "denied",
+                    "permission": "schedule:update"
                 }
             }
         },
@@ -2075,6 +2752,188 @@ const docTemplate = `{
                             "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
                         }
                     }
+                }
+            }
+        },
+        "/api/v1/sessions/reschedule": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "One-off reschedule or make-up class for an existing session. ` + "`" + `session_id` + "`" + ` in the body is required and is the session that changes; the ` + "`" + `{id}` + "`" + ` path segment is accepted for compatibility and never overrides it. ` + "`" + `/api/v1/sessions/reschedule` + "`" + ` is the same operation without the path segment.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Sessions"
+                ],
+                "summary": "Reschedule a specific session",
+                "parameters": [
+                    {
+                        "description": "Reschedule session payload",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.RescheduleSessionRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.HTTPResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.RescheduleSessionResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
+                        }
+                    }
+                },
+                "x-permission": {
+                    "parent_tokens": "denied",
+                    "permission": "schedule:update"
+                }
+            }
+        },
+        "/api/v1/sessions/substitute-tutor": {
+            "patch": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Assign a temporary substitute tutor for a single session. ` + "`" + `session_id` + "`" + ` in the body is required and is the session that changes; the ` + "`" + `{id}` + "`" + ` path segment is accepted for compatibility and never overrides it. ` + "`" + `/api/v1/sessions/substitute-tutor` + "`" + ` is the same operation without the path segment.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Sessions"
+                ],
+                "summary": "Assign substitute tutor",
+                "parameters": [
+                    {
+                        "description": "Substitute tutor payload",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.SubstituteTutorRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.HTTPResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.SubstituteTutorResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
+                        }
+                    }
+                },
+                "x-permission": {
+                    "parent_tokens": "denied",
+                    "permission": "schedule:update"
                 }
             }
         },
@@ -2209,7 +3068,17 @@ const docTemplate = `{
                         "schema": {
                             "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
                         }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
+                        }
                     }
+                },
+                "x-permission": {
+                    "parent_tokens": "denied",
+                    "permission": "schedule:update"
                 }
             }
         },
@@ -2293,7 +3162,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "One-off reschedule or make-up class for an existing session",
+                "description": "One-off reschedule or make-up class for an existing session. ` + "`" + `session_id` + "`" + ` in the body is required and is the session that changes; the ` + "`" + `{id}` + "`" + ` path segment is accepted for compatibility and never overrides it. ` + "`" + `/api/v1/sessions/reschedule` + "`" + ` is the same operation without the path segment.",
                 "consumes": [
                     "application/json"
                 ],
@@ -2353,6 +3222,12 @@ const docTemplate = `{
                             "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
                         }
                     },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
+                        }
+                    },
                     "404": {
                         "description": "Not Found",
                         "schema": {
@@ -2364,7 +3239,17 @@ const docTemplate = `{
                         "schema": {
                             "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
                         }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
+                        }
                     }
+                },
+                "x-permission": {
+                    "parent_tokens": "denied",
+                    "permission": "schedule:update"
                 }
             }
         },
@@ -2375,7 +3260,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Assign a temporary substitute tutor for a single session",
+                "description": "Assign a temporary substitute tutor for a single session. ` + "`" + `session_id` + "`" + ` in the body is required and is the session that changes; the ` + "`" + `{id}` + "`" + ` path segment is accepted for compatibility and never overrides it. ` + "`" + `/api/v1/sessions/substitute-tutor` + "`" + ` is the same operation without the path segment.",
                 "consumes": [
                     "application/json"
                 ],
@@ -2435,6 +3320,12 @@ const docTemplate = `{
                             "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
                         }
                     },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
+                        }
+                    },
                     "404": {
                         "description": "Not Found",
                         "schema": {
@@ -2446,7 +3337,17 @@ const docTemplate = `{
                         "schema": {
                             "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
                         }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
+                        }
                     }
+                },
+                "x-permission": {
+                    "parent_tokens": "denied",
+                    "permission": "schedule:update"
                 }
             }
         },
@@ -2483,7 +3384,23 @@ const docTemplate = `{
                                 }
                             ]
                         }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
+                        }
                     }
+                },
+                "x-permission": {
+                    "parent_tokens": "skipped",
+                    "permission": "student:read"
                 }
             },
             "post": {
@@ -2550,7 +3467,17 @@ const docTemplate = `{
                         "schema": {
                             "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
                         }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
+                        }
                     }
+                },
+                "x-permission": {
+                    "parent_tokens": "skipped",
+                    "permission": "student:create"
                 }
             }
         },
@@ -2595,7 +3522,23 @@ const docTemplate = `{
                                 }
                             ]
                         }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
+                        }
                     }
+                },
+                "x-permission": {
+                    "parent_tokens": "skipped",
+                    "permission": "student:read"
                 }
             },
             "delete": {
@@ -2627,12 +3570,28 @@ const docTemplate = `{
                             "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.HTTPResponse"
                         }
                     },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
+                        }
+                    },
                     "409": {
                         "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
                         }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
+                        }
                     }
+                },
+                "x-permission": {
+                    "parent_tokens": "skipped",
+                    "permission": "student:delete"
                 }
             },
             "patch": {
@@ -2695,6 +3654,12 @@ const docTemplate = `{
                             "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
                         }
                     },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
+                        }
+                    },
                     "404": {
                         "description": "Not Found",
                         "schema": {
@@ -2706,13 +3671,28 @@ const docTemplate = `{
                         "schema": {
                             "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
                         }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
+                        }
                     }
+                },
+                "x-permission": {
+                    "parent_tokens": "skipped",
+                    "permission": "student:update"
                 }
             }
         },
         "/api/v1/tenants/{tenant_id}/enrollments": {
             "post": {
-                "description": "A 409 with ` + "`" + `code` + "`" + ` ` + "`" + `duplicate_enrollment` + "`" + ` means the student already has a pending or active enrollment in this class; a 409 without ` + "`" + `code` + "`" + ` is an Idempotency-Key reused with a different request.",
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "A tenant-member token must carry ` + "`" + `tenant_id` + "`" + ` equal to the path and hold ` + "`" + `enrollment:create` + "`" + `; a parent token skips the permission check and is enrolled through the public-enrollment flow (its errors answer 422). A 409 with ` + "`" + `code` + "`" + ` ` + "`" + `duplicate_enrollment` + "`" + ` means the student already has a pending or active enrollment in this class; a 409 without ` + "`" + `code` + "`" + ` is an Idempotency-Key reused with a different request.",
                 "consumes": [
                     "application/json"
                 ],
@@ -2729,6 +3709,13 @@ const docTemplate = `{
                         "description": "Tenant ID",
                         "name": "tenant_id",
                         "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Unique request key",
+                        "name": "Idempotency-Key",
+                        "in": "header",
                         "required": true
                     },
                     {
@@ -2760,10 +3747,73 @@ const docTemplate = `{
                             ]
                         }
                     },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
+                        }
+                    },
                     "409": {
                         "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
+                        }
+                    },
+                    "422": {
+                        "description": "Unprocessable Entity",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
+                        }
+                    }
+                },
+                "x-permission": {
+                    "parent_tokens": "skipped",
+                    "permission": "enrollment:create"
+                }
+            }
+        },
+        "/health": {
+            "get": {
+                "description": "Answers 200 while the process serves HTTP; it checks no dependency.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Health"
+                ],
+                "summary": "Liveness probe",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
                         }
                     }
                 }
@@ -2771,6 +3821,11 @@ const docTemplate = `{
         },
         "/internal/enrollments/{id}/activate": {
             "put": {
+                "security": [
+                    {
+                        "InternalServiceCredential": []
+                    }
+                ],
                 "description": "Internal service-to-service endpoint for payment-confirmed enrollment activation.",
                 "consumes": [
                     "application/json"
@@ -2816,6 +3871,12 @@ const docTemplate = `{
                             "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
                         }
                     },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
+                        }
+                    },
                     "404": {
                         "description": "Not Found",
                         "schema": {
@@ -2833,6 +3894,11 @@ const docTemplate = `{
         },
         "/internal/enrollments/{id}/release": {
             "put": {
+                "security": [
+                    {
+                        "InternalServiceCredential": []
+                    }
+                ],
                 "description": "Internal service-to-service endpoint that transitions a pending enrollment to ` + "`" + `dropped` + "`" + ` so its schedule seat becomes available again. The transition is idempotent and never revokes an active enrollment.",
                 "consumes": [
                     "application/json"
@@ -2878,6 +3944,12 @@ const docTemplate = `{
                             "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
                         }
                     },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
+                        }
+                    },
                     "404": {
                         "description": "Not Found",
                         "schema": {
@@ -2894,6 +3966,34 @@ const docTemplate = `{
                         "description": "Internal Server Error",
                         "schema": {
                             "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/ready": {
+            "get": {
+                "description": "Pings the database and the identity gRPC health service within one second. ` + "`" + `status` + "`" + ` and each ` + "`" + `components` + "`" + ` entry are ` + "`" + `healthy` + "`" + ` or ` + "`" + `unavailable` + "`" + `; any unavailable component answers 503.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Health"
+                ],
+                "summary": "Readiness probe",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     }
                 }
@@ -4102,7 +5202,7 @@ const docTemplate = `{
                 "id": {
                     "type": "string"
                 },
-                "lastå_name": {
+                "last_name": {
                     "type": "string"
                 },
                 "nickname": {
@@ -4305,8 +5405,15 @@ const docTemplate = `{
     },
     "securityDefinitions": {
         "BearerAuth": {
+            "description": "User JWT as ` + "`" + `Bearer \u003ctoken\u003e` + "`" + `. Tenant-member tokens are also checked against the permission named in each operation's ` + "`" + `x-permission` + "`" + `.",
             "type": "apiKey",
             "name": "Authorization",
+            "in": "header"
+        },
+        "InternalServiceCredential": {
+            "description": "Shared service-to-service credential; accepted only on ` + "`" + `/internal` + "`" + ` routes.",
+            "type": "apiKey",
+            "name": "X-Internal-Service-Credential",
             "in": "header"
         }
     }

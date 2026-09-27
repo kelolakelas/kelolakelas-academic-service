@@ -823,7 +823,7 @@ definitions:
         type: string
       id:
         type: string
-      lastå_name:
+      last_name:
         type: string
       nickname:
         type: string
@@ -980,11 +980,22 @@ paths:
                 data:
                   $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.AttendanceListResponse'
               type: object
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
       security:
       - BearerAuth: []
       summary: List attendance
       tags:
       - Attendance
+      x-permission:
+        parent_tokens: skipped
+        permission: attendance:read
     post:
       consumes:
       - application/json
@@ -1007,11 +1018,22 @@ paths:
                 data:
                   $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.Attendance'
               type: object
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Create attendance
       tags:
       - Attendance
+      x-permission:
+        parent_tokens: skipped
+        permission: attendance:create
   /api/v1/attendance/{id}:
     get:
       parameters:
@@ -1032,11 +1054,22 @@ paths:
                 data:
                   $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.Attendance'
               type: object
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Get attendance
       tags:
       - Attendance
+      x-permission:
+        parent_tokens: skipped
+        permission: attendance:read
     patch:
       consumes:
       - application/json
@@ -1064,11 +1097,22 @@ paths:
                 data:
                   $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.Attendance'
               type: object
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Update attendance
       tags:
       - Attendance
+      x-permission:
+        parent_tokens: skipped
+        permission: attendance:update
   /api/v1/catalog/classes:
     get:
       description: Lists active classes. Coordinates must be supplied together; when
@@ -1351,11 +1395,18 @@ paths:
           description: Internal Server Error
           schema:
             $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Create academic category
       tags:
       - Categories
+      x-permission:
+        parent_tokens: denied
+        permission: category:create
   /api/v1/categories/{id}:
     delete:
       consumes:
@@ -1398,11 +1449,18 @@ paths:
           description: Internal Server Error
           schema:
             $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Delete academic category
       tags:
       - Categories
+      x-permission:
+        parent_tokens: denied
+        permission: category:delete
   /api/v1/classes:
     get:
       parameters:
@@ -1488,11 +1546,18 @@ paths:
           description: Internal Server Error
           schema:
             $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Create academic class
       tags:
       - Classes
+      x-permission:
+        parent_tokens: denied
+        permission: class:create
   /api/v1/classes/{id}:
     delete:
       consumes:
@@ -1536,11 +1601,18 @@ paths:
           description: Internal Server Error
           schema:
             $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Delete academic class
       tags:
       - Classes
+      x-permission:
+        parent_tokens: denied
+        permission: class:delete
     patch:
       consumes:
       - application/json
@@ -1594,11 +1666,18 @@ paths:
           description: Internal Server Error
           schema:
             $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Update an academic class
       tags:
       - Classes
+      x-permission:
+        parent_tokens: denied
+        permission: class:update
   /api/v1/classes/{id}/published:
     patch:
       consumes:
@@ -1636,6 +1715,10 @@ paths:
           description: Unauthorized
           schema:
             $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
         "404":
           description: Not Found
           schema:
@@ -1644,11 +1727,18 @@ paths:
           description: Internal Server Error
           schema:
             $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Publish or unpublish an academic class
       tags:
       - Classes
+      x-permission:
+        parent_tokens: denied
+        permission: class:update
   /api/v1/classes/with-category:
     post:
       consumes:
@@ -1690,11 +1780,18 @@ paths:
           description: Internal Server Error
           schema:
             $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Create class using an existing category
       tags:
       - Classes
+      x-permission:
+        parent_tokens: denied
+        permission: class:create
   /api/v1/enrollments:
     get:
       produces:
@@ -1709,11 +1806,22 @@ paths:
                 data:
                   $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.EnrollmentListResponse'
               type: object
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
       security:
       - BearerAuth: []
       summary: List enrollments
       tags:
       - Enrollments
+      x-permission:
+        parent_tokens: skipped
+        permission: enrollment:read
   /api/v1/enrollments/{id}:
     get:
       parameters:
@@ -1734,11 +1842,22 @@ paths:
                 data:
                   $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.EnrollmentResponse'
               type: object
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Get enrollment
       tags:
       - Enrollments
+      x-permission:
+        parent_tokens: skipped
+        permission: enrollment:read
   /api/v1/enrollments/{id}/cancel:
     post:
       consumes:
@@ -1857,11 +1976,22 @@ paths:
                 data:
                   $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ReportListResponse'
               type: object
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
       security:
       - BearerAuth: []
       summary: List reports
       tags:
       - Reports
+      x-permission:
+        parent_tokens: skipped
+        permission: report:read
     post:
       consumes:
       - application/json
@@ -1884,11 +2014,22 @@ paths:
                 data:
                   $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.Report'
               type: object
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Create report
       tags:
       - Reports
+      x-permission:
+        parent_tokens: skipped
+        permission: report:create
   /api/v1/reports/{id}:
     delete:
       parameters:
@@ -1904,11 +2045,22 @@ paths:
           description: OK
           schema:
             $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.HTTPResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Delete report
       tags:
       - Reports
+      x-permission:
+        parent_tokens: skipped
+        permission: report:delete
     get:
       parameters:
       - description: Report UUID
@@ -1928,11 +2080,22 @@ paths:
                 data:
                   $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.Report'
               type: object
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Get report
       tags:
       - Reports
+      x-permission:
+        parent_tokens: skipped
+        permission: report:read
     patch:
       consumes:
       - application/json
@@ -1960,11 +2123,22 @@ paths:
                 data:
                   $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.Report'
               type: object
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Update report
       tags:
       - Reports
+      x-permission:
+        parent_tokens: skipped
+        permission: report:update
   /api/v1/schedules:
     get:
       parameters:
@@ -2039,6 +2213,10 @@ paths:
           description: Unauthorized
           schema:
             $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
         "404":
           description: Not Found
           schema:
@@ -2047,11 +2225,18 @@ paths:
           description: Internal Server Error
           schema:
             $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Create initial schedules for a class
       tags:
       - Schedules
+      x-permission:
+        parent_tokens: denied
+        permission: schedule:create
   /api/v1/schedules/{id}:
     delete:
       consumes:
@@ -2091,17 +2276,26 @@ paths:
           description: Internal Server Error
           schema:
             $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Delete class schedule
       tags:
       - Schedules
+      x-permission:
+        parent_tokens: denied
+        permission: schedule:delete
   /api/v1/schedules/{id}/permanent:
     put:
       consumes:
       - application/json
       description: Apply permanent day/time schedule change and regenerate upcoming
-        sessions
+        sessions. `old_schedule_id` in the body is required and is the schedule that
+        changes; the `{id}` path segment is accepted for compatibility and never overrides
+        it. `/api/v1/schedules/permanent` is the same operation without the path segment.
       parameters:
       - description: Schedule ID (UUID)
         in: path
@@ -2134,6 +2328,10 @@ paths:
           description: Unauthorized
           schema:
             $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
         "404":
           description: Not Found
           schema:
@@ -2142,16 +2340,26 @@ paths:
           description: Internal Server Error
           schema:
             $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Permanently change schedule
       tags:
       - Schedules
+      x-permission:
+        parent_tokens: denied
+        permission: schedule:update
   /api/v1/schedules/{id}/tutor-permanent:
     patch:
       consumes:
       - application/json
-      description: Permanently reassign tutor for a schedule
+      description: Permanently reassign tutor for a schedule. `schedule_id` in the
+        body is required and is the schedule that changes; the `{id}` path segment
+        is accepted for compatibility and never overrides it. The operation answers
+        on PATCH and PUT, with or without the path segment.
       parameters:
       - description: Schedule ID (UUID)
         in: path
@@ -2184,6 +2392,10 @@ paths:
           description: Unauthorized
           schema:
             $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
         "404":
           description: Not Found
           schema:
@@ -2192,11 +2404,257 @@ paths:
           description: Internal Server Error
           schema:
             $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Permanently change tutor
       tags:
       - Schedules
+      x-permission:
+        parent_tokens: denied
+        permission: schedule:update
+    put:
+      consumes:
+      - application/json
+      description: Permanently reassign tutor for a schedule. `schedule_id` in the
+        body is required and is the schedule that changes; the `{id}` path segment
+        is accepted for compatibility and never overrides it. The operation answers
+        on PATCH and PUT, with or without the path segment.
+      parameters:
+      - description: Schedule ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Permanent tutor change payload
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.PermanentTutorChangeRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.HTTPResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.PermanentTutorChangeResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Permanently change tutor
+      tags:
+      - Schedules
+      x-permission:
+        parent_tokens: denied
+        permission: schedule:update
+  /api/v1/schedules/permanent:
+    put:
+      consumes:
+      - application/json
+      description: Apply permanent day/time schedule change and regenerate upcoming
+        sessions. `old_schedule_id` in the body is required and is the schedule that
+        changes; the `{id}` path segment is accepted for compatibility and never overrides
+        it. `/api/v1/schedules/permanent` is the same operation without the path segment.
+      parameters:
+      - description: Permanent schedule change payload
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.PermanentScheduleChangeRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.HTTPResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.PermanentScheduleChangeResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Permanently change schedule
+      tags:
+      - Schedules
+      x-permission:
+        parent_tokens: denied
+        permission: schedule:update
+  /api/v1/schedules/tutor-permanent:
+    patch:
+      consumes:
+      - application/json
+      description: Permanently reassign tutor for a schedule. `schedule_id` in the
+        body is required and is the schedule that changes; the `{id}` path segment
+        is accepted for compatibility and never overrides it. The operation answers
+        on PATCH and PUT, with or without the path segment.
+      parameters:
+      - description: Permanent tutor change payload
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.PermanentTutorChangeRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.HTTPResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.PermanentTutorChangeResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Permanently change tutor
+      tags:
+      - Schedules
+      x-permission:
+        parent_tokens: denied
+        permission: schedule:update
+    put:
+      consumes:
+      - application/json
+      description: Permanently reassign tutor for a schedule. `schedule_id` in the
+        body is required and is the schedule that changes; the `{id}` path segment
+        is accepted for compatibility and never overrides it. The operation answers
+        on PATCH and PUT, with or without the path segment.
+      parameters:
+      - description: Permanent tutor change payload
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.PermanentTutorChangeRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.HTTPResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.PermanentTutorChangeResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Permanently change tutor
+      tags:
+      - Schedules
+      x-permission:
+        parent_tokens: denied
+        permission: schedule:update
   /api/v1/sessions:
     get:
       description: List class sessions scoped to the active tenant
@@ -2267,11 +2725,18 @@ paths:
           description: Internal Server Error
           schema:
             $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Delete class session
       tags:
       - Sessions
+      x-permission:
+        parent_tokens: denied
+        permission: schedule:update
     get:
       description: Get one session scoped to the active tenant
       parameters:
@@ -2361,7 +2826,10 @@ paths:
     post:
       consumes:
       - application/json
-      description: One-off reschedule or make-up class for an existing session
+      description: One-off reschedule or make-up class for an existing session. `session_id`
+        in the body is required and is the session that changes; the `{id}` path segment
+        is accepted for compatibility and never overrides it. `/api/v1/sessions/reschedule`
+        is the same operation without the path segment.
       parameters:
       - description: Session ID (UUID)
         in: path
@@ -2394,6 +2862,10 @@ paths:
           description: Unauthorized
           schema:
             $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
         "404":
           description: Not Found
           schema:
@@ -2402,16 +2874,26 @@ paths:
           description: Internal Server Error
           schema:
             $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Reschedule a specific session
       tags:
       - Sessions
+      x-permission:
+        parent_tokens: denied
+        permission: schedule:update
   /api/v1/sessions/{id}/substitute-tutor:
     patch:
       consumes:
       - application/json
-      description: Assign a temporary substitute tutor for a single session
+      description: Assign a temporary substitute tutor for a single session. `session_id`
+        in the body is required and is the session that changes; the `{id}` path segment
+        is accepted for compatibility and never overrides it. `/api/v1/sessions/substitute-tutor`
+        is the same operation without the path segment.
       parameters:
       - description: Session ID (UUID)
         in: path
@@ -2444,6 +2926,10 @@ paths:
           description: Unauthorized
           schema:
             $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
         "404":
           description: Not Found
           schema:
@@ -2452,11 +2938,136 @@ paths:
           description: Internal Server Error
           schema:
             $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Assign substitute tutor
       tags:
       - Sessions
+      x-permission:
+        parent_tokens: denied
+        permission: schedule:update
+  /api/v1/sessions/reschedule:
+    post:
+      consumes:
+      - application/json
+      description: One-off reschedule or make-up class for an existing session. `session_id`
+        in the body is required and is the session that changes; the `{id}` path segment
+        is accepted for compatibility and never overrides it. `/api/v1/sessions/reschedule`
+        is the same operation without the path segment.
+      parameters:
+      - description: Reschedule session payload
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.RescheduleSessionRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.HTTPResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.RescheduleSessionResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Reschedule a specific session
+      tags:
+      - Sessions
+      x-permission:
+        parent_tokens: denied
+        permission: schedule:update
+  /api/v1/sessions/substitute-tutor:
+    patch:
+      consumes:
+      - application/json
+      description: Assign a temporary substitute tutor for a single session. `session_id`
+        in the body is required and is the session that changes; the `{id}` path segment
+        is accepted for compatibility and never overrides it. `/api/v1/sessions/substitute-tutor`
+        is the same operation without the path segment.
+      parameters:
+      - description: Substitute tutor payload
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.SubstituteTutorRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.HTTPResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.SubstituteTutorResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Assign substitute tutor
+      tags:
+      - Sessions
+      x-permission:
+        parent_tokens: denied
+        permission: schedule:update
   /api/v1/students:
     get:
       description: List students scoped to the authenticated parent or tenant enrollments
@@ -2472,11 +3083,22 @@ paths:
                 data:
                   $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.StudentListResponse'
               type: object
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
       security:
       - BearerAuth: []
       summary: List students
       tags:
       - Students
+      x-permission:
+        parent_tokens: skipped
+        permission: student:read
     post:
       consumes:
       - application/json
@@ -2513,11 +3135,18 @@ paths:
           description: Internal Server Error
           schema:
             $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Create student
       tags:
       - Students
+      x-permission:
+        parent_tokens: skipped
+        permission: student:create
   /api/v1/students/{id}:
     delete:
       parameters:
@@ -2533,8 +3162,16 @@ paths:
           description: OK
           schema:
             $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.HTTPResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
         "409":
           description: Conflict
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+        "503":
+          description: Service Unavailable
           schema:
             $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
       security:
@@ -2542,6 +3179,9 @@ paths:
       summary: Delete student
       tags:
       - Students
+      x-permission:
+        parent_tokens: skipped
+        permission: student:delete
     get:
       parameters:
       - description: Student UUID
@@ -2561,11 +3201,22 @@ paths:
                 data:
                   $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.Student'
               type: object
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Get student
       tags:
       - Students
+      x-permission:
+        parent_tokens: skipped
+        permission: student:read
     patch:
       consumes:
       - application/json
@@ -2599,6 +3250,10 @@ paths:
           description: Bad Request
           schema:
             $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
         "404":
           description: Not Found
           schema:
@@ -2607,22 +3262,37 @@ paths:
           description: Internal Server Error
           schema:
             $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Update student
       tags:
       - Students
+      x-permission:
+        parent_tokens: skipped
+        permission: student:update
   /api/v1/tenants/{tenant_id}/enrollments:
     post:
       consumes:
       - application/json
-      description: A 409 with `code` `duplicate_enrollment` means the student already
-        has a pending or active enrollment in this class; a 409 without `code` is
-        an Idempotency-Key reused with a different request.
+      description: A tenant-member token must carry `tenant_id` equal to the path
+        and hold `enrollment:create`; a parent token skips the permission check and
+        is enrolled through the public-enrollment flow (its errors answer 422). A
+        409 with `code` `duplicate_enrollment` means the student already has a pending
+        or active enrollment in this class; a 409 without `code` is an Idempotency-Key
+        reused with a different request.
       parameters:
       - description: Tenant ID
         in: path
         name: tenant_id
+        required: true
+        type: string
+      - description: Unique request key
+        in: header
+        name: Idempotency-Key
         required: true
         type: string
       - description: Enrollment request
@@ -2643,13 +3313,57 @@ paths:
                 data:
                   $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.EnrollmentResponse'
               type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
         "409":
           description: Conflict
           schema:
             $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+        "422":
+          description: Unprocessable Entity
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+      security:
+      - BearerAuth: []
       summary: Enroll a student in a class
       tags:
       - Enrollments
+      x-permission:
+        parent_tokens: skipped
+        permission: enrollment:create
+  /health:
+    get:
+      description: Answers 200 while the process serves HTTP; it checks no dependency.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Liveness probe
+      tags:
+      - Health
   /internal/enrollments/{id}/activate:
     put:
       consumes:
@@ -2678,6 +3392,10 @@ paths:
           description: Bad Request
           schema:
             $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
         "404":
           description: Not Found
           schema:
@@ -2686,6 +3404,8 @@ paths:
           description: Internal Server Error
           schema:
             $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+      security:
+      - InternalServiceCredential: []
       summary: Activate enrollment after confirmed payment
       tags:
       - Enrollments
@@ -2718,6 +3438,10 @@ paths:
           description: Bad Request
           schema:
             $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
         "404":
           description: Not Found
           schema:
@@ -2730,12 +3454,43 @@ paths:
           description: Internal Server Error
           schema:
             $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+      security:
+      - InternalServiceCredential: []
       summary: Release the seat of an enrollment whose payment failed or expired
       tags:
       - Enrollments
+  /ready:
+    get:
+      description: Pings the database and the identity gRPC health service within
+        one second. `status` and each `components` entry are `healthy` or `unavailable`;
+        any unavailable component answers 503.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "503":
+          description: Service Unavailable
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Readiness probe
+      tags:
+      - Health
 securityDefinitions:
   BearerAuth:
+    description: User JWT as `Bearer <token>`. Tenant-member tokens are also checked
+      against the permission named in each operation's `x-permission`.
     in: header
     name: Authorization
+    type: apiKey
+  InternalServiceCredential:
+    description: Shared service-to-service credential; accepted only on `/internal`
+      routes.
+    in: header
+    name: X-Internal-Service-Credential
     type: apiKey
 swagger: "2.0"

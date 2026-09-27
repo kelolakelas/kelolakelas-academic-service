@@ -28,12 +28,14 @@ func NewCategoryHandler(categoryUsecase usecase.CategoryUsecase) *CategoryHandle
 // @Accept json
 // @Produce json
 // @Security BearerAuth
+// @x-permission {"permission":"category:create","parent_tokens":"denied"}
 // @Param request body domain.CreateCategoryRequest true "Create category payload"
 // @Success 201 {object} domain.HTTPResponse{data=domain.CategoryResponse}
 // @Failure 400 {object} domain.ErrorResponse
 // @Failure 401 {object} domain.ErrorResponse
 // @Failure 403 {object} domain.ErrorResponse
 // @Failure 500 {object} domain.ErrorResponse
+// @Failure 503 {object} domain.ErrorResponse
 // @Router /api/v1/categories [post]
 func (h *CategoryHandler) Create(c *gin.Context) {
 	tenantID, err := tenantIDFromContext(c)
@@ -85,6 +87,7 @@ func (h *CategoryHandler) Create(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Security BearerAuth
+// @x-permission {"permission":"category:delete","parent_tokens":"denied"}
 // @Param id path string true "Category ID (UUID)"
 // @Success 200 {object} domain.HTTPResponse
 // @Failure 400 {object} domain.ErrorResponse
@@ -93,6 +96,7 @@ func (h *CategoryHandler) Create(c *gin.Context) {
 // @Failure 404 {object} domain.ErrorResponse
 // @Failure 409 {object} domain.ErrorResponse
 // @Failure 500 {object} domain.ErrorResponse
+// @Failure 503 {object} domain.ErrorResponse
 // @Router /api/v1/categories/{id} [delete]
 func (h *CategoryHandler) Delete(c *gin.Context) {
 	tenantID, err := tenantIDFromContext(c)
