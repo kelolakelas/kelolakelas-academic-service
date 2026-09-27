@@ -68,7 +68,7 @@ func (h *EnrollmentHandler) AssignSchedule(c *gin.Context) {
 
 // Create godoc
 // @Summary Enroll a student in a class
-// @Description A tenant-member token must carry `tenant_id` equal to the path and hold `enrollment:create`; a parent token skips the permission check and is enrolled through the public-enrollment flow (its errors answer 422). A 409 with `code` `duplicate_enrollment` means the student already has a pending or active enrollment in this class; a 409 without `code` is an Idempotency-Key reused with a different request.
+// @Description A tenant-member token must carry `tenant_id` equal to the path and hold `enrollment:create`; a parent token skips the permission check and is enrolled through the public-enrollment flow (its errors answer 422). A 409 with `code` `duplicate_enrollment` means the student already has a pending or active enrollment in this class; a 409 without `code` is an Idempotency-Key reused with a different request. A 422 with `code` `platform_fee_exceeds_gross` means billing refused the invoice because the platform fee exceeds the payment amount: the attempt holds no seat, and a replay with the same Idempotency-Key answers the same 422.
 // @Tags Enrollments
 // @Accept json
 // @Produce json
@@ -111,7 +111,11 @@ func (h *EnrollmentHandler) Create(c *gin.Context) {
 		publicReq := &domain.PublicEnrollmentRequest{StudentID: req.StudentID, BillingCycle: req.BillingCycle, ScheduleID: req.ScheduleID, SenderEmail: c.GetString("email")}
 		result, enrollErr := h.enrollmentUsecase.EnrollPublic(c.Request.Context(), parentID, req.ClassID, publicReq, key)
 		if enrollErr != nil {
-			c.JSON(http.StatusUnprocessableEntity, gin.H{"status": "error", "message": enrollErr.Error(), "data": nil})
+			body := gin.H{"status": "error", "message": enrollErr.Error(), "data": nil}
+			if errors.Is(enrollErr, domain.ErrPlatformFeeExceedsGross) {
+				body["code"] = domain.PlatformFeeExceedsGrossErrorCode
+			}
+			c.JSON(http.StatusUnprocessableEntity, body)
 			return
 		}
 		c.JSON(http.StatusCreated, gin.H{"status": "success", "message": "Enrollment created and invoice generated", "data": result})
@@ -138,6 +142,9 @@ func (h *EnrollmentHandler) Create(c *gin.Context) {
 		} else if errors.Is(err, domain.ErrDuplicateEnrollment) {
 			status, message = http.StatusConflict, domain.ErrDuplicateEnrollment.Error()
 			body["code"] = domain.DuplicateEnrollmentErrorCode
+		} else if errors.Is(err, domain.ErrPlatformFeeExceedsGross) {
+			status, message = http.StatusUnprocessableEntity, domain.ErrPlatformFeeExceedsGross.Error()
+			body["code"] = domain.PlatformFeeExceedsGrossErrorCode
 		} else {
 			logInternalError(c.Request.Context(), "create tenant enrollment", err)
 		}
@@ -150,7 +157,7 @@ func (h *EnrollmentHandler) Create(c *gin.Context) {
 
 // CreateCatalogEnrollment godoc
 // @Summary Enroll a parent-owned student in a public class
-// @Description Creates a pending enrollment and generates a billing invoice. The tenant is resolved from the selected class. Retrying with the same Idempotency-Key returns the same enrollment. A 409 with `code` `duplicate_enrollment` means the student already has a pending or active enrollment in this class (including a concurrent request that won the race); a 409 without `code` is a full schedule or an Idempotency-Key reused with a different request. A dropped or completed enrollment does not block a new one.
+// @Description Creates a pending enrollment and generates a billing invoice. The tenant is resolved from the selected class. Retrying with the same Idempotency-Key returns the same enrollment. A 409 with `code` `duplicate_enrollment` means the student already has a pending or active enrollment in this class (including a concurrent request that won the race); a 409 without `code` is a full schedule or an Idempotency-Key reused with a different request. A 422 with `code` `platform_fee_exceeds_gross` means billing refused the invoice because the platform fee exceeds the payment amount: the attempt holds no seat and does not block a new attempt, and a replay with the same Idempotency-Key answers the same 422. A dropped or completed enrollment does not block a new one.
 // @Tags Enrollments
 // @Accept json
 // @Produce json
@@ -260,7 +267,7 @@ func catalogEnrollmentErrorStatus(err error) int {
 	switch {
 	case errors.Is(err, domain.ErrIdempotencyConflict), errors.Is(err, domain.ErrScheduleFull), errors.Is(err, domain.ErrDuplicateEnrollment):
 		return http.StatusConflict
-	case errors.Is(err, domain.ErrStudentOwnership), errors.Is(err, domain.ErrClassNotEnrollable), errors.Is(err, domain.ErrScheduleClassMismatch), errors.Is(err, domain.ErrScheduleRequired), errors.Is(err, domain.ErrScheduleEnded):
+	case errors.Is(err, domain.ErrStudentOwnership), errors.Is(err, domain.ErrClassNotEnrollable), errors.Is(err, domain.ErrScheduleClassMismatch), errors.Is(err, domain.ErrScheduleRequired), errors.Is(err, domain.ErrScheduleEnded), errors.Is(err, domain.ErrPlatformFeeExceedsGross):
 		return http.StatusUnprocessableEntity
 	case errors.Is(err, domain.ErrClassNotFound), errors.Is(err, domain.ErrStudentNotFound):
 		return http.StatusNotFound
@@ -272,12 +279,15 @@ func catalogEnrollmentErrorStatus(err error) int {
 }
 
 // enrollmentErrorCode returns the machine-readable `code` for enrollment errors that
-// share an HTTP status with other errors and must stay distinguishable. Only the
-// duplicate enrollment has one; a full schedule and an idempotency conflict keep
-// their existing 409 body without a code.
+// share an HTTP status with other errors and must stay distinguishable: the
+// duplicate enrollment (409) and billing's platform fee rejection (422). A full
+// schedule and an idempotency conflict keep their existing 409 body without a code.
 func enrollmentErrorCode(err error) string {
-	if errors.Is(err, domain.ErrDuplicateEnrollment) {
+	switch {
+	case errors.Is(err, domain.ErrDuplicateEnrollment):
 		return domain.DuplicateEnrollmentErrorCode
+	case errors.Is(err, domain.ErrPlatformFeeExceedsGross):
+		return domain.PlatformFeeExceedsGrossErrorCode
 	}
 	return ""
 }

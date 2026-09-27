@@ -29,6 +29,8 @@ func TestCatalogEnrollmentErrorStatus(t *testing.T) {
 		{name: "ownership is unprocessable", err: domain.ErrStudentOwnership, want: http.StatusUnprocessableEntity},
 		{name: "schedule required is unprocessable", err: domain.ErrScheduleRequired, want: http.StatusUnprocessableEntity},
 		{name: "ended schedule is unprocessable", err: domain.ErrScheduleEnded, want: http.StatusUnprocessableEntity},
+		{name: "wrapped platform fee rejection is unprocessable", err: fmt.Errorf("enroll: %w", domain.ErrPlatformFeeExceedsGross), want: http.StatusUnprocessableEntity},
+		{name: "invoice release failure is server error", err: errors.New("release enrollment after platform fee rejection: database down"), want: http.StatusInternalServerError},
 		{name: "class not found", err: domain.ErrClassNotFound, want: http.StatusNotFound},
 		{name: "billing failure is server error", err: errors.New("generate enrollment invoice: provider unavailable"), want: http.StatusInternalServerError},
 	}
@@ -55,6 +57,8 @@ func TestCatalogEnrollmentConflictBodies(t *testing.T) {
 		{name: "duplicate enrollment", err: domain.ErrDuplicateEnrollment, wantStatus: http.StatusConflict, wantCode: "duplicate_enrollment", wantMessage: domain.ErrDuplicateEnrollment.Error()},
 		{name: "schedule full", err: domain.ErrScheduleFull, wantStatus: http.StatusConflict, wantMessage: domain.ErrScheduleFull.Error()},
 		{name: "idempotency conflict", err: domain.ErrIdempotencyConflict, wantStatus: http.StatusConflict, wantMessage: domain.ErrIdempotencyConflict.Error()},
+		{name: "platform fee rejection", err: domain.ErrPlatformFeeExceedsGross, wantStatus: http.StatusUnprocessableEntity, wantCode: "platform_fee_exceeds_gross", wantMessage: "Biaya platform melebihi jumlah pembayaran"},
+		{name: "ownership keeps its 422 without code", err: domain.ErrStudentOwnership, wantStatus: http.StatusUnprocessableEntity, wantMessage: domain.ErrStudentOwnership.Error()},
 		{name: "unexpected failure", err: errors.New("database down"), wantStatus: http.StatusInternalServerError, wantMessage: "Failed to create enrollment"},
 	}
 	token := signToken(t, middleware.Claims{UserID: uuid.NewString(), Email: "parent@example.com", IsParent: true})
@@ -105,5 +109,31 @@ func TestTenantEnrollmentDuplicateIsConflict(t *testing.T) {
 	router.ServeHTTP(res, req)
 	if res.Code != http.StatusConflict || !strings.Contains(res.Body.String(), `"code":"duplicate_enrollment"`) {
 		t.Fatalf("status=%d body=%s, want 409 with code duplicate_enrollment", res.Code, res.Body.String())
+	}
+}
+
+// Both callers of the tenant route (a tenant member, and a parent token routed
+// through the public-enrollment flow) get the rejection as 422 with its code.
+func TestTenantEnrollmentPlatformFeeRejection(t *testing.T) {
+	tenantID := uuid.New()
+	tests := map[string]middleware.Claims{
+		"tenant member": {UserID: uuid.NewString(), TenantID: tenantID.String(), RoleID: uuid.NewString()},
+		"parent":        {UserID: uuid.NewString(), Email: "parent@example.com", IsParent: true},
+	}
+	for name, claims := range tests {
+		t.Run(name, func(t *testing.T) {
+			router := gin.New()
+			router.Use(middleware.AuthMiddleware(testJWTSecret))
+			router.POST("/api/v1/tenants/:tenant_id/enrollments", NewEnrollmentHandler(&failingEnrollmentUsecase{err: domain.ErrPlatformFeeExceedsGross}).Create)
+			req := httptest.NewRequest(http.MethodPost, "/api/v1/tenants/"+tenantID.String()+"/enrollments", strings.NewReader(`{"student_id":"`+uuid.NewString()+`","class_id":"`+uuid.NewString()+`","billing_cycle":"monthly"}`))
+			req.Header.Set("Content-Type", "application/json")
+			req.Header.Set("Authorization", "Bearer "+signToken(t, claims))
+			req.Header.Set("Idempotency-Key", uuid.NewString())
+			res := httptest.NewRecorder()
+			router.ServeHTTP(res, req)
+			if res.Code != http.StatusUnprocessableEntity || !strings.Contains(res.Body.String(), `"code":"platform_fee_exceeds_gross"`) || !strings.Contains(res.Body.String(), `"message":"Biaya platform melebihi jumlah pembayaran"`) {
+				t.Fatalf("status=%d body=%s, want 422 with code platform_fee_exceeds_gross and billing's message", res.Code, res.Body.String())
+			}
+		})
 	}
 }

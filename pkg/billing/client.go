@@ -95,8 +95,15 @@ func (c *client) GenerateInvoice(ctx context.Context, request InvoiceRequest) (*
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		var envelope struct {
 			Message string `json:"message"`
+			Code    string `json:"code"`
 		}
-		if err := json.NewDecoder(io.LimitReader(resp.Body, 1<<20)).Decode(&envelope); err != nil || envelope.Message == "" {
+		decodeErr := json.NewDecoder(io.LimitReader(resp.Body, 1<<20)).Decode(&envelope)
+		// Only the exact status and code pair is a permanent rejection; any other
+		// 422 (or the same code on another status) keeps the generic error path.
+		if decodeErr == nil && resp.StatusCode == http.StatusUnprocessableEntity && envelope.Code == PlatformFeeExceedsGrossCode {
+			return nil, ErrPlatformFeeExceedsGross
+		}
+		if decodeErr != nil || envelope.Message == "" {
 			return nil, fmt.Errorf("billing service returned status %d", resp.StatusCode)
 		}
 		return nil, fmt.Errorf("billing service returned status %d: %s", resp.StatusCode, redactCredential(envelope.Message, c.credential))
@@ -118,6 +125,16 @@ var (
 	ErrTransactionNotFound       = errors.New("billing transaction not found")
 	ErrTransactionNotCancellable = errors.New("billing transaction can no longer be cancelled")
 )
+
+// PlatformFeeExceedsGrossCode is the `code` billing sends with HTTP 422 when it
+// refuses to create an invoice whose platform fee plus payment gateway fee exceeds
+// the gross amount (KEL-99). No transaction is written on the billing side.
+const PlatformFeeExceedsGrossCode = "platform_fee_exceeds_gross"
+
+// ErrPlatformFeeExceedsGross is returned by GenerateInvoice for that rejection. It
+// is permanent for the request: retrying the same invoice is refused again until
+// the platform fee policy changes.
+var ErrPlatformFeeExceedsGross = errors.New("billing rejected the invoice: platform fee exceeds gross amount")
 
 // CancelEnrollmentPayment withdraws the unpaid invoice that belongs to an
 // enrollment. Billing answers 404 when the enrollment has no transaction at all and
