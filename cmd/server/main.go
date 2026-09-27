@@ -186,6 +186,21 @@ func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
+	// Every replica may run the worker: schedules are claimed with FOR UPDATE SKIP
+	// LOCKED and sessions are inserted idempotently, so replicas share the work.
+	// Cancelling ctx on shutdown rolls back a schedule still in progress; it stays due.
+	if cfg.SessionGenerationWorkerEnabled {
+		sessionGenerationWorker := usecase.NewSessionGenerationWorker(
+			txManager,
+			repository.NewSessionGenerationRepository(db),
+			cfg.SessionGenerationHorizonMonths,
+			time.Duration(cfg.SessionGenerationIntervalMinutes)*time.Minute,
+		)
+		go sessionGenerationWorker.Run(ctx)
+	} else {
+		slog.Warn("Session generation worker disabled; sessions after the current month are not generated on this replica")
+	}
+
 	slog.Info("Starting academic service",
 		"port", cfg.Port,
 		"server_read_header_timeout_seconds", cfg.ServerReadHeaderTimeout,
@@ -193,6 +208,9 @@ func main() {
 		"server_write_timeout_seconds", cfg.ServerWriteTimeout,
 		"server_idle_timeout_seconds", cfg.ServerIdleTimeout,
 		"server_shutdown_timeout_seconds", cfg.ServerShutdownTimeout,
+		"session_generation_worker_enabled", cfg.SessionGenerationWorkerEnabled,
+		"session_generation_interval_minutes", cfg.SessionGenerationIntervalMinutes,
+		"session_generation_horizon_months", cfg.SessionGenerationHorizonMonths,
 	)
 	if err := serveUntilDone(ctx, httpServer, listener, time.Duration(cfg.ServerShutdownTimeout)*time.Second); err != nil {
 		slog.Error("Academic service stopped with error", "error", err)

@@ -45,7 +45,27 @@ type Config struct {
 	ServerWriteTimeout      int `mapstructure:"SERVER_WRITE_TIMEOUT_SECONDS"`
 	ServerIdleTimeout       int `mapstructure:"SERVER_IDLE_TIMEOUT_SECONDS"`
 	ServerShutdownTimeout   int `mapstructure:"SERVER_SHUTDOWN_TIMEOUT_SECONDS"`
+
+	// SessionGenerationWorkerEnabled starts the worker that keeps every live
+	// schedule's sessions generated through the rolling horizon (KEL-90). It defaults
+	// to true; set it to false only on a replica that must never write sessions.
+	SessionGenerationWorkerEnabled bool `mapstructure:"SESSION_GENERATION_WORKER_ENABLED"`
+	// SessionGenerationIntervalMinutes is how often the worker runs.
+	SessionGenerationIntervalMinutes int `mapstructure:"SESSION_GENERATION_INTERVAL_MINUTES"`
+	// SessionGenerationHorizonMonths is how many months after the current one are kept
+	// generated. 1 means through the end of next month.
+	SessionGenerationHorizonMonths int `mapstructure:"SESSION_GENERATION_HORIZON_MONTHS"`
 }
+
+// Defaults for the session generation worker. A zero, negative, or unset value uses
+// the default.
+const (
+	DefaultSessionGenerationIntervalMinutes = 60
+	DefaultSessionGenerationHorizonMonths   = 1
+	// maxSessionGenerationHorizonMonths bounds how many sessions one pass may insert
+	// per schedule.
+	maxSessionGenerationHorizonMonths = 12
+)
 
 // Defaults for the server timeouts, in seconds. The HTTP values follow the gateway. A
 // zero, negative, or unset value uses the default; zero never disables a bound.
@@ -95,6 +115,7 @@ func LoadConfig() (Config, error) {
 		"IDENTITY_PERMISSION_TIMEOUT_MS",
 		"SERVER_READ_HEADER_TIMEOUT_SECONDS", "SERVER_READ_TIMEOUT_SECONDS", "SERVER_WRITE_TIMEOUT_SECONDS",
 		"SERVER_IDLE_TIMEOUT_SECONDS", "SERVER_SHUTDOWN_TIMEOUT_SECONDS",
+		"SESSION_GENERATION_WORKER_ENABLED", "SESSION_GENERATION_INTERVAL_MINUTES", "SESSION_GENERATION_HORIZON_MONTHS",
 	} {
 		if err := viper.BindEnv(key); err != nil {
 			return Config{}, err
@@ -168,8 +189,33 @@ func LoadConfig() (Config, error) {
 	if err := applyServerTimeouts(&config); err != nil {
 		return Config{}, err
 	}
+	if err := applySessionGeneration(&config); err != nil {
+		return Config{}, err
+	}
 
 	return config, nil
+}
+
+// applySessionGeneration enables the session generation worker unless it is
+// explicitly disabled, fills the interval and horizon defaults, and rejects a horizon
+// that would make one pass insert an unbounded number of sessions.
+func applySessionGeneration(config *Config) error {
+	if !viper.IsSet("SESSION_GENERATION_WORKER_ENABLED") {
+		config.SessionGenerationWorkerEnabled = true
+	}
+	if config.SessionGenerationIntervalMinutes <= 0 {
+		config.SessionGenerationIntervalMinutes = DefaultSessionGenerationIntervalMinutes
+	}
+	if config.SessionGenerationIntervalMinutes > maxDurationSeconds/60 {
+		return fmt.Errorf("SESSION_GENERATION_INTERVAL_MINUTES (%d) is too large for a duration", config.SessionGenerationIntervalMinutes)
+	}
+	if config.SessionGenerationHorizonMonths <= 0 {
+		config.SessionGenerationHorizonMonths = DefaultSessionGenerationHorizonMonths
+	}
+	if config.SessionGenerationHorizonMonths > maxSessionGenerationHorizonMonths {
+		return fmt.Errorf("SESSION_GENERATION_HORIZON_MONTHS (%d) must not exceed %d", config.SessionGenerationHorizonMonths, maxSessionGenerationHorizonMonths)
+	}
+	return nil
 }
 
 // applyServerTimeouts replaces non-positive server timeouts with their defaults, rejects

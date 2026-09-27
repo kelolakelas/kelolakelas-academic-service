@@ -37,7 +37,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_student_class_active ON enrollments (stude
 CREATE TABLE IF NOT EXISTS class_schedules (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(), class_id uuid NOT NULL, enrollment_id uuid, tutor_id uuid,
     capacity integer NOT NULL DEFAULT 1, location varchar(255), day_of_week integer NOT NULL, start_time time NOT NULL, end_time time NOT NULL,
-    valid_from date, valid_until date, deleted_at timestamp, CONSTRAINT class_schedules_capacity_non_negative CHECK (capacity > 0),
+    valid_from date, valid_until date, sessions_generated_until date, deleted_at timestamp, CONSTRAINT class_schedules_capacity_non_negative CHECK (capacity > 0),
     FOREIGN KEY (class_id) REFERENCES classes(id)
 );
 CREATE INDEX IF NOT EXISTS idx_class_schedules_class_day ON class_schedules (class_id, day_of_week) WHERE deleted_at IS NULL;
@@ -55,6 +55,7 @@ CREATE TABLE IF NOT EXISTS class_sessions (
 );
 CREATE INDEX IF NOT EXISTS idx_class_sessions_class_date ON class_sessions (class_id, session_date);
 CREATE INDEX IF NOT EXISTS idx_class_sessions_deleted_at ON class_sessions (deleted_at);
+CREATE UNIQUE INDEX IF NOT EXISTS uq_class_sessions_schedule_date ON class_sessions (schedule_id, session_date) WHERE schedule_id IS NOT NULL;
 DO $$
 BEGIN
     IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'fk_class_sessions_schedule') THEN
