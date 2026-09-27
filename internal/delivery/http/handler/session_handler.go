@@ -144,6 +144,7 @@ func (h *SessionHandler) GetSession(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Security BearerAuth
+// @x-permission {"permission":"schedule:update","parent_tokens":"denied"}
 // @Param id path string true "Session ID (UUID)"
 // @Success 200 {object} domain.HTTPResponse
 // @Failure 400 {object} domain.ErrorResponse
@@ -151,6 +152,7 @@ func (h *SessionHandler) GetSession(c *gin.Context) {
 // @Failure 403 {object} domain.ErrorResponse
 // @Failure 404 {object} domain.ErrorResponse
 // @Failure 500 {object} domain.ErrorResponse
+// @Failure 503 {object} domain.ErrorResponse
 // @Router /api/v1/sessions/{id} [delete]
 func (h *SessionHandler) DeleteSession(c *gin.Context) {
 	id, err := uuid.Parse(c.Param("id"))

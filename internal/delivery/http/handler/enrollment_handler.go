@@ -68,14 +68,23 @@ func (h *EnrollmentHandler) AssignSchedule(c *gin.Context) {
 
 // Create godoc
 // @Summary Enroll a student in a class
-// @Description A 409 with `code` `duplicate_enrollment` means the student already has a pending or active enrollment in this class; a 409 without `code` is an Idempotency-Key reused with a different request.
+// @Description A tenant-member token must carry `tenant_id` equal to the path and hold `enrollment:create`; a parent token skips the permission check and is enrolled through the public-enrollment flow (its errors answer 422). A 409 with `code` `duplicate_enrollment` means the student already has a pending or active enrollment in this class; a 409 without `code` is an Idempotency-Key reused with a different request.
 // @Tags Enrollments
 // @Accept json
 // @Produce json
+// @Security BearerAuth
+// @x-permission {"permission":"enrollment:create","parent_tokens":"skipped"}
 // @Param tenant_id path string true "Tenant ID"
+// @Param Idempotency-Key header string true "Unique request key"
 // @Param request body domain.EnrollStudentRequest true "Enrollment request"
 // @Success 201 {object} domain.HTTPResponse{data=domain.EnrollmentResponse}
+// @Failure 400 {object} domain.ErrorResponse
+// @Failure 401 {object} domain.ErrorResponse
+// @Failure 403 {object} domain.ErrorResponse
 // @Failure 409 {object} domain.ErrorResponse
+// @Failure 422 {object} domain.ErrorResponse
+// @Failure 500 {object} domain.ErrorResponse
+// @Failure 503 {object} domain.ErrorResponse
 // @Router /api/v1/tenants/{tenant_id}/enrollments [post]
 func (h *EnrollmentHandler) Create(c *gin.Context) {
 	pathTenantID, err := uuid.Parse(c.Param("tenant_id"))
@@ -285,9 +294,11 @@ func NewEnrollmentHandler(enrollmentUsecase usecase.EnrollmentUsecase) *Enrollme
 // @Tags Enrollments
 // @Accept json
 // @Produce json
+// @Security InternalServiceCredential
 // @Param id path string true "Enrollment ID (UUID)"
 // @Success 200 {object} domain.HTTPResponse{data=domain.EnrollmentResponse}
 // @Failure 400 {object} domain.ErrorResponse
+// @Failure 401 {object} domain.ErrorResponse
 // @Failure 404 {object} domain.ErrorResponse
 // @Failure 409 {object} domain.ErrorResponse
 // @Failure 500 {object} domain.ErrorResponse
@@ -343,9 +354,11 @@ func (h *EnrollmentHandler) ReleaseInternal(c *gin.Context) {
 // @Tags Enrollments
 // @Accept json
 // @Produce json
+// @Security InternalServiceCredential
 // @Param id path string true "Enrollment ID (UUID)"
 // @Success 200 {object} domain.HTTPResponse{data=domain.EnrollmentResponse}
 // @Failure 400 {object} domain.ErrorResponse
+// @Failure 401 {object} domain.ErrorResponse
 // @Failure 404 {object} domain.ErrorResponse
 // @Failure 500 {object} domain.ErrorResponse
 // @Router /internal/enrollments/{id}/activate [put]

@@ -30,12 +30,14 @@ func NewClassHandler(classUsecase usecase.ClassUsecase, creationUsecase usecase.
 // @Accept json
 // @Produce json
 // @Security BearerAuth
+// @x-permission {"permission":"class:create","parent_tokens":"denied"}
 // @Param request body domain.CreateClassWithCategoryRequest true "Create class with existing category payload"
 // @Success 201 {object} domain.HTTPResponse{data=domain.CreateClassWithCategoryResponse}
 // @Failure 400 {object} domain.ErrorResponse
 // @Failure 401 {object} domain.ErrorResponse
 // @Failure 403 {object} domain.ErrorResponse
 // @Failure 500 {object} domain.ErrorResponse
+// @Failure 503 {object} domain.ErrorResponse
 // @Router /api/v1/classes/with-category [post]
 func (h *ClassHandler) CreateWithCategory(c *gin.Context) {
 	tenantID, err := tenantIDFromContext(c)
@@ -72,12 +74,14 @@ func (h *ClassHandler) CreateWithCategory(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Security BearerAuth
+// @x-permission {"permission":"class:create","parent_tokens":"denied"}
 // @Param request body domain.CreateClassRequest true "Create class payload"
 // @Success 201 {object} domain.HTTPResponse{data=domain.ClassResponse}
 // @Failure 400 {object} domain.ErrorResponse
 // @Failure 401 {object} domain.ErrorResponse
 // @Failure 403 {object} domain.ErrorResponse
 // @Failure 500 {object} domain.ErrorResponse
+// @Failure 503 {object} domain.ErrorResponse
 // @Router /api/v1/classes [post]
 func (h *ClassHandler) Create(c *gin.Context) {
 	tenantID, err := tenantIDFromContext(c)
@@ -129,6 +133,7 @@ func (h *ClassHandler) Create(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Security BearerAuth
+// @x-permission {"permission":"class:delete","parent_tokens":"denied"}
 // @Param id path string true "Class ID (UUID)"
 // @Success 200 {object} domain.HTTPResponse
 // @Failure 400 {object} domain.ErrorResponse
@@ -137,6 +142,7 @@ func (h *ClassHandler) Create(c *gin.Context) {
 // @Failure 404 {object} domain.ErrorResponse
 // @Failure 409 {object} domain.ErrorResponse
 // @Failure 500 {object} domain.ErrorResponse
+// @Failure 503 {object} domain.ErrorResponse
 // @Router /api/v1/classes/{id} [delete]
 func (h *ClassHandler) Delete(c *gin.Context) {
 	tenantID, err := tenantIDFromContext(c)
@@ -173,6 +179,7 @@ func (h *ClassHandler) Delete(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Security BearerAuth
+// @x-permission {"permission":"class:update","parent_tokens":"denied"}
 // @Param id path string true "Class ID (UUID)"
 // @Param request body domain.UpdateClassRequest true "Class update payload"
 // @Success 200 {object} domain.HTTPResponse{data=domain.ClassResponse}
@@ -182,6 +189,7 @@ func (h *ClassHandler) Delete(c *gin.Context) {
 // @Failure 404 {object} domain.ErrorResponse
 // @Failure 422 {object} domain.ErrorResponse
 // @Failure 500 {object} domain.ErrorResponse
+// @Failure 503 {object} domain.ErrorResponse
 // @Router /api/v1/classes/{id} [patch]
 func (h *ClassHandler) Update(c *gin.Context) {
 	tenantID, err := tenantIDFromContext(c)
@@ -228,6 +236,7 @@ func (h *ClassHandler) Update(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Security BearerAuth
+// @x-permission {"permission":"class:update","parent_tokens":"denied"}
 // @Param id path string true "Class ID (UUID)"
 // @Param request body domain.UpdateClassPublicationRequest true "Class publication status payload"
 // @Success 200 {object} domain.HTTPResponse{data=domain.ClassResponse}
@@ -235,6 +244,8 @@ func (h *ClassHandler) Update(c *gin.Context) {
 // @Failure 401 {object} domain.ErrorResponse
 // @Failure 404 {object} domain.ErrorResponse
 // @Failure 500 {object} domain.ErrorResponse
+// @Failure 403 {object} domain.ErrorResponse
+// @Failure 503 {object} domain.ErrorResponse
 // @Router /api/v1/classes/{id}/published [patch]
 func (h *ClassHandler) UpdatePublication(c *gin.Context) {
 	tenantID, err := tenantIDFromContext(c)

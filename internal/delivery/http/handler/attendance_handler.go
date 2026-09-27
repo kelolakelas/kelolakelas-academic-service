@@ -66,7 +66,10 @@ func parseAttendanceQuery(c *gin.Context) (domain.AttendanceQuery, error) {
 // @Tags Attendance
 // @Produce json
 // @Security BearerAuth
+// @x-permission {"permission":"attendance:read","parent_tokens":"skipped"}
 // @Success 200 {object} domain.HTTPResponse{data=domain.AttendanceListResponse}
+// @Failure 403 {object} domain.ErrorResponse
+// @Failure 503 {object} domain.ErrorResponse
 // @Router /api/v1/attendance [get]
 func (h *AttendanceHandler) List(c *gin.Context) {
 	tenant, e := attendanceTenant(c)
@@ -92,8 +95,11 @@ func (h *AttendanceHandler) List(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Security BearerAuth
+// @x-permission {"permission":"attendance:create","parent_tokens":"skipped"}
 // @Param request body domain.CreateAttendanceRequest true "Attendance payload"
 // @Success 201 {object} domain.HTTPResponse{data=domain.Attendance}
+// @Failure 403 {object} domain.ErrorResponse
+// @Failure 503 {object} domain.ErrorResponse
 // @Router /api/v1/attendance [post]
 func (h *AttendanceHandler) Create(c *gin.Context) {
 	tenant, e := attendanceTenant(c)
@@ -131,8 +137,11 @@ func (h *AttendanceHandler) Create(c *gin.Context) {
 // @Tags Attendance
 // @Produce json
 // @Security BearerAuth
+// @x-permission {"permission":"attendance:read","parent_tokens":"skipped"}
 // @Param id path string true "Attendance UUID"
 // @Success 200 {object} domain.HTTPResponse{data=domain.Attendance}
+// @Failure 403 {object} domain.ErrorResponse
+// @Failure 503 {object} domain.ErrorResponse
 // @Router /api/v1/attendance/{id} [get]
 func (h *AttendanceHandler) Get(c *gin.Context) {
 	tenant, e := attendanceTenant(c)
@@ -162,9 +171,12 @@ func (h *AttendanceHandler) Get(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Security BearerAuth
+// @x-permission {"permission":"attendance:update","parent_tokens":"skipped"}
 // @Param id path string true "Attendance UUID"
 // @Param request body domain.UpdateAttendanceRequest true "Attendance payload"
 // @Success 200 {object} domain.HTTPResponse{data=domain.Attendance}
+// @Failure 403 {object} domain.ErrorResponse
+// @Failure 503 {object} domain.ErrorResponse
 // @Router /api/v1/attendance/{id} [patch]
 func (h *AttendanceHandler) Update(c *gin.Context) {
 	tenant, e := attendanceTenant(c)

@@ -88,7 +88,10 @@ func parseEnrollmentQuery(c *gin.Context) (domain.EnrollmentQuery, error) {
 // @Tags Enrollments
 // @Produce json
 // @Security BearerAuth
+// @x-permission {"permission":"enrollment:read","parent_tokens":"skipped"}
 // @Success 200 {object} domain.HTTPResponse{data=domain.EnrollmentListResponse}
+// @Failure 403 {object} domain.ErrorResponse
+// @Failure 503 {object} domain.ErrorResponse
 // @Router /api/v1/enrollments [get]
 func (h *EnrollmentHandler) ListQuery(c *gin.Context) {
 	tenantID, parentID, err := enrollmentScope(c)
@@ -113,8 +116,11 @@ func (h *EnrollmentHandler) ListQuery(c *gin.Context) {
 // @Tags Enrollments
 // @Produce json
 // @Security BearerAuth
+// @x-permission {"permission":"enrollment:read","parent_tokens":"skipped"}
 // @Param id path string true "Enrollment UUID"
 // @Success 200 {object} domain.HTTPResponse{data=domain.EnrollmentResponse}
+// @Failure 403 {object} domain.ErrorResponse
+// @Failure 503 {object} domain.ErrorResponse
 // @Router /api/v1/enrollments/{id} [get]
 func (h *EnrollmentHandler) GetQuery(c *gin.Context) {
 	tenantID, parentID, err := enrollmentScope(c)

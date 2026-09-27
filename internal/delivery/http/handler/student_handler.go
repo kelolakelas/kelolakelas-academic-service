@@ -56,7 +56,10 @@ func isStudentInputError(err error) bool {
 // @Tags Students
 // @Produce json
 // @Security BearerAuth
+// @x-permission {"permission":"student:read","parent_tokens":"skipped"}
 // @Success 200 {object} domain.HTTPResponse{data=domain.StudentListResponse}
+// @Failure 403 {object} domain.ErrorResponse
+// @Failure 503 {object} domain.ErrorResponse
 // @Router /api/v1/students [get]
 func (h *StudentHandler) List(c *gin.Context) {
 	tenantID, parentID, err := studentScope(c)
@@ -91,11 +94,13 @@ func (h *StudentHandler) List(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Security BearerAuth
+// @x-permission {"permission":"student:create","parent_tokens":"skipped"}
 // @Param request body domain.CreateStudentRequest true "Student payload"
 // @Success 201 {object} domain.HTTPResponse{data=domain.Student}
 // @Failure 400 {object} domain.ErrorResponse
 // @Failure 403 {object} domain.ErrorResponse
 // @Failure 500 {object} domain.ErrorResponse
+// @Failure 503 {object} domain.ErrorResponse
 // @Router /api/v1/students [post]
 func (h *StudentHandler) Create(c *gin.Context) {
 	tenantID, _, err := studentScope(c)
@@ -135,8 +140,11 @@ func (h *StudentHandler) Create(c *gin.Context) {
 // @Tags Students
 // @Produce json
 // @Security BearerAuth
+// @x-permission {"permission":"student:read","parent_tokens":"skipped"}
 // @Param id path string true "Student UUID"
 // @Success 200 {object} domain.HTTPResponse{data=domain.Student}
+// @Failure 403 {object} domain.ErrorResponse
+// @Failure 503 {object} domain.ErrorResponse
 // @Router /api/v1/students/{id} [get]
 func (h *StudentHandler) Get(c *gin.Context) { h.mutate(c, false) }
 
@@ -146,12 +154,15 @@ func (h *StudentHandler) Get(c *gin.Context) { h.mutate(c, false) }
 // @Accept json
 // @Produce json
 // @Security BearerAuth
+// @x-permission {"permission":"student:update","parent_tokens":"skipped"}
 // @Param id path string true "Student UUID"
 // @Param request body domain.UpdateStudentRequest true "Student payload"
 // @Success 200 {object} domain.HTTPResponse{data=domain.Student}
 // @Failure 400 {object} domain.ErrorResponse
 // @Failure 404 {object} domain.ErrorResponse
 // @Failure 500 {object} domain.ErrorResponse
+// @Failure 403 {object} domain.ErrorResponse
+// @Failure 503 {object} domain.ErrorResponse
 // @Router /api/v1/students/{id} [patch]
 func (h *StudentHandler) Update(c *gin.Context) { h.mutate(c, true) }
 func (h *StudentHandler) mutate(c *gin.Context, update bool) {
@@ -210,9 +221,12 @@ func (h *StudentHandler) mutate(c *gin.Context, update bool) {
 // @Tags Students
 // @Produce json
 // @Security BearerAuth
+// @x-permission {"permission":"student:delete","parent_tokens":"skipped"}
 // @Param id path string true "Student UUID"
 // @Success 200 {object} domain.HTTPResponse
 // @Failure 409 {object} domain.ErrorResponse
+// @Failure 403 {object} domain.ErrorResponse
+// @Failure 503 {object} domain.ErrorResponse
 // @Router /api/v1/students/{id} [delete]
 func (h *StudentHandler) Delete(c *gin.Context) {
 	tenantID, parentID, err := studentScope(c)

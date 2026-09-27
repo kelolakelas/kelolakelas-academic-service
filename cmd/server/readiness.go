@@ -14,6 +14,14 @@ import (
 
 const probeTimeout = time.Second
 
+// readinessHandler godoc
+// @Summary Readiness probe
+// @Description Pings the database and the identity gRPC health service within one second. `status` and each `components` entry are `healthy` or `unavailable`; any unavailable component answers 503.
+// @Tags Health
+// @Produce json
+// @Success 200 {object} map[string]interface{}
+// @Failure 503 {object} map[string]interface{}
+// @Router /ready [get]
 func readinessHandler(db *sql.DB, identityAddress string) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		ctx, cancel := context.WithTimeout(c.Request.Context(), probeTimeout)
