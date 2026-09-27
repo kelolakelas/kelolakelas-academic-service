@@ -62,6 +62,15 @@ type SessionRepository interface {
 	UpdateFutureSessionsTutor(ctx context.Context, tenantID, scheduleID uuid.UUID, newTutorID uuid.UUID, newScheduleID uuid.UUID, fromDate time.Time) error
 }
 
+// SessionGenerationRepository backs the background worker that keeps every live
+// schedule's sessions generated through the rolling horizon (KEL-90). It spans all
+// tenants by design: it is never reachable from a request.
+type SessionGenerationRepository interface {
+	LockNextScheduleDueForGeneration(ctx context.Context, horizonEnd time.Time, afterID uuid.UUID) (*domain.ClassSchedule, error)
+	InsertMissingSessions(ctx context.Context, sessions []*domain.ClassSession) (int64, error)
+	MarkSessionsGeneratedUntil(ctx context.Context, scheduleID uuid.UUID, until time.Time) error
+}
+
 type TransactionManager interface {
 	WithTransaction(ctx context.Context, fn func(ctx context.Context) error) error
 }

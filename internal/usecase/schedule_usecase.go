@@ -117,19 +117,39 @@ func normalizeDate(t time.Time) time.Time {
 	return time.Date(t.Year(), t.Month(), t.Day(), 0, 0, 0, 0, t.Location())
 }
 
+// calendarDateIn reads t as a calendar date and places it at midnight in loc. DATE
+// columns come back from the driver at UTC midnight while request dates can carry
+// another zone, and comparing the two as instants could move a boundary by a day.
+func calendarDateIn(t time.Time, loc *time.Location) time.Time {
+	return time.Date(t.Year(), t.Month(), t.Day(), 0, 0, 0, 0, loc)
+}
+
+// endOfMonth returns the last calendar day of date's month, in date's location.
+func endOfMonth(date time.Time) time.Time {
+	return time.Date(date.Year(), date.Month()+1, 1, 0, 0, 0, 0, date.Location()).AddDate(0, 0, -1)
+}
+
 // Helper function to generate ClassSessions for a schedule from a start date through the end of the month
 func generateSessionsForSchedule(schedule *domain.ClassSchedule, fromDate time.Time) []*domain.ClassSession {
 	fromDate = normalizeDate(fromDate)
+	return sessionsForScheduleBetween(schedule, fromDate, endOfMonth(fromDate))
+}
 
-	// End of current month for initial schedule generation
-	firstOfNextMonth := time.Date(fromDate.Year(), fromDate.Month()+1, 1, 0, 0, 0, 0, fromDate.Location())
-	endOfMonth := firstOfNextMonth.AddDate(0, 0, -1)
-
-	endDate := endOfMonth
+// sessionsForScheduleBetween builds one session for every date in [fromDate, toDate]
+// that falls on the schedule's weekday and inside its validity window. Dates are
+// calendar dates in fromDate's location.
+func sessionsForScheduleBetween(schedule *domain.ClassSchedule, fromDate, toDate time.Time) []*domain.ClassSession {
+	fromDate = normalizeDate(fromDate)
+	loc := fromDate.Location()
+	endDate := calendarDateIn(toDate, loc)
+	if schedule.ValidFrom != nil {
+		if validFrom := calendarDateIn(*schedule.ValidFrom, loc); validFrom.After(fromDate) {
+			fromDate = validFrom
+		}
+	}
 	if schedule.ValidUntil != nil {
-		validUntilNorm := normalizeDate(*schedule.ValidUntil)
-		if validUntilNorm.Before(endDate) {
-			endDate = validUntilNorm
+		if validUntil := calendarDateIn(*schedule.ValidUntil, loc); validUntil.Before(endDate) {
+			endDate = validUntil
 		}
 	}
 
@@ -235,6 +255,10 @@ func (u *scheduleUsecase) CreateInitialSchedules(
 				validUntil := normalizeDate(*item.ValidUntil)
 				schedule.ValidUntil = &validUntil
 			}
+			// The sessions generated below cover validFrom through the end of its
+			// month; the session generation worker continues after that date.
+			generatedUntil := endOfMonth(validFrom)
+			schedule.SessionsGeneratedUntil = &generatedUntil
 
 			if err := u.scheduleRepo.Create(txCtx, schedule); err != nil {
 				return err
@@ -381,6 +405,8 @@ func (u *scheduleUsecase) ChangeSchedulePermanent(
 		}
 
 		// 2. Create new Class_Schedules row with valid_from = effective_date
+		// Step 4 generates its sessions through the end of the effective month.
+		generatedUntil := endOfMonth(effectiveDate)
 		newSchedule = &domain.ClassSchedule{
 			ID:           uuid.New(),
 			ClassID:      oldSchedule.ClassID,
@@ -393,6 +419,8 @@ func (u *scheduleUsecase) ChangeSchedulePermanent(
 			EndTime:      req.NewEndTime,
 			ValidFrom:    &effectiveDate,
 			ValidUntil:   originalValidUntil,
+
+			SessionsGeneratedUntil: &generatedUntil,
 		}
 		if err := u.scheduleRepo.Create(txCtx, newSchedule); err != nil {
 			return err
@@ -499,6 +527,9 @@ func (u *scheduleUsecase) ChangeTutorPermanent(
 		}
 
 		// 2. Create newly duplicated schedule with new tutor_id and valid_from = effective_date
+		// Step 3 moves the old schedule's future sessions to this schedule, so it
+		// inherits the generated range: dates the tenant already deleted, cancelled or
+		// rescheduled under the old schedule must not be generated again under the new one.
 		newTutorID := req.NewTutorID
 		newSchedule = &domain.ClassSchedule{
 			ID:           uuid.New(),
@@ -512,6 +543,8 @@ func (u *scheduleUsecase) ChangeTutorPermanent(
 			EndTime:      oldSchedule.EndTime,
 			ValidFrom:    &effectiveDate,
 			ValidUntil:   originalValidUntil,
+
+			SessionsGeneratedUntil: oldSchedule.SessionsGeneratedUntil,
 		}
 		if err := u.scheduleRepo.Create(txCtx, newSchedule); err != nil {
 			return err
