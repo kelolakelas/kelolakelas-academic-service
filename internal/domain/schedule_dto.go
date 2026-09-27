@@ -10,8 +10,8 @@ import (
 type ScheduleItemRequest struct {
 	EnrollmentID *uuid.UUID `json:"enrollment_id,omitempty"`
 	TutorID      *uuid.UUID `json:"tutor_id,omitempty"`
-	Capacity     int        `json:"capacity" binding:"required,min=1"`
-	Location     *string    `json:"location,omitempty"`
+	Capacity     int        `json:"capacity" binding:"required,min=1,max=2147483647"`
+	Location     *string    `json:"location,omitempty" binding:"omitempty,max=255"`
 	DayOfWeek    int        `json:"day_of_week" binding:"required,min=1,max=7"` // 1=Monday, ..., 7=Sunday
 	StartTime    string     `json:"start_time" binding:"required"`              // HH:MM:SS
 	EndTime      string     `json:"end_time" binding:"required"`                // HH:MM:SS
@@ -35,7 +35,7 @@ type RescheduleSessionRequest struct {
 	NewSessionDate time.Time `json:"new_session_date" binding:"required"`
 	NewStartTime   string    `json:"new_start_time" binding:"required"`
 	NewEndTime     string    `json:"new_end_time" binding:"required"`
-	NewLocation    *string   `json:"new_location,omitempty"`
+	NewLocation    *string   `json:"new_location,omitempty" binding:"omitempty,max=255"`
 }
 
 type RescheduleSessionResponse struct {

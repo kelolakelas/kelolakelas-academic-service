@@ -46,7 +46,7 @@ type Class struct {
 
 type CreateClassRequest struct {
 	CategoryID       uuid.UUID        `json:"category_id" binding:"required"`
-	Name             string           `json:"name" binding:"required"`
+	Name             string           `json:"name" binding:"required,max=255"`
 	Description      *json.RawMessage `json:"description,omitempty"`
 	Type             string           `json:"type" binding:"required,oneof=private group"`
 	Price            int64            `json:"price" binding:"required,min=0"`
@@ -83,7 +83,7 @@ type CreateClassWithCategoryRequest struct {
 }
 
 type CreateClassPayload struct {
-	Name             string           `json:"name" binding:"required"`
+	Name             string           `json:"name" binding:"required,max=255"`
 	Description      *json.RawMessage `json:"description,omitempty"`
 	Type             string           `json:"type" binding:"required,oneof=private group"`
 	Price            int64            `json:"price" binding:"min=0"`

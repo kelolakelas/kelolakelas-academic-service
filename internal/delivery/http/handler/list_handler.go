@@ -16,11 +16,14 @@ func listQuery(c *gin.Context) (domain.ListQuery, error) {
 	for key, target := range map[string]*int{"page": &query.Page, "page_size": &query.PageSize} {
 		if value := c.Query(key); value != "" {
 			parsed, err := strconv.Atoi(value)
-			if err != nil || parsed < 1 || (key == "page_size" && parsed > 100) {
+			if err != nil || parsed < 1 || (key == "page" && parsed > domain.MaxPage) || (key == "page_size" && parsed > domain.MaxPageSize) {
 				return query, gin.Error{Err: strconv.ErrSyntax}
 			}
 			*target = parsed
 		}
+	}
+	if len([]rune(query.Search)) > domain.MaxSearchLength {
+		return query, gin.Error{Err: strconv.ErrRange}
 	}
 	return query, nil
 }

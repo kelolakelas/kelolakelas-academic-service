@@ -3339,7 +3339,8 @@ const docTemplate = `{
                     }
                 },
                 "name": {
-                    "type": "string"
+                    "type": "string",
+                    "maxLength": 255
                 }
             }
         },
@@ -3369,7 +3370,8 @@ const docTemplate = `{
                     "type": "boolean"
                 },
                 "name": {
-                    "type": "string"
+                    "type": "string",
+                    "maxLength": 255
                 },
                 "price": {
                     "type": "integer",
@@ -3415,7 +3417,8 @@ const docTemplate = `{
                     "type": "boolean"
                 },
                 "name": {
-                    "type": "string"
+                    "type": "string",
+                    "maxLength": 255
                 },
                 "price": {
                     "type": "integer",
@@ -3516,7 +3519,8 @@ const docTemplate = `{
                     "minimum": 0
                 },
                 "title": {
-                    "type": "string"
+                    "type": "string",
+                    "maxLength": 255
                 }
             }
         },
@@ -3961,7 +3965,8 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "new_location": {
-                    "type": "string"
+                    "type": "string",
+                    "maxLength": 255
                 },
                 "new_session_date": {
                     "type": "string"
@@ -3996,6 +4001,7 @@ const docTemplate = `{
             "properties": {
                 "capacity": {
                     "type": "integer",
+                    "maximum": 2147483647,
                     "minimum": 1
                 },
                 "day_of_week": {
@@ -4012,7 +4018,8 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "location": {
-                    "type": "string"
+                    "type": "string",
+                    "maxLength": 255
                 },
                 "start_time": {
                     "description": "HH:MM:SS",
@@ -4241,7 +4248,8 @@ const docTemplate = `{
                     "minimum": 0
                 },
                 "title": {
-                    "type": "string"
+                    "type": "string",
+                    "maxLength": 255
                 }
             }
         },

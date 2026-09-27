@@ -56,10 +56,11 @@ func (r *reportRepository) List(ctx context.Context, tenantID uuid.UUID, query d
 		db = db.Where("reports.created_at <= ?", *query.DateTo)
 	}
 	if query.Search != "" {
+		search := "%" + escapeLikePattern(query.Search) + "%"
 		db = db.Where(
-			"reports.title ILIKE ? OR reports.evaluation_notes ILIKE ?",
-			"%"+query.Search+"%",
-			"%"+query.Search+"%",
+			"reports.title ILIKE ? ESCAPE '\\' OR reports.evaluation_notes ILIKE ? ESCAPE '\\'",
+			search,
+			search,
 		)
 	}
 

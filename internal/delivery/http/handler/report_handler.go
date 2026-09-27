@@ -21,11 +21,14 @@ func parseReportQuery(c *gin.Context) (domain.ReportQuery, error) {
 	for key, target := range map[string]*int{"page": &q.Page, "page_size": &q.PageSize} {
 		if v := c.Query(key); v != "" {
 			n, e := strconv.Atoi(v)
-			if e != nil || n < 1 || (key == "page_size" && n > 100) {
+			if e != nil || n < 1 || (key == "page" && n > domain.MaxPage) || (key == "page_size" && n > domain.MaxPageSize) {
 				return q, errors.New("invalid pagination")
 			}
 			*target = n
 		}
+	}
+	if len([]rune(q.Search)) > domain.MaxSearchLength {
+		return q, errors.New("invalid search")
 	}
 	for key, target := range map[string]**uuid.UUID{"enrollment_id": &q.EnrollmentID, "student_id": &q.StudentID, "reporter_id": &q.ReporterID} {
 		if v := c.Query(key); v != "" {

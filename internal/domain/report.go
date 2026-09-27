@@ -43,13 +43,13 @@ type ReportListResponse struct {
 
 type CreateReportRequest struct {
 	EnrollmentID    uuid.UUID `json:"enrollment_id" binding:"required"`
-	Title           string    `json:"title" binding:"required"`
+	Title           string    `json:"title" binding:"required,max=255"`
 	EvaluationNotes *string   `json:"evaluation_notes"`
 	Score           *float64  `json:"score" binding:"omitempty,gte=0,lte=100"`
 }
 
 type UpdateReportRequest struct {
-	Title           string   `json:"title" binding:"required"`
+	Title           string   `json:"title" binding:"required,max=255"`
 	EvaluationNotes *string  `json:"evaluation_notes"`
 	Score           *float64 `json:"score" binding:"omitempty,gte=0,lte=100"`
 }

@@ -199,9 +199,10 @@ func (r *enrollmentRepository) List(ctx context.Context, tenantID, parentID *uui
 		db = db.Where("enrollments.joined_at <= ?", *query.DateTo)
 	}
 	if query.Search != "" {
+		search := "%" + escapeLikePattern(query.Search) + "%"
 		db = db.Joins("JOIN students ss ON ss.id = enrollments.student_id").
 			Joins("JOIN classes cc ON cc.id = enrollments.class_id").
-			Where("COALESCE(ss.first_name, '') ILIKE ? OR COALESCE(ss.last_name, '') ILIKE ? OR COALESCE(ss.nickname, '') ILIKE ? OR cc.name ILIKE ?", "%"+query.Search+"%", "%"+query.Search+"%", "%"+query.Search+"%", "%"+query.Search+"%")
+			Where("COALESCE(ss.first_name, '') ILIKE ? ESCAPE '\\' OR COALESCE(ss.last_name, '') ILIKE ? ESCAPE '\\' OR COALESCE(ss.nickname, '') ILIKE ? ESCAPE '\\' OR cc.name ILIKE ? ESCAPE '\\'", search, search, search, search)
 	}
 	var total int64
 	if err := db.Session(&gorm.Session{}).Count(&total).Error; err != nil {

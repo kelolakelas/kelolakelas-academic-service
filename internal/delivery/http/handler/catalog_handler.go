@@ -82,12 +82,16 @@ func (h *CatalogHandler) ListClasses(c *gin.Context) {
 	for key, target := range map[string]*int{"page": &query.Page, "page_size": &query.PageSize} {
 		if value := c.Query(key); value != "" {
 			parsed, err := strconv.Atoi(value)
-			if err != nil || parsed < 1 || (key == "page_size" && parsed > 100) {
+			if err != nil || parsed < 1 || (key == "page" && parsed > domain.MaxPage) || (key == "page_size" && parsed > domain.MaxPageSize) {
 				c.JSON(http.StatusBadRequest, gin.H{"status": "error", "message": "Invalid pagination", "data": nil})
 				return
 			}
 			*target = parsed
 		}
+	}
+	if len([]rune(query.Search)) > domain.MaxSearchLength {
+		c.JSON(http.StatusBadRequest, gin.H{"status": "error", "message": "Invalid search", "data": nil})
+		return
 	}
 	for key, target := range map[string]**float64{"latitude": &query.Latitude, "longitude": &query.Longitude} {
 		if value := c.Query(key); value != "" {

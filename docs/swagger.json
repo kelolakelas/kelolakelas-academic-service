@@ -3332,7 +3332,8 @@
                     }
                 },
                 "name": {
-                    "type": "string"
+                    "type": "string",
+                    "maxLength": 255
                 }
             }
         },
@@ -3362,7 +3363,8 @@
                     "type": "boolean"
                 },
                 "name": {
-                    "type": "string"
+                    "type": "string",
+                    "maxLength": 255
                 },
                 "price": {
                     "type": "integer",
@@ -3408,7 +3410,8 @@
                     "type": "boolean"
                 },
                 "name": {
-                    "type": "string"
+                    "type": "string",
+                    "maxLength": 255
                 },
                 "price": {
                     "type": "integer",
@@ -3509,7 +3512,8 @@
                     "minimum": 0
                 },
                 "title": {
-                    "type": "string"
+                    "type": "string",
+                    "maxLength": 255
                 }
             }
         },
@@ -3954,7 +3958,8 @@
                     "type": "string"
                 },
                 "new_location": {
-                    "type": "string"
+                    "type": "string",
+                    "maxLength": 255
                 },
                 "new_session_date": {
                     "type": "string"
@@ -3989,6 +3994,7 @@
             "properties": {
                 "capacity": {
                     "type": "integer",
+                    "maximum": 2147483647,
                     "minimum": 1
                 },
                 "day_of_week": {
@@ -4005,7 +4011,8 @@
                     "type": "string"
                 },
                 "location": {
-                    "type": "string"
+                    "type": "string",
+                    "maxLength": 255
                 },
                 "start_time": {
                     "description": "HH:MM:SS",
@@ -4234,7 +4241,8 @@
                     "minimum": 0
                 },
                 "title": {
-                    "type": "string"
+                    "type": "string",
+                    "maxLength": 255
                 }
             }
         },

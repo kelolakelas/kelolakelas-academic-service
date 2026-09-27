@@ -24,7 +24,7 @@ func parseAttendanceQuery(c *gin.Context) (domain.AttendanceQuery, error) {
 	for key, target := range map[string]*int{"page": &q.Page, "page_size": &q.PageSize} {
 		if v := c.Query(key); v != "" {
 			n, e := strconv.Atoi(v)
-			if e != nil || n < 1 || (key == "page_size" && n > 100) {
+			if e != nil || n < 1 || (key == "page" && n > domain.MaxPage) || (key == "page_size" && n > domain.MaxPageSize) {
 				return q, errors.New("invalid pagination")
 			}
 			*target = n

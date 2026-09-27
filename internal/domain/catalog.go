@@ -25,6 +25,9 @@ type CatalogQuery struct {
 }
 
 func (q CatalogQuery) Validate() error {
+	if (q.Page != 0 && (q.Page < 1 || q.Page > MaxPage)) || (q.PageSize != 0 && (q.PageSize < 1 || q.PageSize > MaxPageSize)) || len([]rune(q.Search)) > MaxSearchLength {
+		return ErrInvalidCatalogQuery
+	}
 	if (q.Latitude == nil) != (q.Longitude == nil) {
 		return ErrInvalidCatalogQuery
 	}
