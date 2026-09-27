@@ -48,6 +48,54 @@ func TestCatalogDetailIncludesScheduleLocation(t *testing.T) {
 	}
 }
 
+func TestCatalogListEscapesPercentSearch(t *testing.T) {
+	repo, mock, cleanup := newCatalogMock(t)
+	defer cleanup()
+
+	mock.ExpectQuery(`SELECT count.*c.name ILIKE.*ESCAPE`).
+		WithArgs(true, true, "open", `%50\%%`).
+		WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(0))
+	mock.ExpectQuery(`SELECT .*FROM classes c.*c.name ILIKE.*ESCAPE`).
+		WithArgs(true, true, "open", `%50\%%`, 20).
+		WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "tenant_name", "tenant_address", "category_id", "category_name", "name", "description", "type", "price", "schedules", "distance_km", "is_enrollable", "created_at"}))
+
+	_, total, err := repo.List(context.Background(), domain.CatalogQuery{ListQuery: domain.ListQuery{Page: 1, PageSize: 20, Search: "50%"}, RadiusKM: 25, Sort: "newest"})
+	if err != nil {
+		t.Fatalf("List error: %v", err)
+	}
+	if total != 0 {
+		t.Fatalf("total=%d, want 0", total)
+	}
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Fatalf("unmet SQL expectations: %v", err)
+	}
+}
+
+func TestCategoryListEscapesUnderscoreSearch(t *testing.T) {
+	catalogRepo, mock, cleanup := newCatalogMock(t)
+	defer cleanup()
+	repo := &categoryRepository{db: catalogRepo.db}
+	tenantID := uuid.New()
+
+	mock.ExpectQuery(`SELECT count.*FROM "categories"`).
+		WithArgs(tenantID, `%a\_b%`).
+		WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(0))
+	mock.ExpectQuery(`SELECT .*FROM "categories"`).
+		WithArgs(tenantID, `%a\_b%`, 20).
+		WillReturnRows(sqlmock.NewRows([]string{"id", "tenant_id", "name", "description", "created_at", "updated_at", "deleted_at"}))
+
+	_, total, err := repo.ListByTenant(context.Background(), tenantID, domain.ListQuery{Page: 1, PageSize: 20, Search: "a_b"})
+	if err != nil {
+		t.Fatalf("ListByTenant error: %v", err)
+	}
+	if total != 0 {
+		t.Fatalf("total=%d, want 0", total)
+	}
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Fatalf("unmet SQL expectations: %v", err)
+	}
+}
+
 func TestCatalogAvailabilityIsReturnedPerSchedule(t *testing.T) {
 	tenantID, classID, firstScheduleID, secondScheduleID := uuid.New(), uuid.New(), uuid.New(), uuid.New()
 	scheduleJSON := `[{"id":"` + firstScheduleID.String() + `","location":"Ruang A","capacity":10,"available_slots":8,"is_available":true},{"id":"` + secondScheduleID.String() + `","location":null,"capacity":8,"available_slots":0,"is_available":false}]`

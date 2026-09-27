@@ -41,7 +41,7 @@ type Category struct {
 }
 
 type CreateCategoryRequest struct {
-	Name        string           `json:"name" binding:"required"`
+	Name        string           `json:"name" binding:"required,max=255"`
 	Description *json.RawMessage `json:"description,omitempty"`
 }
 

@@ -17,7 +17,7 @@ type classRepository struct {
 func (r *classRepository) ListByTenant(ctx context.Context, tenantID uuid.UUID, query domain.ListQuery) ([]domain.Class, int64, error) {
 	db := r.db.WithContext(ctx).Where("tenant_id = ?", tenantID)
 	if query.Search != "" {
-		db = db.Where("name ILIKE ?", "%"+query.Search+"%")
+		db = db.Where("name ILIKE ? ESCAPE '\\'", "%"+escapeLikePattern(query.Search)+"%")
 	}
 	var total int64
 	if err := db.Model(&domain.Class{}).Count(&total).Error; err != nil {

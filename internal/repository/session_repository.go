@@ -94,7 +94,7 @@ func (r *sessionRepository) ListByTenant(ctx context.Context, tenantID uuid.UUID
 		db = db.Where("cs.session_date <= ?", *query.DateTo)
 	}
 	if query.Search != "" {
-		db = db.Where("c.name ILIKE ?", "%"+query.Search+"%")
+		db = db.Where("c.name ILIKE ? ESCAPE '\\'", "%"+escapeLikePattern(query.Search)+"%")
 	}
 	var total int64
 	if err := db.Session(&gorm.Session{}).Count(&total).Error; err != nil {

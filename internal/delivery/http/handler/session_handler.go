@@ -25,11 +25,14 @@ func parseSessionQuery(c *gin.Context) (domain.SessionQuery, error) {
 	for key, target := range map[string]*int{"page": &q.Page, "page_size": &q.PageSize} {
 		if value := c.Query(key); value != "" {
 			parsed, err := strconv.Atoi(value)
-			if err != nil || parsed < 1 || (key == "page_size" && parsed > 100) {
+			if err != nil || parsed < 1 || (key == "page" && parsed > domain.MaxPage) || (key == "page_size" && parsed > domain.MaxPageSize) {
 				return q, errors.New("invalid pagination")
 			}
 			*target = parsed
 		}
+	}
+	if len([]rune(q.Search)) > domain.MaxSearchLength {
+		return q, errors.New("invalid search")
 	}
 	for key, target := range map[string]**uuid.UUID{"class_id": &q.ClassID, "schedule_id": &q.ScheduleID, "enrollment_id": &q.EnrollmentID, "tutor_id": &q.TutorID} {
 		if value := c.Query(key); value != "" {

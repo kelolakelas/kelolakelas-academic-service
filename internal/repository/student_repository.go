@@ -62,8 +62,8 @@ func (r *studentRepository) List(ctx context.Context, tenantID, parentID *uuid.U
 		db = db.Where("EXISTS (SELECT 1 FROM enrollments e WHERE e.student_id = students.id AND e.tenant_id = ? AND e.deleted_at IS NULL)", *tenantID)
 	}
 	if query.Search != "" {
-		search := "%" + query.Search + "%"
-		db = db.Where("COALESCE(students.first_name, '') ILIKE ? OR COALESCE(students.last_name, '') ILIKE ? OR COALESCE(students.nickname, '') ILIKE ?", search, search, search)
+		search := "%" + escapeLikePattern(query.Search) + "%"
+		db = db.Where("COALESCE(students.first_name, '') ILIKE ? ESCAPE '\\' OR COALESCE(students.last_name, '') ILIKE ? ESCAPE '\\' OR COALESCE(students.nickname, '') ILIKE ? ESCAPE '\\'", search, search, search)
 	}
 	var total int64
 	if err := db.Session(&gorm.Session{}).Count(&total).Error; err != nil {

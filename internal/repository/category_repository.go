@@ -16,7 +16,7 @@ type categoryRepository struct {
 func (r *categoryRepository) ListByTenant(ctx context.Context, tenantID uuid.UUID, query domain.ListQuery) ([]domain.Category, int64, error) {
 	db := r.db.WithContext(ctx).Where("tenant_id = ?", tenantID)
 	if query.Search != "" {
-		db = db.Where("name ILIKE ?", "%"+query.Search+"%")
+		db = db.Where("name ILIKE ? ESCAPE '\\'", "%"+escapeLikePattern(query.Search)+"%")
 	}
 	var total int64
 	if err := db.Model(&domain.Category{}).Count(&total).Error; err != nil {

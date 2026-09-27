@@ -50,7 +50,8 @@ func (r *catalogRepository) List(ctx context.Context, query domain.CatalogQuery)
 	// of an inactive (or unknown) tenant is not visible on either path.
 	db := r.db.WithContext(ctx).Table("classes c").Joins("JOIN categories cat ON cat.id = c.category_id AND cat.deleted_at IS NULL").Joins("JOIN tenant_location_snapshots t ON t.tenant_id = c.tenant_id AND t.is_active = ?", true).Where("c.deleted_at IS NULL AND c.is_published = ? AND c.enrollment_status = ?", true, "open")
 	if query.Search != "" {
-		db = db.Where("c.name ILIKE ?", "%"+query.Search+"%")
+		search := "%" + escapeLikePattern(query.Search) + "%"
+		db = db.Where("c.name ILIKE ? ESCAPE '\\'", search)
 	}
 	if query.CategoryID != nil {
 		db = db.Where("c.category_id = ?", *query.CategoryID)

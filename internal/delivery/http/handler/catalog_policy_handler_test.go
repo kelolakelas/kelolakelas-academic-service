@@ -7,6 +7,7 @@ import (
 	"github.com/kelolakelas/kelolakelas-academic-service/internal/domain"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"strings"
 	"testing"
 )
@@ -44,4 +45,23 @@ func TestCatalogPolicyHTTPClosedAndUnavailable(t *testing.T) {
 	stub.err = domain.ErrCatalogPolicyUnavailable
 	check("/catalog/classes", http.StatusServiceUnavailable, "Public catalog policy unavailable")
 	check("/catalog/classes/"+uuid.NewString(), http.StatusServiceUnavailable, "Public catalog policy unavailable")
+}
+
+func TestCatalogListRejectsPageAndSearchOverLimits(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	stub := &catalogPolicyUsecaseStub{list: &domain.CatalogListResponse{Items: []domain.CatalogItem{}}}
+	h := NewCatalogHandler(stub)
+	router := gin.New()
+	router.GET("/catalog/classes", h.ListClasses)
+	for _, query := range []string{
+		"page=" + strconv.Itoa(domain.MaxPage+1),
+		"search=" + strings.Repeat("x", domain.MaxSearchLength+1),
+	} {
+		request := httptest.NewRequest(http.MethodGet, "/catalog/classes?"+query, nil)
+		response := httptest.NewRecorder()
+		router.ServeHTTP(response, request)
+		if response.Code != http.StatusBadRequest {
+			t.Fatalf("query=%q status=%d, want %d", query, response.Code, http.StatusBadRequest)
+		}
+	}
 }

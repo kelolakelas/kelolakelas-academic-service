@@ -291,6 +291,7 @@ definitions:
           type: integer
         type: array
       name:
+        maxLength: 255
         type: string
     required:
     - name
@@ -311,6 +312,7 @@ definitions:
       is_published:
         type: boolean
       name:
+        maxLength: 255
         type: string
       price:
         minimum: 0
@@ -342,6 +344,7 @@ definitions:
       is_published:
         type: boolean
       name:
+        maxLength: 255
         type: string
       price:
         minimum: 0
@@ -413,6 +416,7 @@ definitions:
         minimum: 0
         type: number
       title:
+        maxLength: 255
         type: string
     required:
     - enrollment_id
@@ -721,6 +725,7 @@ definitions:
       new_end_time:
         type: string
       new_location:
+        maxLength: 255
         type: string
       new_session_date:
         type: string
@@ -744,6 +749,7 @@ definitions:
   github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ScheduleItemRequest:
     properties:
       capacity:
+        maximum: 2147483647
         minimum: 1
         type: integer
       day_of_week:
@@ -757,6 +763,7 @@ definitions:
       enrollment_id:
         type: string
       location:
+        maxLength: 255
         type: string
       start_time:
         description: HH:MM:SS
@@ -914,6 +921,7 @@ definitions:
         minimum: 0
         type: number
       title:
+        maxLength: 255
         type: string
     required:
     - title

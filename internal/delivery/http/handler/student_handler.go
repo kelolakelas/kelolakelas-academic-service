@@ -73,7 +73,7 @@ func (h *StudentHandler) List(c *gin.Context) {
 			query.PageSize, err = strconv.Atoi(value)
 		}
 	}
-	if err != nil || query.Page < 1 || query.PageSize < 1 || query.PageSize > 100 {
+	if err != nil || query.Page < 1 || query.Page > domain.MaxPage || query.PageSize < 1 || query.PageSize > domain.MaxPageSize || len([]rune(query.Search)) > domain.MaxSearchLength {
 		c.JSON(http.StatusBadRequest, gin.H{"status": "error", "message": "Invalid pagination", "data": nil})
 		return
 	}
