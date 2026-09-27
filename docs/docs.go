@@ -3663,6 +3663,14 @@ const docTemplate = `{
                 "joined_at": {
                     "type": "string"
                 },
+                "schedule": {
+                    "description": "Schedule summarises the weekly slot behind ScheduleID (KEL-70). It is\nomitted when the enrollment has no schedule (private class) or when the\nschedule is no longer live (soft-deleted), so clients must treat it as\noptional even when schedule_id is present.",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.EnrollmentScheduleSummary"
+                        }
+                    ]
+                },
                 "schedule_id": {
                     "type": "string"
                 },
@@ -3680,6 +3688,30 @@ const docTemplate = `{
                 },
                 "updated_at": {
                     "type": "string"
+                }
+            }
+        },
+        "github_com_kelolakelas_kelolakelas-academic-service_internal_domain.EnrollmentScheduleSummary": {
+            "type": "object",
+            "properties": {
+                "day_of_week": {
+                    "description": "1 = Senin, 7 = Minggu (ISO 8601)",
+                    "type": "integer",
+                    "example": 1
+                },
+                "end_time": {
+                    "description": "HH:MM:SS",
+                    "type": "string",
+                    "example": "17:30:00"
+                },
+                "location": {
+                    "type": "string",
+                    "example": "Ruang A"
+                },
+                "start_time": {
+                    "description": "HH:MM:SS",
+                    "type": "string",
+                    "example": "16:00:00"
                 }
             }
         },

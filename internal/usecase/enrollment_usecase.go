@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -454,5 +455,29 @@ func enrollmentResponse(enrollment *domain.Enrollment) *domain.EnrollmentRespons
 		ClassID: enrollment.ClassID, Status: enrollment.Status, JoinedAt: enrollment.JoinedAt,
 		UpdatedAt: enrollment.UpdatedAt, Class: enrollment.Class, Student: enrollment.Student,
 		BillingCycle: enrollment.BillingCycle, ScheduleID: enrollment.ScheduleID,
+		Schedule: enrollmentScheduleSummary(enrollment),
 	}
+}
+
+// enrollmentScheduleSummary maps the preloaded schedule into the response, or
+// returns nil when there is nothing trustworthy to show: no schedule on the
+// enrollment (private class), a schedule the loader did not return (soft-deleted,
+// or a write path that did not preload it), or a schedule whose id or class does
+// not match the enrollment. The last check keeps a stale or inconsistent row from
+// leaking another class's slot into this enrollment's response.
+func enrollmentScheduleSummary(enrollment *domain.Enrollment) *domain.EnrollmentScheduleSummary {
+	schedule := enrollment.Schedule
+	if enrollment.ScheduleID == nil || schedule == nil {
+		return nil
+	}
+	if schedule.ID != *enrollment.ScheduleID || schedule.ClassID != enrollment.ClassID || schedule.DeletedAt.Valid {
+		return nil
+	}
+	summary := &domain.EnrollmentScheduleSummary{DayOfWeek: schedule.DayOfWeek, StartTime: schedule.StartTime, EndTime: schedule.EndTime}
+	if schedule.Location != nil {
+		if location := strings.TrimSpace(*schedule.Location); location != "" {
+			summary.Location = &location
+		}
+	}
+	return summary
 }

@@ -49,6 +49,11 @@ type Enrollment struct {
 
 	Student *Student `gorm:"foreignKey:StudentID" json:"student,omitempty"`
 	Class   *Class   `gorm:"foreignKey:ClassID" json:"class,omitempty"`
+	// Schedule is loaded only by the scoped read paths (list and detail) so the
+	// response can carry a schedule summary. It is hidden from JSON because raw
+	// enrollments are also serialized elsewhere (e.g. session attendees), whose
+	// contract must not change; EnrollmentResponse.Schedule is the public shape.
+	Schedule *ClassSchedule `gorm:"foreignKey:ScheduleID;references:ID" json:"-"`
 }
 
 type EnrollStudentRequest struct {
@@ -97,6 +102,21 @@ type EnrollmentResponse struct {
 	Class        *Class     `json:"class,omitempty"`
 	Student      *Student   `json:"student,omitempty"`
 	BillingCycle string     `json:"billing_cycle"`
+	// Schedule summarises the weekly slot behind ScheduleID (KEL-70). It is
+	// omitted when the enrollment has no schedule (private class) or when the
+	// schedule is no longer live (soft-deleted), so clients must treat it as
+	// optional even when schedule_id is present.
+	Schedule *EnrollmentScheduleSummary `json:"schedule,omitempty"`
+}
+
+// EnrollmentScheduleSummary is the read-only view of an enrollment's weekly
+// schedule. It deliberately exposes only what a parent needs to know when the
+// class meets; capacity, tutor and validity window stay internal.
+type EnrollmentScheduleSummary struct {
+	DayOfWeek int     `json:"day_of_week" example:"1"`       // 1 = Senin, 7 = Minggu (ISO 8601)
+	StartTime string  `json:"start_time" example:"16:00:00"` // HH:MM:SS
+	EndTime   string  `json:"end_time" example:"17:30:00"`   // HH:MM:SS
+	Location  *string `json:"location,omitempty" example:"Ruang A"`
 }
 
 type EnrollmentQuery struct {
