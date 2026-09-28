@@ -109,6 +109,13 @@ type EnrollmentRepository interface {
 	Delete(ctx context.Context, id uuid.UUID) error
 }
 
+// EnrollmentPaymentRepository writes invoice fields without overwriting a concurrent
+// webhook transition of enrollment status.
+type EnrollmentPaymentRepository interface {
+	UpdatePaymentDetails(ctx context.Context, id, transactionID uuid.UUID, checkoutURL string) error
+	RestoreRejectedEnrollment(ctx context.Context, id uuid.UUID) error
+}
+
 type EnrollmentLockingRepository interface {
 	GetByIDForUpdate(ctx context.Context, id uuid.UUID) (*domain.Enrollment, error)
 	GetByIdempotencyKeyForTenant(ctx context.Context, tenantID uuid.UUID, key string) (*domain.Enrollment, error)

@@ -171,6 +171,41 @@ func (h *PrivateScheduleRequestHandler) Get(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"status": "success", "data": result})
 }
 
+// Approve godoc
+// @Summary Approve a pending private schedule request in own tenant
+// @Tags Private schedule requests
+// @Produce json
+// @Security BearerAuth
+// @x-permission {"permission":"enrollment:update","parent_tokens":"denied"}
+// @Param id path string true "Request UUID"
+// @Success 200 {object} domain.HTTPResponse{data=domain.PublicEnrollmentResponse}
+// @Failure 403 {object} domain.ErrorResponse
+// @Failure 404 {object} domain.ErrorResponse
+// @Failure 409 {object} domain.ErrorResponse
+// @Failure 422 {object} domain.ErrorResponse
+// @Router /api/v1/schedule-requests/{id}/approve [post]
+func (h *PrivateScheduleRequestHandler) Approve(c *gin.Context) {
+	tenant, err := tenantIDFromContext(c)
+	if err != nil {
+		writeTenantError(c, err)
+		return
+	}
+	id, ok := privateRequestID(c)
+	if !ok {
+		return
+	}
+	result, err := h.usecase.Approve(c.Request.Context(), tenant, id)
+	if err != nil {
+		if errors.Is(err, domain.ErrPlatformFeeExceedsGross) {
+			c.JSON(http.StatusUnprocessableEntity, gin.H{"status": "error", "message": err.Error(), "code": domain.PlatformFeeExceedsGrossErrorCode, "data": nil})
+			return
+		}
+		privateRequestError(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"status": "success", "data": result})
+}
+
 // Reject godoc
 // @Summary Reject a pending private schedule request in own tenant
 // @Tags Private schedule requests

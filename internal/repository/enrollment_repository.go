@@ -285,6 +285,36 @@ func (r *enrollmentRepository) AssignSchedule(ctx context.Context, enrollmentID,
 	return db.Save(&enrollment).Error
 }
 
+// UpdatePaymentDetails does not rewrite status: billing's activation webhook can
+// commit between invoice generation and this write.
+func (r *enrollmentRepository) UpdatePaymentDetails(ctx context.Context, id, transactionID uuid.UUID, checkoutURL string) error {
+	result := r.getDB(ctx).Model(&domain.Enrollment{}).Where("id = ? AND payment_transaction_id IS NULL AND status IN ?", id, []string{"pending", "active"}).
+		Updates(map[string]interface{}{"payment_transaction_id": transactionID, "checkout_session_url": checkoutURL})
+	if result.Error != nil {
+		return result.Error
+	}
+	if result.RowsAffected == 0 {
+		return domain.ErrInvalidEnrollmentTransition
+	}
+	return nil
+}
+
+// RestoreRejectedEnrollment retries the same enrollment after a policy rejection.
+// The request row lock serializes approvals; the partial unique index still protects
+// against another live purchase for the student/class.
+func (r *enrollmentRepository) RestoreRejectedEnrollment(ctx context.Context, id uuid.UUID) error {
+	result := r.getDB(ctx).Model(&domain.Enrollment{}).
+		Where("id = ? AND status = 'dropped' AND payment_status = ?", id, domain.PaymentStatusPlatformFeeRejected).
+		Updates(map[string]interface{}{"status": "pending", "payment_status": "pending"})
+	if result.Error != nil {
+		return mapDuplicateEnrollment(result.Error)
+	}
+	if result.RowsAffected != 1 {
+		return domain.ErrPrivateRequestTransition
+	}
+	return nil
+}
+
 func (r *enrollmentRepository) Update(ctx context.Context, enrollment *domain.Enrollment) error {
 	return r.getDB(ctx).Save(enrollment).Error
 }

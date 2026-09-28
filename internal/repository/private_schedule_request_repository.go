@@ -18,6 +18,8 @@ type PrivateScheduleRequestRepository interface {
 	Get(ctx context.Context, id uuid.UUID, tenantID, parentID *uuid.UUID) (*domain.PrivateScheduleRequest, error)
 	List(ctx context.Context, tenantID, parentID *uuid.UUID, status string) ([]domain.PrivateScheduleRequest, error)
 	Transition(ctx context.Context, id uuid.UUID, tenantID, parentID *uuid.UUID, status string, reason *string) (*domain.PrivateScheduleRequest, error)
+	LockForTenant(ctx context.Context, id, tenantID uuid.UUID) (*domain.PrivateScheduleRequest, error)
+	SetStatus(ctx context.Context, id, tenantID uuid.UUID, status string) error
 }
 
 type privateScheduleRequestRepository struct{ db *gorm.DB }
@@ -84,6 +86,29 @@ func (r *privateScheduleRequestRepository) Get(ctx context.Context, id uuid.UUID
 		return nil, err
 	}
 	return &request, nil
+}
+
+func (r *privateScheduleRequestRepository) LockForTenant(ctx context.Context, id, tenantID uuid.UUID) (*domain.PrivateScheduleRequest, error) {
+	var request domain.PrivateScheduleRequest
+	err := GetDB(ctx, r.db).Clauses(clause.Locking{Strength: "UPDATE"}).Where("id = ? AND tenant_id = ?", id, tenantID).First(&request).Error
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, domain.ErrPrivateRequestNotFound
+	}
+	if err != nil {
+		return nil, err
+	}
+	return &request, nil
+}
+
+func (r *privateScheduleRequestRepository) SetStatus(ctx context.Context, id, tenantID uuid.UUID, status string) error {
+	result := GetDB(ctx, r.db).Model(&domain.PrivateScheduleRequest{}).Where("id = ? AND tenant_id = ?", id, tenantID).Updates(map[string]interface{}{"status": status, "decided_at": time.Now().UTC()})
+	if result.Error != nil {
+		return result.Error
+	}
+	if result.RowsAffected != 1 {
+		return domain.ErrPrivateRequestNotFound
+	}
+	return nil
 }
 
 func (r *privateScheduleRequestRepository) List(ctx context.Context, tenantID, parentID *uuid.UUID, status string) ([]domain.PrivateScheduleRequest, error) {

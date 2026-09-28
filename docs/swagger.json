@@ -2109,6 +2109,79 @@
                 }
             }
         },
+        "/api/v1/schedule-requests/{id}/approve": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Private schedule requests"
+                ],
+                "summary": "Approve a pending private schedule request in own tenant",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Request UUID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.HTTPResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.PublicEnrollmentResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
+                        }
+                    },
+                    "422": {
+                        "description": "Unprocessable Entity",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
+                        }
+                    }
+                },
+                "x-permission": {
+                    "parent_tokens": "denied",
+                    "permission": "enrollment:update"
+                }
+            }
+        },
         "/api/v1/schedule-requests/{id}/cancel": {
             "post": {
                 "security": [

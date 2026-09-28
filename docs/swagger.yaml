@@ -2352,6 +2352,50 @@ paths:
       x-permission:
         parent_tokens: skipped
         permission: enrollment:read
+  /api/v1/schedule-requests/{id}/approve:
+    post:
+      parameters:
+      - description: Request UUID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.HTTPResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.PublicEnrollmentResponse'
+              type: object
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+        "422":
+          description: Unprocessable Entity
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Approve a pending private schedule request in own tenant
+      tags:
+      - Private schedule requests
+      x-permission:
+        parent_tokens: denied
+        permission: enrollment:update
   /api/v1/schedule-requests/{id}/cancel:
     post:
       parameters:
