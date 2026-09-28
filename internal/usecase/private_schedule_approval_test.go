@@ -24,6 +24,12 @@ func (r *approvalRequestRepo) LockForTenant(_ context.Context, _, tenant uuid.UU
 	}
 	return r.request, nil
 }
+func (r *approvalRequestRepo) LockForParent(_ context.Context, _, parent uuid.UUID) (*domain.PrivateScheduleRequest, error) {
+	if r.request.ParentID != parent {
+		return nil, domain.ErrPrivateRequestNotFound
+	}
+	return r.request, nil
+}
 func (r *approvalRequestRepo) SetStatus(_ context.Context, _, _ uuid.UUID, status string) error {
 	r.request.Status = status
 	return nil

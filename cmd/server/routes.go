@@ -74,6 +74,8 @@ func registerRoutes(r *gin.Engine, h routeHandlers, jwtSecret, internalCredentia
 		apiV1.GET("/schedule-requests/:id", middleware.RequirePermissionUnlessParent(permissionClient, "enrollment:read"), h.privateRequest.Get)
 		apiV1.POST("/schedule-requests/:id/approve", middleware.RequirePermission(permissionClient, "enrollment:update"), h.privateRequest.Approve)
 		apiV1.POST("/schedule-requests/:id/reject", middleware.RequirePermission(permissionClient, "enrollment:update"), h.privateRequest.Reject)
+		apiV1.POST("/schedule-requests/:id/recommendation/accept", h.privateRequest.AcceptRecommendation)
+		apiV1.POST("/schedule-requests/:id/recommendation/decline", h.privateRequest.DeclineRecommendation)
 		apiV1.POST("/schedule-requests/:id/cancel", h.privateRequest.Cancel)
 
 		// Schedule Routes

@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"time"
 
@@ -18,6 +19,9 @@ type PrivateScheduleRequestRepository interface {
 	Get(ctx context.Context, id uuid.UUID, tenantID, parentID *uuid.UUID) (*domain.PrivateScheduleRequest, error)
 	List(ctx context.Context, tenantID, parentID *uuid.UUID, status string) ([]domain.PrivateScheduleRequest, error)
 	Transition(ctx context.Context, id uuid.UUID, tenantID, parentID *uuid.UUID, status string, reason *string) (*domain.PrivateScheduleRequest, error)
+	RejectWithRecommendation(ctx context.Context, id, tenantID uuid.UUID, reason *string, slots []domain.PrivateScheduleSlot) (*domain.PrivateScheduleRequest, error)
+	DeclineRecommendation(ctx context.Context, id, parentID uuid.UUID) (*domain.PrivateScheduleRequest, error)
+	LockForParent(ctx context.Context, id, parentID uuid.UUID) (*domain.PrivateScheduleRequest, error)
 	LockForTenant(ctx context.Context, id, tenantID uuid.UUID) (*domain.PrivateScheduleRequest, error)
 	SetStatus(ctx context.Context, id, tenantID uuid.UUID, status string) error
 }
@@ -98,6 +102,52 @@ func (r *privateScheduleRequestRepository) LockForTenant(ctx context.Context, id
 		return nil, err
 	}
 	return &request, nil
+}
+
+func (r *privateScheduleRequestRepository) LockForParent(ctx context.Context, id, parentID uuid.UUID) (*domain.PrivateScheduleRequest, error) {
+	var request domain.PrivateScheduleRequest
+	err := GetDB(ctx, r.db).Clauses(clause.Locking{Strength: "UPDATE"}).Where("id = ? AND parent_id = ?", id, parentID).First(&request).Error
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, domain.ErrPrivateRequestNotFound
+	}
+	if err != nil {
+		return nil, err
+	}
+	return &request, nil
+}
+
+func (r *privateScheduleRequestRepository) RejectWithRecommendation(ctx context.Context, id, tenantID uuid.UUID, reason *string, slots []domain.PrivateScheduleSlot) (*domain.PrivateScheduleRequest, error) {
+	encoded, err := json.Marshal(slots)
+	if err != nil {
+		return nil, err
+	}
+	result := GetDB(ctx, r.db).Model(&domain.PrivateScheduleRequest{}).Where("id = ? AND tenant_id = ? AND status = 'pending'", id, tenantID).Updates(map[string]interface{}{
+		"status": "rejected", "rejection_reason": reason, "recommended_slots": string(encoded), "decided_at": time.Now().UTC(),
+	})
+	if result.Error != nil {
+		return nil, result.Error
+	}
+	if result.RowsAffected == 0 {
+		if _, err := r.Get(ctx, id, &tenantID, nil); err != nil {
+			return nil, err
+		}
+		return nil, domain.ErrPrivateRequestTransition
+	}
+	return r.Get(ctx, id, &tenantID, nil)
+}
+
+func (r *privateScheduleRequestRepository) DeclineRecommendation(ctx context.Context, id, parentID uuid.UUID) (*domain.PrivateScheduleRequest, error) {
+	result := GetDB(ctx, r.db).Model(&domain.PrivateScheduleRequest{}).Where("id = ? AND parent_id = ? AND status = 'rejected' AND recommended_slots IS NOT NULL", id, parentID).Update("status", "declined")
+	if result.Error != nil {
+		return nil, result.Error
+	}
+	if result.RowsAffected == 0 {
+		if _, err := r.Get(ctx, id, nil, &parentID); err != nil {
+			return nil, err
+		}
+		return nil, domain.ErrPrivateRequestTransition
+	}
+	return r.Get(ctx, id, nil, &parentID)
 }
 
 func (r *privateScheduleRequestRepository) SetStatus(ctx context.Context, id, tenantID uuid.UUID, status string) error {

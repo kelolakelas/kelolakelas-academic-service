@@ -21,9 +21,11 @@ type PrivateScheduleRequestUsecase interface {
 	Create(context.Context, uuid.UUID, uuid.UUID, *domain.CreatePrivateScheduleRequest) (*domain.PrivateScheduleRequest, error)
 	Get(context.Context, uuid.UUID, *uuid.UUID, *uuid.UUID) (*domain.PrivateScheduleRequest, error)
 	List(context.Context, *uuid.UUID, *uuid.UUID, string) ([]domain.PrivateScheduleRequest, error)
-	Reject(context.Context, uuid.UUID, uuid.UUID, *string) (*domain.PrivateScheduleRequest, error)
+	Reject(context.Context, uuid.UUID, uuid.UUID, *domain.RejectPrivateScheduleRequest) (*domain.PrivateScheduleRequest, error)
 	Cancel(context.Context, uuid.UUID, uuid.UUID) (*domain.PrivateScheduleRequest, error)
+	DeclineRecommendation(context.Context, uuid.UUID, uuid.UUID) (*domain.PrivateScheduleRequest, error)
 	Approve(context.Context, uuid.UUID, uuid.UUID) (*domain.PublicEnrollmentResponse, error)
+	AcceptRecommendation(context.Context, uuid.UUID, uuid.UUID) (*domain.PublicEnrollmentResponse, error)
 }
 
 type privateScheduleRequestUsecase struct {
@@ -71,22 +73,41 @@ func validatePrivateSlots(slots []domain.PrivateScheduleSlot) error {
 	return nil
 }
 
-// Approve serializes creation on the tenant-scoped request row. Billing runs only
-// after the transaction commits; retries reuse its stable key and enrollment.
+// Approve and AcceptRecommendation share the same locked purchase and billing path.
 func (u *privateScheduleRequestUsecase) Approve(ctx context.Context, tenantID, id uuid.UUID) (*domain.PublicEnrollmentResponse, error) {
-	if tenantID == uuid.Nil || id == uuid.Nil {
+	return u.purchase(ctx, tenantID, id, false)
+}
+
+func (u *privateScheduleRequestUsecase) AcceptRecommendation(ctx context.Context, parentID, id uuid.UUID) (*domain.PublicEnrollmentResponse, error) {
+	return u.purchase(ctx, parentID, id, true)
+}
+
+// purchase serializes creation on the request row. Billing runs only after the
+// transaction commits; retries reuse its stable key and enrollment.
+func (u *privateScheduleRequestUsecase) purchase(ctx context.Context, actorID, id uuid.UUID, recommendation bool) (*domain.PublicEnrollmentResponse, error) {
+	if actorID == uuid.Nil || id == uuid.Nil {
 		return nil, domain.ErrPrivateRequestNotFound
 	}
 	key := "private-request:" + id.String()
 	var request *domain.PrivateScheduleRequest
 	var enrollment *domain.Enrollment
+	var tenantID uuid.UUID
 	prepare := func(txCtx context.Context) error {
 		var err error
-		request, err = u.repo.LockForTenant(txCtx, id, tenantID)
+		if recommendation {
+			request, err = u.repo.LockForParent(txCtx, id, actorID)
+		} else {
+			request, err = u.repo.LockForTenant(txCtx, id, actorID)
+		}
 		if err != nil {
 			return err
 		}
-		if request.Status != "pending" && request.Status != "approved" {
+		tenantID = request.TenantID
+		if recommendation {
+			if len(request.RecommendedSlots) == 0 || request.Status != "rejected" && request.Status != "approved" {
+				return domain.ErrPrivateRequestTransition
+			}
+		} else if len(request.RecommendedSlots) > 0 || request.Status != "pending" && request.Status != "approved" {
 			return domain.ErrPrivateRequestTransition
 		}
 		if request.Status == "approved" {
@@ -140,7 +161,11 @@ func (u *privateScheduleRequestUsecase) Approve(ctx context.Context, tenantID, i
 		if err != nil || student.ParentID != request.ParentID {
 			return domain.ErrStudentOwnership
 		}
-		if err = validatePrivateSlots(request.Slots); err != nil {
+		slots := request.Slots
+		if recommendation {
+			slots = request.RecommendedSlots
+		}
+		if err = validatePrivateSlots(slots); err != nil {
 			return err
 		}
 		enrollment = &domain.Enrollment{ID: uuid.New(), TenantID: tenantID, StudentID: request.StudentID, ClassID: request.ClassID, Status: "pending", BillingCycle: request.BillingCycle, IdempotencyKey: &key, PaymentStatus: "pending", GrossAmount: class.Price}
@@ -149,7 +174,7 @@ func (u *privateScheduleRequestUsecase) Approve(ctx context.Context, tenantID, i
 		}
 		today := normalizeDate(time.Now())
 		generatedUntil := endOfMonth(today)
-		for _, slot := range request.Slots {
+		for _, slot := range slots {
 			schedule := &domain.ClassSchedule{ID: uuid.New(), ClassID: request.ClassID, EnrollmentID: &enrollment.ID, Capacity: 1, DayOfWeek: slot.DayOfWeek, StartTime: slot.StartTime, EndTime: slot.EndTime, ValidFrom: &today, SessionsGeneratedUntil: &generatedUntil}
 			if err = u.schedules.Create(txCtx, schedule); err != nil {
 				return err
@@ -188,7 +213,13 @@ func (u *privateScheduleRequestUsecase) Approve(ctx context.Context, tenantID, i
 			// No payable invoice exists. Keep the request open for a later attempt
 			// after the pricing policy changes, without exposing a false approval.
 			resetErr := u.tx.WithTransaction(ctx, func(txCtx context.Context) error {
-				if _, lockErr := u.repo.LockForTenant(txCtx, id, tenantID); lockErr != nil {
+				var lockErr error
+				if recommendation {
+					_, lockErr = u.repo.LockForParent(txCtx, id, actorID)
+				} else {
+					_, lockErr = u.repo.LockForTenant(txCtx, id, actorID)
+				}
+				if lockErr != nil {
 					return lockErr
 				}
 				current, loadErr := u.enrollments.GetByIdempotencyKey(txCtx, request.ParentID, key)
@@ -196,7 +227,11 @@ func (u *privateScheduleRequestUsecase) Approve(ctx context.Context, tenantID, i
 					return loadErr
 				}
 				if platformFeeRejected(current) {
-					return u.repo.SetStatus(txCtx, id, tenantID, "pending")
+					status := "pending"
+					if recommendation {
+						status = "rejected"
+					}
+					return u.repo.SetStatus(txCtx, id, tenantID, status)
 				}
 				return nil
 			})
@@ -298,15 +333,19 @@ func (u *privateScheduleRequestUsecase) List(ctx context.Context, tenantID, pare
 	if (tenantID == nil) == (parentID == nil) {
 		return nil, domain.ErrPrivateRequestNotFound
 	}
-	if status != "" && status != "pending" && status != "approved" && status != "rejected" && status != "cancelled" {
+	if status != "" && status != "pending" && status != "approved" && status != "rejected" && status != "cancelled" && status != "declined" {
 		return nil, errors.New("invalid request status")
 	}
 	return u.repo.List(ctx, tenantID, parentID, status)
 }
-func (u *privateScheduleRequestUsecase) Reject(ctx context.Context, tenantID, id uuid.UUID, reason *string) (*domain.PrivateScheduleRequest, error) {
-	if tenantID == uuid.Nil {
+func (u *privateScheduleRequestUsecase) Reject(ctx context.Context, tenantID, id uuid.UUID, req *domain.RejectPrivateScheduleRequest) (*domain.PrivateScheduleRequest, error) {
+	if tenantID == uuid.Nil || id == uuid.Nil {
 		return nil, domain.ErrPrivateRequestNotFound
 	}
+	if req == nil {
+		req = &domain.RejectPrivateScheduleRequest{}
+	}
+	reason := req.Reason
 	if reason != nil {
 		trimmed := strings.TrimSpace(*reason)
 		if len([]rune(trimmed)) > 2000 {
@@ -314,7 +353,20 @@ func (u *privateScheduleRequestUsecase) Reject(ctx context.Context, tenantID, id
 		}
 		reason = &trimmed
 	}
+	if req.RecommendedSlots != nil {
+		if err := validatePrivateSlots(req.RecommendedSlots); err != nil {
+			return nil, err
+		}
+		return u.repo.RejectWithRecommendation(ctx, id, tenantID, reason, req.RecommendedSlots)
+	}
 	return u.repo.Transition(ctx, id, &tenantID, nil, "rejected", reason)
+}
+
+func (u *privateScheduleRequestUsecase) DeclineRecommendation(ctx context.Context, parentID, id uuid.UUID) (*domain.PrivateScheduleRequest, error) {
+	if parentID == uuid.Nil || id == uuid.Nil {
+		return nil, domain.ErrPrivateRequestNotFound
+	}
+	return u.repo.DeclineRecommendation(ctx, id, parentID)
 }
 func (u *privateScheduleRequestUsecase) Cancel(ctx context.Context, parentID, id uuid.UUID) (*domain.PrivateScheduleRequest, error) {
 	if parentID == uuid.Nil {

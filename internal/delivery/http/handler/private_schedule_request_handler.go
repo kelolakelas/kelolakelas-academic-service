@@ -123,7 +123,7 @@ func (h *PrivateScheduleRequestHandler) Create(c *gin.Context) {
 // @Produce json
 // @Security BearerAuth
 // @x-permission {"permission":"enrollment:read","parent_tokens":"skipped"}
-// @Param status query string false "pending, approved, rejected or cancelled"
+// @Param status query string false "pending, approved, rejected, declined or cancelled"
 // @Success 200 {object} domain.HTTPResponse
 // @Failure 400 {object} domain.ErrorResponse
 // @Failure 403 {object} domain.ErrorResponse
@@ -214,7 +214,7 @@ func (h *PrivateScheduleRequestHandler) Approve(c *gin.Context) {
 // @Security BearerAuth
 // @x-permission {"permission":"enrollment:update","parent_tokens":"denied"}
 // @Param id path string true "Request UUID"
-// @Param request body domain.RejectPrivateScheduleRequest false "Optional reason"
+// @Param request body domain.RejectPrivateScheduleRequest false "Optional reason and recommended slots"
 // @Success 200 {object} domain.HTTPResponse{data=domain.PrivateScheduleRequest}
 // @Failure 400 {object} domain.ErrorResponse
 // @Failure 404 {object} domain.ErrorResponse
@@ -234,7 +234,7 @@ func (h *PrivateScheduleRequestHandler) Reject(c *gin.Context) {
 	var req domain.RejectPrivateScheduleRequest
 	if c.Request.ContentLength > 0 {
 		if err := c.ShouldBindJSON(&req); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"status": "error", "message": "Invalid rejection reason"})
+			c.JSON(http.StatusBadRequest, gin.H{"status": "error", "message": "Invalid rejection request"})
 			return
 		}
 	}
@@ -242,7 +242,68 @@ func (h *PrivateScheduleRequestHandler) Reject(c *gin.Context) {
 		value := strings.TrimSpace(*req.Reason)
 		req.Reason = &value
 	}
-	result, err := h.usecase.Reject(c.Request.Context(), tenant, id, req.Reason)
+	result, err := h.usecase.Reject(c.Request.Context(), tenant, id, &req)
+	if err != nil {
+		privateRequestError(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"status": "success", "data": result})
+}
+
+// AcceptRecommendation godoc
+// @Summary Accept a parent-owned private schedule recommendation
+// @Tags Private schedule requests
+// @Produce json
+// @Security BearerAuth
+// @Param id path string true "Request UUID"
+// @Success 200 {object} domain.HTTPResponse{data=domain.PublicEnrollmentResponse}
+// @Failure 403 {object} domain.ErrorResponse
+// @Failure 404 {object} domain.ErrorResponse
+// @Failure 409 {object} domain.ErrorResponse
+// @Failure 422 {object} domain.ErrorResponse
+// @Router /api/v1/schedule-requests/{id}/recommendation/accept [post]
+func (h *PrivateScheduleRequestHandler) AcceptRecommendation(c *gin.Context) {
+	parent, ok := privateRequestParent(c)
+	if !ok {
+		return
+	}
+	id, ok := privateRequestID(c)
+	if !ok {
+		return
+	}
+	result, err := h.usecase.AcceptRecommendation(c.Request.Context(), parent, id)
+	if err != nil {
+		if errors.Is(err, domain.ErrPlatformFeeExceedsGross) {
+			c.JSON(http.StatusUnprocessableEntity, gin.H{"status": "error", "message": err.Error(), "code": domain.PlatformFeeExceedsGrossErrorCode, "data": nil})
+			return
+		}
+		privateRequestError(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"status": "success", "data": result})
+}
+
+// DeclineRecommendation godoc
+// @Summary Decline a parent-owned private schedule recommendation
+// @Tags Private schedule requests
+// @Produce json
+// @Security BearerAuth
+// @Param id path string true "Request UUID"
+// @Success 200 {object} domain.HTTPResponse{data=domain.PrivateScheduleRequest}
+// @Failure 403 {object} domain.ErrorResponse
+// @Failure 404 {object} domain.ErrorResponse
+// @Failure 409 {object} domain.ErrorResponse
+// @Router /api/v1/schedule-requests/{id}/recommendation/decline [post]
+func (h *PrivateScheduleRequestHandler) DeclineRecommendation(c *gin.Context) {
+	parent, ok := privateRequestParent(c)
+	if !ok {
+		return
+	}
+	id, ok := privateRequestID(c)
+	if !ok {
+		return
+	}
+	result, err := h.usecase.DeclineRecommendation(c.Request.Context(), parent, id)
 	if err != nil {
 		privateRequestError(c, err)
 		return

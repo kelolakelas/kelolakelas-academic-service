@@ -2012,7 +2012,7 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "pending, approved, rejected or cancelled",
+                        "description": "pending, approved, rejected, declined or cancelled",
                         "name": "status",
                         "in": "query"
                     }
@@ -2252,6 +2252,138 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/schedule-requests/{id}/recommendation/accept": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Private schedule requests"
+                ],
+                "summary": "Accept a parent-owned private schedule recommendation",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Request UUID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.HTTPResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.PublicEnrollmentResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
+                        }
+                    },
+                    "422": {
+                        "description": "Unprocessable Entity",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/schedule-requests/{id}/recommendation/decline": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Private schedule requests"
+                ],
+                "summary": "Decline a parent-owned private schedule recommendation",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Request UUID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.HTTPResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.PrivateScheduleRequest"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/schedule-requests/{id}/reject": {
             "post": {
                 "security": [
@@ -2278,7 +2410,7 @@ const docTemplate = `{
                         "required": true
                     },
                     {
-                        "description": "Optional reason",
+                        "description": "Optional reason and recommended slots",
                         "name": "request",
                         "in": "body",
                         "schema": {
@@ -5456,6 +5588,12 @@ const docTemplate = `{
                 "parent_id": {
                     "type": "string"
                 },
+                "recommended_slots": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.PrivateScheduleSlot"
+                    }
+                },
                 "rejection_reason": {
                     "type": "string"
                 },
@@ -5537,6 +5675,12 @@ const docTemplate = `{
                 "reason": {
                     "type": "string",
                     "maxLength": 2000
+                },
+                "recommended_slots": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.PrivateScheduleSlot"
+                    }
                 }
             }
         },
