@@ -700,6 +700,10 @@ definitions:
         type: string
       parent_id:
         type: string
+      recommended_slots:
+        items:
+          $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.PrivateScheduleSlot'
+        type: array
       rejection_reason:
         type: string
       slots:
@@ -756,6 +760,10 @@ definitions:
       reason:
         maxLength: 2000
         type: string
+      recommended_slots:
+        items:
+          $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.PrivateScheduleSlot'
+        type: array
     type: object
   github_com_kelolakelas_kelolakelas-academic-service_internal_domain.Report:
     properties:
@@ -2281,7 +2289,7 @@ paths:
   /api/v1/schedule-requests:
     get:
       parameters:
-      - description: pending, approved, rejected or cancelled
+      - description: pending, approved, rejected, declined or cancelled
         in: query
         name: status
         type: string
@@ -2433,6 +2441,84 @@ paths:
       summary: Cancel a parent-owned pending private schedule request
       tags:
       - Private schedule requests
+  /api/v1/schedule-requests/{id}/recommendation/accept:
+    post:
+      parameters:
+      - description: Request UUID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.HTTPResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.PublicEnrollmentResponse'
+              type: object
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+        "422":
+          description: Unprocessable Entity
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Accept a parent-owned private schedule recommendation
+      tags:
+      - Private schedule requests
+  /api/v1/schedule-requests/{id}/recommendation/decline:
+    post:
+      parameters:
+      - description: Request UUID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.HTTPResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.PrivateScheduleRequest'
+              type: object
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Decline a parent-owned private schedule recommendation
+      tags:
+      - Private schedule requests
   /api/v1/schedule-requests/{id}/reject:
     post:
       consumes:
@@ -2443,7 +2529,7 @@ paths:
         name: id
         required: true
         type: string
-      - description: Optional reason
+      - description: Optional reason and recommended slots
         in: body
         name: request
         schema:

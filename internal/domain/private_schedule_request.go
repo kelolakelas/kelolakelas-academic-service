@@ -34,23 +34,25 @@ type CreatePrivateScheduleRequest struct {
 }
 
 type RejectPrivateScheduleRequest struct {
-	Reason *string `json:"reason,omitempty" binding:"omitempty,max=2000"`
+	Reason           *string               `json:"reason,omitempty" binding:"omitempty,max=2000"`
+	RecommendedSlots []PrivateScheduleSlot `json:"recommended_slots,omitempty"`
 }
 
 type PrivateScheduleRequest struct {
-	ID              uuid.UUID             `gorm:"type:uuid;primaryKey" json:"id"`
-	TenantID        uuid.UUID             `gorm:"type:uuid;not null" json:"tenant_id"`
-	ClassID         uuid.UUID             `gorm:"type:uuid;not null" json:"class_id"`
-	StudentID       uuid.UUID             `gorm:"type:uuid;not null" json:"student_id"`
-	ParentID        uuid.UUID             `gorm:"type:uuid;not null" json:"parent_id"`
-	ParentEmail     string                `gorm:"type:text;not null" json:"parent_email"`
-	BillingCycle    string                `gorm:"type:varchar(20);not null" json:"billing_cycle"`
-	Slots           []PrivateScheduleSlot `gorm:"serializer:json;type:jsonb;not null" json:"slots"`
-	Note            *string               `gorm:"type:text" json:"note,omitempty"`
-	Status          string                `gorm:"type:varchar(20);not null" json:"status"`
-	RejectionReason *string               `gorm:"type:text" json:"rejection_reason,omitempty"`
-	CreatedAt       time.Time             `json:"created_at"`
-	DecidedAt       *time.Time            `json:"decided_at,omitempty"`
+	ID               uuid.UUID             `gorm:"type:uuid;primaryKey" json:"id"`
+	TenantID         uuid.UUID             `gorm:"type:uuid;not null" json:"tenant_id"`
+	ClassID          uuid.UUID             `gorm:"type:uuid;not null" json:"class_id"`
+	StudentID        uuid.UUID             `gorm:"type:uuid;not null" json:"student_id"`
+	ParentID         uuid.UUID             `gorm:"type:uuid;not null" json:"parent_id"`
+	ParentEmail      string                `gorm:"type:text;not null" json:"parent_email"`
+	BillingCycle     string                `gorm:"type:varchar(20);not null" json:"billing_cycle"`
+	Slots            []PrivateScheduleSlot `gorm:"serializer:json;type:jsonb;not null" json:"slots"`
+	RecommendedSlots []PrivateScheduleSlot `gorm:"serializer:json;type:jsonb" json:"recommended_slots,omitempty"`
+	Note             *string               `gorm:"type:text" json:"note,omitempty"`
+	Status           string                `gorm:"type:varchar(20);not null" json:"status"`
+	RejectionReason  *string               `gorm:"type:text" json:"rejection_reason,omitempty"`
+	CreatedAt        time.Time             `json:"created_at"`
+	DecidedAt        *time.Time            `json:"decided_at,omitempty"`
 }
 
 func (*PrivateScheduleRequest) TableName() string { return "private_schedule_requests" }

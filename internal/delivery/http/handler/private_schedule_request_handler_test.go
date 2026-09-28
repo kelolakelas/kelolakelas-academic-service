@@ -20,6 +20,7 @@ type privateRequestUsecaseRecorder struct {
 	email          string
 	tenant, parent *uuid.UUID
 	approveErr     error
+	rejection      *domain.RejectPrivateScheduleRequest
 }
 
 func (u *privateRequestUsecaseRecorder) Create(_ context.Context, parent, class uuid.UUID, req *domain.CreatePrivateScheduleRequest) (*domain.PrivateScheduleRequest, error) {
@@ -37,9 +38,23 @@ func (u *privateRequestUsecaseRecorder) List(_ context.Context, tenant, parent *
 	u.tenant, u.parent = tenant, parent
 	return []domain.PrivateScheduleRequest{}, nil
 }
-func (u *privateRequestUsecaseRecorder) Reject(_ context.Context, tenant, id uuid.UUID, _ *string) (*domain.PrivateScheduleRequest, error) {
+func (u *privateRequestUsecaseRecorder) Reject(_ context.Context, tenant, id uuid.UUID, req *domain.RejectPrivateScheduleRequest) (*domain.PrivateScheduleRequest, error) {
 	u.called = "reject"
+	u.rejection = req
 	return &domain.PrivateScheduleRequest{ID: id, TenantID: tenant, Status: "rejected"}, nil
+}
+func (u *privateRequestUsecaseRecorder) AcceptRecommendation(_ context.Context, parent, id uuid.UUID) (*domain.PublicEnrollmentResponse, error) {
+	u.called = "accept"
+	u.parent = &parent
+	if u.approveErr != nil {
+		return nil, u.approveErr
+	}
+	return &domain.PublicEnrollmentResponse{Enrollment: &domain.EnrollmentResponse{ID: id}, Payment: &domain.PaymentResponse{CheckoutSessionURL: "https://pay.example.test"}}, nil
+}
+func (u *privateRequestUsecaseRecorder) DeclineRecommendation(_ context.Context, parent, id uuid.UUID) (*domain.PrivateScheduleRequest, error) {
+	u.called = "decline"
+	u.parent = &parent
+	return &domain.PrivateScheduleRequest{ID: id, ParentID: parent, Status: "declined"}, nil
 }
 func (u *privateRequestUsecaseRecorder) Cancel(_ context.Context, parent, id uuid.UUID) (*domain.PrivateScheduleRequest, error) {
 	u.called = "cancel"
@@ -66,6 +81,8 @@ func TestPrivateRequestHandlerPermissionAndParent(t *testing.T) {
 	api.GET("/schedule-requests/:id", middleware.RequirePermissionUnlessParent(p, "enrollment:read"), h.Get)
 	api.POST("/schedule-requests/:id/approve", middleware.RequirePermission(p, "enrollment:update"), h.Approve)
 	api.POST("/schedule-requests/:id/reject", middleware.RequirePermission(p, "enrollment:update"), h.Reject)
+	api.POST("/schedule-requests/:id/recommendation/accept", h.AcceptRecommendation)
+	api.POST("/schedule-requests/:id/recommendation/decline", h.DeclineRecommendation)
 	api.POST("/schedule-requests/:id/cancel", h.Cancel)
 	api.POST("/catalog/classes/:class_id/schedule-requests", h.Create)
 	token := func(parent bool) string {
@@ -105,6 +122,26 @@ func TestPrivateRequestHandlerPermissionAndParent(t *testing.T) {
 	if code := call(http.MethodPost, "/api/v1/schedule-requests/"+id+"/reject", "", parentToken); code != 403 {
 		t.Fatalf("parent reject=%d", code)
 	}
+	for _, action := range []string{"accept", "decline"} {
+		path := "/api/v1/schedule-requests/" + id + "/recommendation/" + action
+		u.called = ""
+		if code := call(http.MethodPost, path, "", tenantToken); code != 403 || u.called != "" {
+			t.Fatalf("tenant %s=%d called=%s", action, code, u.called)
+		}
+		if code := call(http.MethodPost, path, "", parentToken); code != 200 || u.called != action || u.parent == nil {
+			t.Fatalf("parent %s=%d called=%s", action, code, u.called)
+		}
+	}
+	for _, tc := range []struct {
+		err    error
+		status int
+	}{{domain.ErrPrivateRequestNotFound, 404}, {domain.ErrPrivateRequestTransition, 409}, {domain.ErrPlatformFeeExceedsGross, 422}} {
+		u.approveErr = tc.err
+		if code := call(http.MethodPost, "/api/v1/schedule-requests/"+id+"/recommendation/accept", "", parentToken); code != tc.status {
+			t.Fatalf("accept %v=%d want=%d", tc.err, code, tc.status)
+		}
+	}
+	u.approveErr = nil
 	// With no permission client authorizing, tenant reads and writes stop before the usecase.
 	u.called = ""
 	if code := call(http.MethodGet, "/api/v1/schedule-requests/"+id, "", tenantToken); code != 403 || u.called != "" {
@@ -135,10 +172,14 @@ func TestPrivateRequestHandlerPermissionAndParent(t *testing.T) {
 	if code := call(http.MethodGet, "/api/v1/schedule-requests/"+id, "", tenantToken); code != 200 || u.called != "get" || u.tenant == nil || u.parent != nil {
 		t.Fatalf("tenant permitted read=%d called=%s", code, u.called)
 	}
-	if code := call(http.MethodPost, "/api/v1/schedule-requests/"+id+"/reject", "{}", tenantToken); code != 200 || u.called != "reject" {
-		t.Fatalf("tenant permitted reject=%d called=%s", code, u.called)
+	if code := call(http.MethodPost, "/api/v1/schedule-requests/"+id+"/reject", "{}", tenantToken); code != 200 || u.called != "reject" || u.rejection.RecommendedSlots != nil {
+		t.Fatalf("tenant permitted plain reject=%d called=%s", code, u.called)
 	}
-	if got := p.permissions[len(p.permissions)-2:]; got[0] != "enrollment:read" || got[1] != "enrollment:update" {
+	body := `{"reason":"other slot","recommended_slots":[{"day_of_week":2,"start_time":"10:00:00","end_time":"11:00:00"}]}`
+	if code := call(http.MethodPost, "/api/v1/schedule-requests/"+id+"/reject", body, tenantToken); code != 200 || u.rejection.Reason == nil || *u.rejection.Reason != "other slot" || len(u.rejection.RecommendedSlots) != 1 {
+		t.Fatalf("recommend reject=%d payload=%+v", code, u.rejection)
+	}
+	if got := p.permissions[len(p.permissions)-3:]; got[0] != "enrollment:read" || got[1] != "enrollment:update" || got[2] != "enrollment:update" {
 		t.Fatalf("permissions=%v", got)
 	}
 }
