@@ -207,7 +207,7 @@ func TestEnrollPublicIdempotency(t *testing.T) {
 	transactionID := uuid.New()
 	existing := &domain.Enrollment{ID: uuid.New(), StudentID: studentID, ClassID: classID, BillingCycle: "monthly", PaymentStatus: "pending", GrossAmount: 100, PaymentTransactionID: &transactionID}
 	repo := &marketplaceEnrollmentRepo{existing: existing}
-	uc := NewEnrollmentUsecase(repo, &marketplaceStudentRepo{}, &marketplaceClassRepo{}, &marketplaceBilling{}, marketplaceTx{}).(*enrollmentUsecase)
+	uc := NewEnrollmentUsecase(repo, &marketplaceStudentRepo{}, &marketplaceClassRepo{class: &domain.Class{ID: classID, Type: "group"}}, &marketplaceBilling{}, marketplaceTx{}).(*enrollmentUsecase)
 	if _, err := uc.EnrollPublic(context.Background(), parentID, classID, &domain.PublicEnrollmentRequest{StudentID: studentID, BillingCycle: "monthly"}, "same"); err != nil {
 		t.Fatalf("replay error: %v", err)
 	}

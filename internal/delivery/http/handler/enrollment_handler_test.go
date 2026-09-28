@@ -55,6 +55,7 @@ func TestCatalogEnrollmentConflictBodies(t *testing.T) {
 		wantMessage string
 	}{
 		{name: "duplicate enrollment", err: domain.ErrDuplicateEnrollment, wantStatus: http.StatusConflict, wantCode: "duplicate_enrollment", wantMessage: domain.ErrDuplicateEnrollment.Error()},
+		{name: "private checkout", err: fmt.Errorf("enroll: %w", domain.ErrPrivateCheckout), wantStatus: http.StatusUnprocessableEntity, wantCode: domain.PrivateCheckoutErrorCode, wantMessage: "enroll: " + domain.ErrPrivateCheckout.Error()},
 		{name: "schedule full", err: domain.ErrScheduleFull, wantStatus: http.StatusConflict, wantMessage: domain.ErrScheduleFull.Error()},
 		{name: "idempotency conflict", err: domain.ErrIdempotencyConflict, wantStatus: http.StatusConflict, wantMessage: domain.ErrIdempotencyConflict.Error()},
 		{name: "platform fee rejection", err: domain.ErrPlatformFeeExceedsGross, wantStatus: http.StatusUnprocessableEntity, wantCode: "platform_fee_exceeds_gross", wantMessage: "Biaya platform melebihi jumlah pembayaran"},
@@ -90,6 +91,51 @@ func TestCatalogEnrollmentConflictBodies(t *testing.T) {
 			}
 			if body["status"] != "error" || body["message"] != tt.wantMessage {
 				t.Fatalf("body = %v, want status=error message=%q", body, tt.wantMessage)
+			}
+		})
+	}
+}
+
+func TestTenantEnrollmentPrivateCheckoutAndFailures(t *testing.T) {
+	tenantID := uuid.New()
+	tests := []struct {
+		name       string
+		claims     middleware.Claims
+		err        error
+		wantStatus int
+		wantCode   string
+		wantMsg    string
+	}{
+		{"tenant private checkout", middleware.Claims{UserID: uuid.NewString(), TenantID: tenantID.String(), RoleID: uuid.NewString()}, fmt.Errorf("checkout: %w", domain.ErrPrivateCheckout), http.StatusUnprocessableEntity, domain.PrivateCheckoutErrorCode, domain.ErrPrivateCheckout.Error()},
+		{"parent private checkout", middleware.Claims{UserID: uuid.NewString(), Email: "parent@example.com", IsParent: true}, fmt.Errorf("checkout: %w", domain.ErrPrivateCheckout), http.StatusUnprocessableEntity, domain.PrivateCheckoutErrorCode, domain.ErrPrivateCheckout.Error()},
+		{"tenant group duplicate", middleware.Claims{UserID: uuid.NewString(), TenantID: tenantID.String(), RoleID: uuid.NewString()}, domain.ErrDuplicateEnrollment, http.StatusConflict, domain.DuplicateEnrollmentErrorCode, domain.ErrDuplicateEnrollment.Error()},
+		{"parent group platform fee", middleware.Claims{UserID: uuid.NewString(), Email: "parent@example.com", IsParent: true}, domain.ErrPlatformFeeExceedsGross, http.StatusUnprocessableEntity, domain.PlatformFeeExceedsGrossErrorCode, domain.ErrPlatformFeeExceedsGross.Error()},
+		{"parent unexpected failure", middleware.Claims{UserID: uuid.NewString(), Email: "parent@example.com", IsParent: true}, errors.New("secret database detail"), http.StatusInternalServerError, "", "Failed to create enrollment"},
+		{"tenant unexpected failure", middleware.Claims{UserID: uuid.NewString(), TenantID: tenantID.String(), RoleID: uuid.NewString()}, errors.New("secret database detail"), http.StatusInternalServerError, "", "Failed to create enrollment"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			router := gin.New()
+			router.Use(middleware.AuthMiddleware(testJWTSecret))
+			router.POST("/api/v1/tenants/:tenant_id/enrollments", NewEnrollmentHandler(&failingEnrollmentUsecase{err: tt.err}).Create)
+			req := httptest.NewRequest(http.MethodPost, "/api/v1/tenants/"+tenantID.String()+"/enrollments", strings.NewReader(`{"student_id":"`+uuid.NewString()+`","class_id":"`+uuid.NewString()+`","billing_cycle":"monthly"}`))
+			req.Header.Set("Content-Type", "application/json")
+			req.Header.Set("Authorization", "Bearer "+signToken(t, tt.claims))
+			req.Header.Set("Idempotency-Key", uuid.NewString())
+			res := httptest.NewRecorder()
+			router.ServeHTTP(res, req)
+			if res.Code != tt.wantStatus {
+				t.Fatalf("status=%d body=%s want=%d", res.Code, res.Body.String(), tt.wantStatus)
+			}
+			var body map[string]any
+			if err := json.Unmarshal(res.Body.Bytes(), &body); err != nil {
+				t.Fatal(err)
+			}
+			if body["status"] != "error" || body["message"] != tt.wantMsg {
+				t.Fatalf("body=%v want message=%q", body, tt.wantMsg)
+			}
+			if code, present := body["code"]; tt.wantCode == "" && present || tt.wantCode != "" && code != tt.wantCode {
+				t.Fatalf("code=%v present=%v want=%q", code, present, tt.wantCode)
 			}
 		})
 	}

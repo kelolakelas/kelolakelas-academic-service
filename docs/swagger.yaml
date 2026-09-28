@@ -405,6 +405,29 @@ definitions:
           $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ClassSession'
         type: array
     type: object
+  github_com_kelolakelas_kelolakelas-academic-service_internal_domain.CreatePrivateScheduleRequest:
+    properties:
+      billing_cycle:
+        enum:
+        - monthly
+        - quarterly
+        - yearly
+        type: string
+      note:
+        maxLength: 2000
+        type: string
+      slots:
+        items:
+          $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.PrivateScheduleSlot'
+        minItems: 1
+        type: array
+      student_id:
+        type: string
+    required:
+    - billing_cycle
+    - slots
+    - student_id
+    type: object
   github_com_kelolakelas_kelolakelas-academic-service_internal_domain.CreateReportRequest:
     properties:
       enrollment_id:
@@ -659,6 +682,52 @@ definitions:
       old_schedule:
         $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ClassSchedule'
     type: object
+  github_com_kelolakelas_kelolakelas-academic-service_internal_domain.PrivateScheduleRequest:
+    properties:
+      billing_cycle:
+        type: string
+      class_id:
+        type: string
+      created_at:
+        type: string
+      decided_at:
+        type: string
+      id:
+        type: string
+      note:
+        type: string
+      parent_email:
+        type: string
+      parent_id:
+        type: string
+      rejection_reason:
+        type: string
+      slots:
+        items:
+          $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.PrivateScheduleSlot'
+        type: array
+      status:
+        type: string
+      student_id:
+        type: string
+      tenant_id:
+        type: string
+    type: object
+  github_com_kelolakelas_kelolakelas-academic-service_internal_domain.PrivateScheduleSlot:
+    properties:
+      day_of_week:
+        maximum: 7
+        minimum: 1
+        type: integer
+      end_time:
+        type: string
+      start_time:
+        type: string
+    required:
+    - day_of_week
+    - end_time
+    - start_time
+    type: object
   github_com_kelolakelas_kelolakelas-academic-service_internal_domain.PublicEnrollmentRequest:
     properties:
       billing_cycle:
@@ -681,6 +750,12 @@ definitions:
         $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.EnrollmentResponse'
       payment:
         $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.PaymentResponse'
+    type: object
+  github_com_kelolakelas_kelolakelas-academic-service_internal_domain.RejectPrivateScheduleRequest:
+    properties:
+      reason:
+        maxLength: 2000
+        type: string
     type: object
   github_com_kelolakelas_kelolakelas-academic-service_internal_domain.Report:
     properties:
@@ -1206,16 +1281,18 @@ paths:
     post:
       consumes:
       - application/json
-      description: 'Creates a pending enrollment and generates a billing invoice.
-        The tenant is resolved from the selected class. Retrying with the same Idempotency-Key
-        returns the same enrollment. A 409 with `code` `duplicate_enrollment` means
-        the student already has a pending or active enrollment in this class (including
-        a concurrent request that won the race); a 409 without `code` is a full schedule
-        or an Idempotency-Key reused with a different request. A 422 with `code` `platform_fee_exceeds_gross`
-        means billing refused the invoice because the platform fee exceeds the payment
-        amount: the attempt holds no seat and does not block a new attempt, and a
-        replay with the same Idempotency-Key answers the same 422. A dropped or completed
-        enrollment does not block a new one.'
+      description: 'Creates a pending group enrollment and generates a billing invoice.
+        Direct private checkout answers 422 with code `private_schedule_request_required`;
+        submit a schedule request instead. The tenant is resolved from the selected
+        class. Retrying with the same Idempotency-Key returns the same enrollment.
+        A 409 with `code` `duplicate_enrollment` means the student already has a pending
+        or active enrollment in this class (including a concurrent request that won
+        the race); a 409 without `code` is a full schedule or an Idempotency-Key reused
+        with a different request. A 422 with `code` `platform_fee_exceeds_gross` means
+        billing refused the invoice because the platform fee exceeds the payment amount:
+        the attempt holds no seat and does not block a new attempt, and a replay with
+        the same Idempotency-Key answers the same 422. A dropped or completed enrollment
+        does not block a new one.'
       parameters:
       - description: Class UUID
         in: path
@@ -1278,6 +1355,65 @@ paths:
       summary: Enroll a parent-owned student in a public class
       tags:
       - Enrollments
+  /api/v1/catalog/classes/{class_id}/schedule-requests:
+    post:
+      consumes:
+      - application/json
+      description: Parent-owned student only. One pending request per student/class;
+        an existing pending or active enrollment also conflicts.
+      parameters:
+      - description: Class UUID
+        in: path
+        name: class_id
+        required: true
+        type: string
+      - description: Weekly slots
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.CreatePrivateScheduleRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.HTTPResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.PrivateScheduleRequest'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+        "422":
+          description: Unprocessable Entity
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Request a weekly schedule for a private class
+      tags:
+      - Private schedule requests
   /api/v1/catalog/classes/{id}:
     get:
       parameters:
@@ -2142,6 +2278,168 @@ paths:
       x-permission:
         parent_tokens: skipped
         permission: report:update
+  /api/v1/schedule-requests:
+    get:
+      parameters:
+      - description: pending, approved, rejected or cancelled
+        in: query
+        name: status
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.HTTPResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: List own or tenant private schedule requests
+      tags:
+      - Private schedule requests
+      x-permission:
+        parent_tokens: skipped
+        permission: enrollment:read
+  /api/v1/schedule-requests/{id}:
+    get:
+      parameters:
+      - description: Request UUID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.HTTPResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.PrivateScheduleRequest'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get own or tenant private schedule request
+      tags:
+      - Private schedule requests
+      x-permission:
+        parent_tokens: skipped
+        permission: enrollment:read
+  /api/v1/schedule-requests/{id}/cancel:
+    post:
+      parameters:
+      - description: Request UUID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.HTTPResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.PrivateScheduleRequest'
+              type: object
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Cancel a parent-owned pending private schedule request
+      tags:
+      - Private schedule requests
+  /api/v1/schedule-requests/{id}/reject:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Request UUID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Optional reason
+        in: body
+        name: request
+        schema:
+          $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.RejectPrivateScheduleRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.HTTPResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.PrivateScheduleRequest'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Reject a pending private schedule request in own tenant
+      tags:
+      - Private schedule requests
+      x-permission:
+        parent_tokens: denied
+        permission: enrollment:update
   /api/v1/schedules:
     get:
       parameters:
@@ -3283,13 +3581,14 @@ paths:
       - application/json
       description: 'A tenant-member token must carry `tenant_id` equal to the path
         and hold `enrollment:create`; a parent token skips the permission check and
-        is enrolled through the public-enrollment flow (its errors answer 422). A
-        409 with `code` `duplicate_enrollment` means the student already has a pending
-        or active enrollment in this class; a 409 without `code` is an Idempotency-Key
-        reused with a different request. A 422 with `code` `platform_fee_exceeds_gross`
-        means billing refused the invoice because the platform fee exceeds the payment
-        amount: the attempt holds no seat, and a replay with the same Idempotency-Key
-        answers the same 422.'
+        is enrolled through the public-enrollment flow (known errors answer 422).
+        Direct private checkout answers 422 with `code` `private_schedule_request_required`;
+        submit a schedule request instead. A 409 with `code` `duplicate_enrollment`
+        means the student already has a pending or active enrollment in this class;
+        a 409 without `code` is an Idempotency-Key reused with a different request.
+        A 422 with `code` `platform_fee_exceeds_gross` means billing refused the invoice
+        because the platform fee exceeds the payment amount: the attempt holds no
+        seat, and a replay with the same Idempotency-Key answers the same 422.'
       parameters:
       - description: Tenant ID
         in: path

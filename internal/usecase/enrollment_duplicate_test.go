@@ -33,14 +33,15 @@ func (r *duplicateEnrollmentRepo) GetByIdempotencyKeyAny(_ context.Context, key 
 
 func TestEnrollPublicDuplicateEnrollment(t *testing.T) {
 	parentID, studentID, classID := uuid.New(), uuid.New(), uuid.New()
-	class := &domain.Class{ID: classID, TenantID: uuid.New(), Type: "private", Price: 100, IsPublished: true, EnrollmentStatus: "open"}
+	class := &domain.Class{ID: classID, TenantID: uuid.New(), Type: "group", Price: 100, IsPublished: true, EnrollmentStatus: "open"}
 	transactionID := uuid.New()
 	sameKeyWinner := &domain.Enrollment{ID: uuid.New(), StudentID: studentID, ClassID: classID, BillingCycle: "monthly", Status: "pending", PaymentStatus: "pending", PaymentTransactionID: &transactionID}
 
 	newUsecase := func(repo *duplicateEnrollmentRepo, billing *marketplaceBilling) EnrollmentUsecase {
 		return NewEnrollmentUsecase(repo, &marketplaceStudentRepo{student: &domain.Student{ID: studentID, ParentID: parentID}}, &marketplaceClassRepo{class: class}, billing, marketplaceTx{})
 	}
-	request := &domain.PublicEnrollmentRequest{StudentID: studentID, BillingCycle: "monthly"}
+	scheduleID := uuid.New()
+	request := &domain.PublicEnrollmentRequest{StudentID: studentID, BillingCycle: "monthly", ScheduleID: &scheduleID}
 
 	t.Run("different key returns the duplicate sentinel without an invoice", func(t *testing.T) {
 		repo := &duplicateEnrollmentRepo{marketplaceEnrollmentRepo: marketplaceEnrollmentRepo{createErr: domain.ErrDuplicateEnrollment}}
