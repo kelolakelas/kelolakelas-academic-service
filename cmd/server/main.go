@@ -99,6 +99,7 @@ func main() {
 	listHandler := handler.NewListHandler(categoryUsecase, classUsecase, scheduleUsecase)
 	enrollmentHandler := handler.NewEnrollmentHandler(enrollmentUsecase)
 	privateRequestHandler := handler.NewPrivateScheduleRequestHandler(usecase.NewPrivateScheduleRequestUsecase(repository.NewPrivateScheduleRequestRepository(db), studentRepo, classRepo, txManager, enrollmentRepo, scheduleRepo, sessionRepo, billingClient))
+	chatContextHandler := handler.NewChatContextHandler(repository.NewChatContextRepository(db))
 	sessionHandler := handler.NewSessionHandler(scheduleUsecase)
 	studentHandler := handler.NewStudentHandler(usecase.NewStudentUsecase(studentRepo, studentNoteRepo, txManager))
 	attendanceHandler := handler.NewAttendanceHandler(usecase.NewAttendanceUsecase(repository.NewAttendanceRepository(db), sessionRepo))
@@ -125,6 +126,7 @@ func main() {
 		report:         reportHandler,
 		enrollment:     enrollmentHandler,
 		privateRequest: privateRequestHandler,
+		chatContext:    chatContextHandler,
 		schedule:       scheduleHandler,
 		session:        sessionHandler,
 	}, cfg.JWTSecret, cfg.InternalServiceCredential, permissionClient)
