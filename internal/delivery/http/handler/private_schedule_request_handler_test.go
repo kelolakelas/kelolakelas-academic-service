@@ -19,6 +19,7 @@ type privateRequestUsecaseRecorder struct {
 	called         string
 	email          string
 	tenant, parent *uuid.UUID
+	approveErr     error
 }
 
 func (u *privateRequestUsecaseRecorder) Create(_ context.Context, parent, class uuid.UUID, req *domain.CreatePrivateScheduleRequest) (*domain.PrivateScheduleRequest, error) {
@@ -44,6 +45,14 @@ func (u *privateRequestUsecaseRecorder) Cancel(_ context.Context, parent, id uui
 	u.called = "cancel"
 	return &domain.PrivateScheduleRequest{ID: id, ParentID: parent, Status: "cancelled"}, nil
 }
+func (u *privateRequestUsecaseRecorder) Approve(_ context.Context, tenant, id uuid.UUID) (*domain.PublicEnrollmentResponse, error) {
+	u.called = "approve"
+	u.tenant = &tenant
+	if u.approveErr != nil {
+		return nil, u.approveErr
+	}
+	return &domain.PublicEnrollmentResponse{Enrollment: &domain.EnrollmentResponse{ID: id}, Payment: &domain.PaymentResponse{CheckoutSessionURL: "https://pay.example.test"}}, nil
+}
 
 func TestPrivateRequestHandlerPermissionAndParent(t *testing.T) {
 	gin.SetMode(gin.TestMode)
@@ -55,6 +64,7 @@ func TestPrivateRequestHandlerPermissionAndParent(t *testing.T) {
 	api.Use(middleware.AuthMiddleware(testJWTSecret))
 	api.GET("/schedule-requests", middleware.RequirePermissionUnlessParent(p, "enrollment:read"), h.List)
 	api.GET("/schedule-requests/:id", middleware.RequirePermissionUnlessParent(p, "enrollment:read"), h.Get)
+	api.POST("/schedule-requests/:id/approve", middleware.RequirePermission(p, "enrollment:update"), h.Approve)
 	api.POST("/schedule-requests/:id/reject", middleware.RequirePermission(p, "enrollment:update"), h.Reject)
 	api.POST("/schedule-requests/:id/cancel", h.Cancel)
 	api.POST("/catalog/classes/:class_id/schedule-requests", h.Create)
@@ -89,6 +99,9 @@ func TestPrivateRequestHandlerPermissionAndParent(t *testing.T) {
 	if code := call(http.MethodPost, "/api/v1/schedule-requests/"+id+"/cancel", "", tenantToken); code != 403 {
 		t.Fatalf("tenant cancel=%d", code)
 	}
+	if code := call(http.MethodPost, "/api/v1/schedule-requests/"+id+"/approve", "", parentToken); code != 403 {
+		t.Fatalf("parent approve=%d", code)
+	}
 	if code := call(http.MethodPost, "/api/v1/schedule-requests/"+id+"/reject", "", parentToken); code != 403 {
 		t.Fatalf("parent reject=%d", code)
 	}
@@ -100,7 +113,25 @@ func TestPrivateRequestHandlerPermissionAndParent(t *testing.T) {
 	if code := call(http.MethodPost, "/api/v1/schedule-requests/"+id+"/reject", "{}", tenantToken); code != 403 || u.called != "" {
 		t.Fatalf("tenant denied reject=%d called=%s", code, u.called)
 	}
+	if code := call(http.MethodPost, "/api/v1/schedule-requests/"+id+"/approve", "", tenantToken); code != 403 || u.called != "" {
+		t.Fatalf("tenant denied approve=%d called=%s", code, u.called)
+	}
 	p.allowed = true
+	if code := call(http.MethodPost, "/api/v1/schedule-requests/"+id+"/approve", "", tenantToken); code != 200 || u.called != "approve" || u.tenant == nil {
+		t.Fatalf("tenant approve=%d called=%s", code, u.called)
+	}
+	for _, tc := range []struct {
+		err    error
+		status int
+	}{
+		{domain.ErrPrivateRequestNotFound, 404}, {domain.ErrPrivateRequestTransition, 409}, {domain.ErrPlatformFeeExceedsGross, 422},
+	} {
+		u.approveErr = tc.err
+		if code := call(http.MethodPost, "/api/v1/schedule-requests/"+id+"/approve", "", tenantToken); code != tc.status {
+			t.Fatalf("approve error %v: got %d want %d", tc.err, code, tc.status)
+		}
+	}
+	u.approveErr = nil
 	if code := call(http.MethodGet, "/api/v1/schedule-requests/"+id, "", tenantToken); code != 200 || u.called != "get" || u.tenant == nil || u.parent != nil {
 		t.Fatalf("tenant permitted read=%d called=%s", code, u.called)
 	}

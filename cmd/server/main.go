@@ -98,7 +98,7 @@ func main() {
 	scheduleHandler := handler.NewScheduleHandler(scheduleUsecase)
 	listHandler := handler.NewListHandler(categoryUsecase, classUsecase, scheduleUsecase)
 	enrollmentHandler := handler.NewEnrollmentHandler(enrollmentUsecase)
-	privateRequestHandler := handler.NewPrivateScheduleRequestHandler(usecase.NewPrivateScheduleRequestUsecase(repository.NewPrivateScheduleRequestRepository(db), studentRepo, classRepo, txManager))
+	privateRequestHandler := handler.NewPrivateScheduleRequestHandler(usecase.NewPrivateScheduleRequestUsecase(repository.NewPrivateScheduleRequestRepository(db), studentRepo, classRepo, txManager, enrollmentRepo, scheduleRepo, sessionRepo, billingClient))
 	sessionHandler := handler.NewSessionHandler(scheduleUsecase)
 	studentHandler := handler.NewStudentHandler(usecase.NewStudentUsecase(studentRepo, studentNoteRepo, txManager))
 	attendanceHandler := handler.NewAttendanceHandler(usecase.NewAttendanceUsecase(repository.NewAttendanceRepository(db), sessionRepo))

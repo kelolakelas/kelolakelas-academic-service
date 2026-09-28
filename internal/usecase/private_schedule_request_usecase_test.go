@@ -30,13 +30,20 @@ func (r *requestRepoStub) Transition(_ context.Context, _ uuid.UUID, _, _ *uuid.
 	r.status = status
 	return r.created, r.transitionErr
 }
+func (r *requestRepoStub) LockForTenant(_ context.Context, _, _ uuid.UUID) (*domain.PrivateScheduleRequest, error) {
+	return r.created, nil
+}
+func (r *requestRepoStub) SetStatus(_ context.Context, _, _ uuid.UUID, status string) error {
+	r.status = status
+	return nil
+}
 
 func TestPrivateScheduleRequestValidationAndTransitions(t *testing.T) {
 	parent, studentID, classID := uuid.New(), uuid.New(), uuid.New()
 	class := &domain.Class{ID: classID, TenantID: uuid.New(), Type: "private", IsPublished: true, EnrollmentStatus: "open"}
 	student := &domain.Student{ID: studentID, ParentID: parent}
 	repo := &requestRepoStub{}
-	u := NewPrivateScheduleRequestUsecase(repo, &marketplaceStudentRepo{student: student}, &marketplaceClassRepo{class: class}, nil)
+	u := NewPrivateScheduleRequestUsecase(repo, &marketplaceStudentRepo{student: student}, &marketplaceClassRepo{class: class}, nil, nil, nil, nil, nil)
 	request := func() *domain.CreatePrivateScheduleRequest {
 		return &domain.CreatePrivateScheduleRequest{StudentID: studentID, BillingCycle: "monthly", Slots: []domain.PrivateScheduleSlot{{DayOfWeek: 1, StartTime: "10:00:00", EndTime: "11:00:00"}}, ParentEmail: "verified@example.test"}
 	}
