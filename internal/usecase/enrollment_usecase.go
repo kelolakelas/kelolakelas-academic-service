@@ -172,9 +172,18 @@ func (u *enrollmentUsecase) EnrollPublic(ctx context.Context, parentID, classID 
 	if idempotencyKey == "" {
 		return nil, errors.New("idempotency key is required")
 	}
+	// A matching replay must still reject a private class, including historic
+	// enrollments; do not regenerate an invoice for a private enrollment.
 	if existing, err := u.enrollmentRepo.GetByIdempotencyKey(ctx, parentID, idempotencyKey); err == nil {
 		if existing.ClassID != classID || existing.StudentID != req.StudentID || existing.BillingCycle != req.BillingCycle {
 			return nil, domain.ErrIdempotencyConflict
+		}
+		class, classErr := u.classRepo.GetByID(ctx, classID)
+		if classErr != nil {
+			return nil, classErr
+		}
+		if class.Type == "private" {
+			return nil, domain.ErrPrivateCheckout
 		}
 		if platformFeeRejected(existing) {
 			return nil, domain.ErrPlatformFeeExceedsGross
@@ -199,6 +208,13 @@ func (u *enrollmentUsecase) EnrollPublic(ctx context.Context, parentID, classID 
 		return u.publicEnrollmentResponse(existing)
 	} else if !errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, err
+	}
+	checkoutClass, err := u.classRepo.GetByID(ctx, classID)
+	if err != nil {
+		return nil, err
+	}
+	if checkoutClass.Type == "private" {
+		return nil, domain.ErrPrivateCheckout
 	}
 	student, err := u.studentRepo.GetByID(ctx, req.StudentID)
 	if err != nil {
@@ -337,6 +353,13 @@ func (u *enrollmentUsecase) EnrollStudent(ctx context.Context, tenantID uuid.UUI
 			if existing.StudentID != req.StudentID || existing.ClassID != req.ClassID || existing.BillingCycle != req.BillingCycle {
 				return nil, domain.ErrIdempotencyConflict
 			}
+			class, classErr := u.classRepo.GetByID(ctx, req.ClassID)
+			if classErr != nil {
+				return nil, classErr
+			}
+			if class.Type == "private" {
+				return nil, domain.ErrPrivateCheckout
+			}
 			if platformFeeRejected(existing) {
 				return nil, domain.ErrPlatformFeeExceedsGross
 			}
@@ -355,6 +378,9 @@ func (u *enrollmentUsecase) EnrollStudent(ctx context.Context, tenantID uuid.UUI
 	}
 	if class.TenantID != tenantID {
 		return nil, fmt.Errorf("class does not belong to tenant")
+	}
+	if class.Type == "private" {
+		return nil, domain.ErrPrivateCheckout
 	}
 	if !class.IsPublished || class.EnrollmentStatus != "open" {
 		return nil, domain.ErrClassNotEnrollable

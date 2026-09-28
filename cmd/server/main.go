@@ -98,6 +98,7 @@ func main() {
 	scheduleHandler := handler.NewScheduleHandler(scheduleUsecase)
 	listHandler := handler.NewListHandler(categoryUsecase, classUsecase, scheduleUsecase)
 	enrollmentHandler := handler.NewEnrollmentHandler(enrollmentUsecase)
+	privateRequestHandler := handler.NewPrivateScheduleRequestHandler(usecase.NewPrivateScheduleRequestUsecase(repository.NewPrivateScheduleRequestRepository(db), studentRepo, classRepo, txManager))
 	sessionHandler := handler.NewSessionHandler(scheduleUsecase)
 	studentHandler := handler.NewStudentHandler(usecase.NewStudentUsecase(studentRepo, studentNoteRepo, txManager))
 	attendanceHandler := handler.NewAttendanceHandler(usecase.NewAttendanceUsecase(repository.NewAttendanceRepository(db), sessionRepo))
@@ -113,18 +114,19 @@ func main() {
 	r := gin.New()
 	r.Use(middleware.RequestLog(), gin.Recovery())
 	registerRoutes(r, routeHandlers{
-		health:     healthHandler("academic-service"),
-		ready:      readinessHandler(sqlDB, cfg.IdentityGRPCHost),
-		catalog:    catalogHandler,
-		category:   categoryHandler,
-		class:      classHandler,
-		list:       listHandler,
-		student:    studentHandler,
-		attendance: attendanceHandler,
-		report:     reportHandler,
-		enrollment: enrollmentHandler,
-		schedule:   scheduleHandler,
-		session:    sessionHandler,
+		health:         healthHandler("academic-service"),
+		ready:          readinessHandler(sqlDB, cfg.IdentityGRPCHost),
+		catalog:        catalogHandler,
+		category:       categoryHandler,
+		class:          classHandler,
+		list:           listHandler,
+		student:        studentHandler,
+		attendance:     attendanceHandler,
+		report:         reportHandler,
+		enrollment:     enrollmentHandler,
+		privateRequest: privateRequestHandler,
+		schedule:       scheduleHandler,
+		session:        sessionHandler,
 	}, cfg.JWTSecret, cfg.InternalServiceCredential, permissionClient)
 
 	httpServer := newHTTPServer(cfg, r)

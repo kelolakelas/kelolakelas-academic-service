@@ -12,18 +12,19 @@ import (
 
 // routeHandlers carries every handler the HTTP surface serves.
 type routeHandlers struct {
-	health     gin.HandlerFunc
-	ready      gin.HandlerFunc
-	catalog    *handler.CatalogHandler
-	category   *handler.CategoryHandler
-	class      *handler.ClassHandler
-	list       *handler.ListHandler
-	student    *handler.StudentHandler
-	attendance *handler.AttendanceHandler
-	report     *handler.ReportHandler
-	enrollment *handler.EnrollmentHandler
-	schedule   *handler.ScheduleHandler
-	session    *handler.SessionHandler
+	health         gin.HandlerFunc
+	ready          gin.HandlerFunc
+	catalog        *handler.CatalogHandler
+	category       *handler.CategoryHandler
+	class          *handler.ClassHandler
+	list           *handler.ListHandler
+	student        *handler.StudentHandler
+	attendance     *handler.AttendanceHandler
+	report         *handler.ReportHandler
+	enrollment     *handler.EnrollmentHandler
+	privateRequest *handler.PrivateScheduleRequestHandler
+	schedule       *handler.ScheduleHandler
+	session        *handler.SessionHandler
 }
 
 // registerRoutes is the single route table used by production and by the Swagger
@@ -68,6 +69,11 @@ func registerRoutes(r *gin.Engine, h routeHandlers, jwtSecret, internalCredentia
 		apiV1.GET("/enrollments", middleware.RequirePermissionUnlessParent(permissionClient, "enrollment:read"), h.enrollment.ListQuery)
 		apiV1.GET("/enrollments/:id", middleware.RequirePermissionUnlessParent(permissionClient, "enrollment:read"), h.enrollment.GetQuery)
 		apiV1.PATCH("/enrollments/:id/schedule", h.enrollment.AssignSchedule)
+		apiV1.POST("/catalog/classes/:class_id/schedule-requests", h.privateRequest.Create)
+		apiV1.GET("/schedule-requests", middleware.RequirePermissionUnlessParent(permissionClient, "enrollment:read"), h.privateRequest.List)
+		apiV1.GET("/schedule-requests/:id", middleware.RequirePermissionUnlessParent(permissionClient, "enrollment:read"), h.privateRequest.Get)
+		apiV1.POST("/schedule-requests/:id/reject", middleware.RequirePermission(permissionClient, "enrollment:update"), h.privateRequest.Reject)
+		apiV1.POST("/schedule-requests/:id/cancel", h.privateRequest.Cancel)
 
 		// Schedule Routes
 		apiV1.POST("/schedules", middleware.RequirePermission(permissionClient, "schedule:create"), h.schedule.CreateInitialSchedules)

@@ -398,7 +398,7 @@
                         "BearerAuth": []
                     }
                 ],
-                "description": "Creates a pending enrollment and generates a billing invoice. The tenant is resolved from the selected class. Retrying with the same Idempotency-Key returns the same enrollment. A 409 with `code` `duplicate_enrollment` means the student already has a pending or active enrollment in this class (including a concurrent request that won the race); a 409 without `code` is a full schedule or an Idempotency-Key reused with a different request. A 422 with `code` `platform_fee_exceeds_gross` means billing refused the invoice because the platform fee exceeds the payment amount: the attempt holds no seat and does not block a new attempt, and a replay with the same Idempotency-Key answers the same 422. A dropped or completed enrollment does not block a new one.",
+                "description": "Creates a pending group enrollment and generates a billing invoice. Direct private checkout answers 422 with code `private_schedule_request_required`; submit a schedule request instead. The tenant is resolved from the selected class. Retrying with the same Idempotency-Key returns the same enrollment. A 409 with `code` `duplicate_enrollment` means the student already has a pending or active enrollment in this class (including a concurrent request that won the race); a 409 without `code` is a full schedule or an Idempotency-Key reused with a different request. A 422 with `code` `platform_fee_exceeds_gross` means billing refused the invoice because the platform fee exceeds the payment amount: the attempt holds no seat and does not block a new attempt, and a replay with the same Idempotency-Key answers the same 422. A dropped or completed enrollment does not block a new one.",
                 "consumes": [
                     "application/json"
                 ],
@@ -461,6 +461,100 @@
                     },
                     "401": {
                         "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
+                        }
+                    },
+                    "422": {
+                        "description": "Unprocessable Entity",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/catalog/classes/{class_id}/schedule-requests": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Parent-owned student only. One pending request per student/class; an existing pending or active enrollment also conflicts.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Private schedule requests"
+                ],
+                "summary": "Request a weekly schedule for a private class",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Class UUID",
+                        "name": "class_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Weekly slots",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.CreatePrivateScheduleRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.HTTPResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.PrivateScheduleRequest"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
                         "schema": {
                             "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
                         }
@@ -1891,6 +1985,274 @@
                 "x-permission": {
                     "parent_tokens": "skipped",
                     "permission": "report:update"
+                }
+            }
+        },
+        "/api/v1/schedule-requests": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Private schedule requests"
+                ],
+                "summary": "List own or tenant private schedule requests",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "pending, approved, rejected or cancelled",
+                        "name": "status",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.HTTPResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
+                        }
+                    }
+                },
+                "x-permission": {
+                    "parent_tokens": "skipped",
+                    "permission": "enrollment:read"
+                }
+            }
+        },
+        "/api/v1/schedule-requests/{id}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Private schedule requests"
+                ],
+                "summary": "Get own or tenant private schedule request",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Request UUID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.HTTPResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.PrivateScheduleRequest"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
+                        }
+                    }
+                },
+                "x-permission": {
+                    "parent_tokens": "skipped",
+                    "permission": "enrollment:read"
+                }
+            }
+        },
+        "/api/v1/schedule-requests/{id}/cancel": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Private schedule requests"
+                ],
+                "summary": "Cancel a parent-owned pending private schedule request",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Request UUID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.HTTPResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.PrivateScheduleRequest"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/schedule-requests/{id}/reject": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Private schedule requests"
+                ],
+                "summary": "Reject a pending private schedule request in own tenant",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Request UUID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Optional reason",
+                        "name": "request",
+                        "in": "body",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.RejectPrivateScheduleRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.HTTPResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.PrivateScheduleRequest"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
+                        }
+                    }
+                },
+                "x-permission": {
+                    "parent_tokens": "denied",
+                    "permission": "enrollment:update"
                 }
             }
         },
@@ -3685,7 +4047,7 @@
                         "BearerAuth": []
                     }
                 ],
-                "description": "A tenant-member token must carry `tenant_id` equal to the path and hold `enrollment:create`; a parent token skips the permission check and is enrolled through the public-enrollment flow (its errors answer 422). A 409 with `code` `duplicate_enrollment` means the student already has a pending or active enrollment in this class; a 409 without `code` is an Idempotency-Key reused with a different request. A 422 with `code` `platform_fee_exceeds_gross` means billing refused the invoice because the platform fee exceeds the payment amount: the attempt holds no seat, and a replay with the same Idempotency-Key answers the same 422.",
+                "description": "A tenant-member token must carry `tenant_id` equal to the path and hold `enrollment:create`; a parent token skips the permission check and is enrolled through the public-enrollment flow (known errors answer 422). Direct private checkout answers 422 with `code` `private_schedule_request_required`; submit a schedule request instead. A 409 with `code` `duplicate_enrollment` means the student already has a pending or active enrollment in this class; a 409 without `code` is an Idempotency-Key reused with a different request. A 422 with `code` `platform_fee_exceeds_gross` means billing refused the invoice because the platform fee exceeds the payment amount: the attempt holds no seat, and a replay with the same Idempotency-Key answers the same 422.",
                 "consumes": [
                     "application/json"
                 ],
@@ -4593,6 +4955,38 @@
                 }
             }
         },
+        "github_com_kelolakelas_kelolakelas-academic-service_internal_domain.CreatePrivateScheduleRequest": {
+            "type": "object",
+            "required": [
+                "billing_cycle",
+                "slots",
+                "student_id"
+            ],
+            "properties": {
+                "billing_cycle": {
+                    "type": "string",
+                    "enum": [
+                        "monthly",
+                        "quarterly",
+                        "yearly"
+                    ]
+                },
+                "note": {
+                    "type": "string",
+                    "maxLength": 2000
+                },
+                "slots": {
+                    "type": "array",
+                    "minItems": 1,
+                    "items": {
+                        "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.PrivateScheduleSlot"
+                    }
+                },
+                "student_id": {
+                    "type": "string"
+                }
+            }
+        },
         "github_com_kelolakelas_kelolakelas-academic-service_internal_domain.CreateReportRequest": {
             "type": "object",
             "required": [
@@ -4955,6 +5349,74 @@
                 }
             }
         },
+        "github_com_kelolakelas_kelolakelas-academic-service_internal_domain.PrivateScheduleRequest": {
+            "type": "object",
+            "properties": {
+                "billing_cycle": {
+                    "type": "string"
+                },
+                "class_id": {
+                    "type": "string"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "decided_at": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "note": {
+                    "type": "string"
+                },
+                "parent_email": {
+                    "type": "string"
+                },
+                "parent_id": {
+                    "type": "string"
+                },
+                "rejection_reason": {
+                    "type": "string"
+                },
+                "slots": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.PrivateScheduleSlot"
+                    }
+                },
+                "status": {
+                    "type": "string"
+                },
+                "student_id": {
+                    "type": "string"
+                },
+                "tenant_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_kelolakelas_kelolakelas-academic-service_internal_domain.PrivateScheduleSlot": {
+            "type": "object",
+            "required": [
+                "day_of_week",
+                "end_time",
+                "start_time"
+            ],
+            "properties": {
+                "day_of_week": {
+                    "type": "integer",
+                    "maximum": 7,
+                    "minimum": 1
+                },
+                "end_time": {
+                    "type": "string"
+                },
+                "start_time": {
+                    "type": "string"
+                }
+            }
+        },
         "github_com_kelolakelas_kelolakelas-academic-service_internal_domain.PublicEnrollmentRequest": {
             "type": "object",
             "required": [
@@ -4986,6 +5448,15 @@
                 },
                 "payment": {
                     "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.PaymentResponse"
+                }
+            }
+        },
+        "github_com_kelolakelas_kelolakelas-academic-service_internal_domain.RejectPrivateScheduleRequest": {
+            "type": "object",
+            "properties": {
+                "reason": {
+                    "type": "string",
+                    "maxLength": 2000
                 }
             }
         },
