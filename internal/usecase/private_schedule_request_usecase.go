@@ -206,7 +206,7 @@ func (u *privateScheduleRequestUsecase) purchase(ctx context.Context, actorID, i
 	if err != nil {
 		return nil, err
 	}
-	invoice, err := u.billing.GenerateInvoice(ctx, billing.InvoiceRequest{TenantID: tenantID, StudentID: request.StudentID, ClassID: request.ClassID, EnrollmentID: enrollment.ID, ParentID: request.ParentID, BillingCycle: request.BillingCycle, SubtotalAmount: enrollment.GrossAmount, IdempotencyKey: key, Title: class.Name, SenderEmail: request.ParentEmail})
+	invoice, err := u.billing.GenerateInvoice(ctx, billing.InvoiceRequest{TenantID: tenantID, StudentID: request.StudentID, ClassID: request.ClassID, EnrollmentID: enrollment.ID, ParentID: request.ParentID, BillingCycle: request.BillingCycle, SubtotalAmount: enrollment.GrossAmount, IdempotencyKey: key, Title: class.Name, SenderEmail: request.ParentEmail, PrivateScheduleRequest: true})
 	if err != nil {
 		failure := (&enrollmentUsecase{enrollmentRepo: u.enrollments, txManager: u.tx}).invoiceFailure(ctx, enrollment.ID, err)
 		if errors.Is(failure, domain.ErrPlatformFeeExceedsGross) {

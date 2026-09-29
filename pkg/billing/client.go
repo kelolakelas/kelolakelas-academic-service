@@ -39,6 +39,9 @@ type InvoiceRequest struct {
 	// invoices and payment reminders. Empty means unknown and keeps the request
 	// compatible with rollouts whose tokens do not carry the claim yet.
 	SenderEmail string `json:"sender_email,omitempty"`
+	// PrivateScheduleRequest is set only by the private approval flow, whose
+	// parent email was captured from the authenticated parent's token.
+	PrivateScheduleRequest bool `json:"private_schedule_request,omitempty"`
 }
 
 type InvoiceResponse struct {
