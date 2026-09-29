@@ -26,6 +26,10 @@ func TestGenerateInvoiceUsesInternalCredentialAndIdempotencyKey(t *testing.T) {
 		if got := r.Header.Get("Idempotency-Key"); got != "same-key" {
 			t.Fatalf("idempotency key=%q", got)
 		}
+		var body map[string]any
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil || body["payment_method"] != "NQ" {
+			t.Fatalf("invoice body=%v decode error=%v", body, err)
+		}
 		_ = json.NewEncoder(w).Encode(map[string]any{"data": map[string]any{
 			"transaction_id":       enrollmentID,
 			"checkout_session_url": "https://checkout.test/session",
@@ -34,7 +38,7 @@ func TestGenerateInvoiceUsesInternalCredentialAndIdempotencyKey(t *testing.T) {
 	}))
 	defer server.Close()
 
-	response, err := NewClient(server.URL, credential).GenerateInvoice(t.Context(), InvoiceRequest{EnrollmentID: enrollmentID, IdempotencyKey: "same-key"})
+	response, err := NewClient(server.URL, credential).GenerateInvoice(t.Context(), InvoiceRequest{EnrollmentID: enrollmentID, IdempotencyKey: "same-key", PaymentMethod: "NQ"})
 	if err != nil {
 		t.Fatal(err)
 	}

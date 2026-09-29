@@ -33,6 +33,7 @@ type InvoiceRequest struct {
 	DiscountAmount int64     `json:"discount_amount"`
 	PlatformFee    int64     `json:"platform_fee"`
 	IdempotencyKey string    `json:"idempotency_key,omitempty"`
+	PaymentMethod  string    `json:"payment_method,omitempty"`
 	Title          string    `json:"title"`
 	// SenderEmail is the parent's email claim forwarded so billing can address
 	// invoices and payment reminders. Empty means unknown and keeps the request

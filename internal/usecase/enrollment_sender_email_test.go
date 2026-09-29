@@ -33,14 +33,14 @@ func TestEnrollPublicForwardsSenderEmailOnFreshEnrollment(t *testing.T) {
 		billingMock, marketplaceTx{},
 	)
 
-	if _, err := uc.EnrollPublic(context.Background(), parentID, classID, &domain.PublicEnrollmentRequest{StudentID: studentID, BillingCycle: "monthly", SenderEmail: "parent@example.com"}, "kel75-fresh"); err != nil {
+	if _, err := uc.EnrollPublic(context.Background(), parentID, classID, &domain.PublicEnrollmentRequest{StudentID: studentID, BillingCycle: "monthly", SenderEmail: "parent@example.com", PaymentMethod: "SP"}, "kel75-fresh"); err != nil {
 		t.Fatalf("EnrollPublic() error = %v", err)
 	}
 	if len(billingMock.requests) != 1 {
 		t.Fatalf("invoice requests = %d, want 1", len(billingMock.requests))
 	}
-	if billingMock.requests[0].SenderEmail != "parent@example.com" {
-		t.Fatalf("sender_email = %q, want parent@example.com", billingMock.requests[0].SenderEmail)
+	if billingMock.requests[0].SenderEmail != "parent@example.com" || billingMock.requests[0].PaymentMethod != "SP" {
+		t.Fatalf("invoice request = %+v, want email and SP", billingMock.requests[0])
 	}
 }
 
@@ -59,19 +59,36 @@ func TestEnrollPublicReplayForwardsSenderEmail(t *testing.T) {
 		billingMock, marketplaceTx{},
 	)
 
-	if _, err := uc.EnrollPublic(context.Background(), parentID, classID, &domain.PublicEnrollmentRequest{StudentID: studentID, BillingCycle: "monthly", SenderEmail: "replay@example.com"}, "kel75-replay"); err != nil {
+	if _, err := uc.EnrollPublic(context.Background(), parentID, classID, &domain.PublicEnrollmentRequest{StudentID: studentID, BillingCycle: "monthly", SenderEmail: "replay@example.com", PaymentMethod: "VA"}, "kel75-replay"); err != nil {
 		t.Fatalf("EnrollPublic() replay error = %v", err)
 	}
 	if len(billingMock.requests) != 1 {
 		t.Fatalf("invoice requests = %d, want 1", len(billingMock.requests))
 	}
-	if billingMock.requests[0].SenderEmail != "replay@example.com" {
-		t.Fatalf("sender_email = %q, want replay@example.com on the regenerated invoice", billingMock.requests[0].SenderEmail)
+	if billingMock.requests[0].SenderEmail != "replay@example.com" || billingMock.requests[0].PaymentMethod != "VA" {
+		t.Fatalf("replay invoice = %+v, want email and VA", billingMock.requests[0])
 	}
 }
 
 // Tenant-created enrollments have no verified parent token, so EnrollStudent must
 // keep its current behaviour and never invent a sender email.
+func TestEnrollStudentForwardsPaymentMethod(t *testing.T) {
+	tenantID, studentID, classID := uuid.New(), uuid.New(), uuid.New()
+	billingMock := &emailInvoiceBilling{}
+	uc := NewEnrollmentUsecase(
+		&marketplaceEnrollmentRepo{},
+		&marketplaceStudentRepo{student: &domain.Student{ID: studentID, ParentID: uuid.New()}},
+		&marketplaceClassRepo{class: &domain.Class{ID: classID, TenantID: tenantID, Price: 250000, IsPublished: true, EnrollmentStatus: "open"}},
+		billingMock, marketplaceTx{},
+	)
+	if _, err := uc.EnrollStudent(context.Background(), tenantID, &domain.EnrollStudentRequest{StudentID: studentID, ClassID: classID, BillingCycle: "monthly", IdempotencyKey: "tenant-channel", PaymentMethod: "BC"}); err != nil {
+		t.Fatal(err)
+	}
+	if len(billingMock.requests) != 1 || billingMock.requests[0].PaymentMethod != "BC" {
+		t.Fatalf("invoice requests = %+v", billingMock.requests)
+	}
+}
+
 func TestEnrollStudentDoesNotForwardSenderEmail(t *testing.T) {
 	tenantID, studentID, classID := uuid.New(), uuid.New(), uuid.New()
 	billingMock := &emailInvoiceBilling{}
@@ -88,7 +105,7 @@ func TestEnrollStudentDoesNotForwardSenderEmail(t *testing.T) {
 	if len(billingMock.requests) != 1 {
 		t.Fatalf("invoice requests = %d, want 1", len(billingMock.requests))
 	}
-	if billingMock.requests[0].SenderEmail != "" {
-		t.Fatalf("sender_email = %q, want empty for the tenant-created path", billingMock.requests[0].SenderEmail)
+	if billingMock.requests[0].SenderEmail != "" || billingMock.requests[0].PaymentMethod != "" {
+		t.Fatalf("tenant invoice = %+v, want legacy empty email and method", billingMock.requests[0])
 	}
 }

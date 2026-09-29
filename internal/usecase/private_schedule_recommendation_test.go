@@ -47,7 +47,7 @@ func TestPrivateRecommendationAcceptanceReplayAndGuards(t *testing.T) {
 	if err != nil || result == nil || result.Payment.CheckoutSessionURL != b.response.CheckoutSessionURL || request.Status != "approved" {
 		t.Fatalf("accept result=%+v err=%v status=%s", result, err, request.Status)
 	}
-	if er.creates != 1 || len(sr.schedules) != 1 || sr.schedules[0].DayOfWeek != alternative.DayOfWeek || sr.schedules[0].Capacity != 1 || *sr.schedules[0].EnrollmentID != er.enrollment.ID || b.request.IdempotencyKey != "private-request:"+request.ID.String() {
+	if er.creates != 1 || len(sr.schedules) != 1 || sr.schedules[0].DayOfWeek != alternative.DayOfWeek || sr.schedules[0].Capacity != 1 || *sr.schedules[0].EnrollmentID != er.enrollment.ID || b.request.IdempotencyKey != "private-request:"+request.ID.String() || b.request.PaymentMethod != "" {
 		t.Fatalf("enrollment creates=%d schedules=%+v invoice=%+v", er.creates, sr.schedules, b.request)
 	}
 	again, err := u.AcceptRecommendation(context.Background(), parent, request.ID)

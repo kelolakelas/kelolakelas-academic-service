@@ -83,20 +83,29 @@ func TestParentCheckoutForwardsEmailClaimFromToken(t *testing.T) {
 	enrollment := &emailRecordingEnrollmentUsecase{}
 	router := emailClaimRouter(enrollment)
 
-	res := doEmailClaimEnroll(router, token, `{"student_id":"`+uuid.New().String()+`","billing_cycle":"monthly"}`)
+	res := doEmailClaimEnroll(router, token, `{"student_id":"`+uuid.New().String()+`","billing_cycle":"monthly","payment_method":"SP"}`)
 	if res.Code != http.StatusCreated {
 		t.Fatalf("status=%d body=%s, want 201", res.Code, res.Body.String())
 	}
 	if enrollment.calls != 1 {
 		t.Fatalf("EnrollPublic calls=%d, want 1", enrollment.calls)
 	}
-	if enrollment.lastRequest == nil || enrollment.lastRequest.SenderEmail != "parent@example.com" {
+	if enrollment.lastRequest == nil || enrollment.lastRequest.SenderEmail != "parent@example.com" || enrollment.lastRequest.PaymentMethod != "SP" {
 		t.Fatalf("sender_email=%+v, want the token's email claim", enrollment.lastRequest)
 	}
 }
 
 // The email claim must survive the same idempotent replay path the use case takes
 // for a pending enrollment: the handler forwards it on every EnrollPublic call.
+func TestParentCheckoutRejectsUnknownPaymentMethodBeforeUsecase(t *testing.T) {
+	token := signToken(t, middleware.Claims{UserID: uuid.NewString(), IsParent: true})
+	enrollment := &emailRecordingEnrollmentUsecase{}
+	res := doEmailClaimEnroll(emailClaimRouter(enrollment), token, `{"student_id":"`+uuid.NewString()+`","billing_cycle":"monthly","payment_method":"OV"}`)
+	if res.Code != http.StatusBadRequest || enrollment.calls != 0 {
+		t.Fatalf("status=%d usecase calls=%d", res.Code, enrollment.calls)
+	}
+}
+
 func TestParentCheckoutReplayStillForwardsEmailClaim(t *testing.T) {
 	parentID := uuid.New()
 	token := signToken(t, middleware.Claims{UserID: parentID.String(), Email: " replay@example.com ", IsParent: true})

@@ -144,7 +144,7 @@ func TestPrivateApprovalSuccessReplayAndFailures(t *testing.T) {
 			if err != nil || result == nil || result.Enrollment.ID != er.enrollment.ID || result.Payment.CheckoutSessionURL != b.response.CheckoutSessionURL || request.Status != "approved" {
 				t.Fatalf("approve result=%+v error=%v request=%s", result, err, request.Status)
 			}
-			if er.creates != 1 || len(sr.schedules) != 2 || b.request.SenderEmail != request.ParentEmail || b.request.IdempotencyKey != "private-request:"+request.ID.String() {
+			if er.creates != 1 || len(sr.schedules) != 2 || b.request.SenderEmail != request.ParentEmail || b.request.PaymentMethod != "" || b.request.IdempotencyKey != "private-request:"+request.ID.String() {
 				t.Fatalf("creates=%d schedules=%d invoice=%+v", er.creates, len(sr.schedules), b.request)
 			}
 			for _, s := range sr.schedules {

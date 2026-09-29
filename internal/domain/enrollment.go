@@ -11,6 +11,7 @@ import (
 var ErrInvalidEnrollmentStatus = errors.New("invalid enrollment status")
 var ErrIdempotencyConflict = errors.New("idempotency key already used with a different request")
 var ErrParentRequired = errors.New("parent authentication is required")
+var ErrInvalidPaymentMethod = errors.New("invalid payment method")
 var ErrStudentOwnership = errors.New("student does not belong to parent")
 var ErrInvalidEnrollmentTransition = errors.New("invalid enrollment transition")
 var ErrScheduleNotFound = errors.New("schedule not found")
@@ -79,13 +80,15 @@ type EnrollStudentRequest struct {
 	ClassID        uuid.UUID  `json:"class_id" binding:"required"`
 	BillingCycle   string     `json:"billing_cycle" binding:"required,oneof=monthly quarterly yearly"`
 	ScheduleID     *uuid.UUID `json:"schedule_id,omitempty"`
+	PaymentMethod  string     `json:"payment_method,omitempty" binding:"omitempty,oneof=VC VA BC SP NQ"`
 	IdempotencyKey string     `json:"-"`
 }
 
 type PublicEnrollmentRequest struct {
-	StudentID    uuid.UUID  `json:"student_id" binding:"required"`
-	BillingCycle string     `json:"billing_cycle" binding:"required,oneof=monthly quarterly yearly"`
-	ScheduleID   *uuid.UUID `json:"schedule_id,omitempty"`
+	StudentID     uuid.UUID  `json:"student_id" binding:"required"`
+	BillingCycle  string     `json:"billing_cycle" binding:"required,oneof=monthly quarterly yearly"`
+	ScheduleID    *uuid.UUID `json:"schedule_id,omitempty"`
+	PaymentMethod string     `json:"payment_method,omitempty" binding:"omitempty,oneof=VC VA BC SP NQ"`
 	// SenderEmail is filled in by the handler from the verified JWT email claim
 	// (KEL-75). The `json:"-"` binding keeps a client from supplying it through
 	// the request body; it is never read from headers either.
