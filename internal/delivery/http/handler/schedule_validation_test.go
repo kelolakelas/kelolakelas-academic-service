@@ -59,3 +59,27 @@ func TestCreateInitialSchedulesRejectsBindingBoundsAsHTTP400(t *testing.T) {
 		})
 	}
 }
+
+// KEL-132: a private capacity violation from the use case must answer HTTP 400
+// with the stable validation message, through the same direct-API path.
+func TestCreateInitialSchedulesMapsPrivateCapacityErrorToHTTP400(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	handler := NewScheduleHandler(failingScheduleMethodsUsecase{err: usecase.ErrPrivateScheduleCapacity})
+	router := gin.New()
+	router.POST("/schedules", func(c *gin.Context) {
+		c.Set("tenant_id", uuid.NewString())
+		handler.CreateInitialSchedules(c)
+	})
+	body := `{"class_id":"` + uuid.NewString() + `","schedules":[{"enrollment_id":"` + uuid.NewString() + `","capacity":2,"day_of_week":1,"start_time":"09:00","end_time":"10:00"}]}`
+	response := httptest.NewRecorder()
+	router.ServeHTTP(response, httptest.NewRequest(http.MethodPost, "/schedules", bytes.NewBufferString(body)))
+	if response.Code != http.StatusBadRequest {
+		t.Fatalf("status=%d, want %d; body=%s", response.Code, http.StatusBadRequest, response.Body.String())
+	}
+	if !strings.Contains(response.Body.String(), usecase.ErrPrivateScheduleCapacity.Error()) {
+		t.Fatalf("response=%s, want private capacity message", response.Body.String())
+	}
+	if !strings.Contains(response.Body.String(), `"status":"error"`) || !strings.Contains(response.Body.String(), `"data":null`) {
+		t.Fatalf("response=%s, want existing error envelope", response.Body.String())
+	}
+}

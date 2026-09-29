@@ -112,7 +112,7 @@ func (h *ScheduleHandler) CreateInitialSchedules(c *gin.Context) {
 			c.JSON(http.StatusForbidden, gin.H{"status": "error", "message": err.Error(), "data": nil})
 			return
 		}
-		if errors.Is(err, usecase.ErrEnrollmentRequired) || errors.Is(err, usecase.ErrInvalidEnrollmentClass) || errors.Is(err, usecase.ErrInvalidEnrollmentTenant) {
+		if errors.Is(err, usecase.ErrEnrollmentRequired) || errors.Is(err, usecase.ErrInvalidEnrollmentClass) || errors.Is(err, usecase.ErrInvalidEnrollmentTenant) || errors.Is(err, usecase.ErrPrivateScheduleCapacity) {
 			c.JSON(http.StatusBadRequest, gin.H{
 				"status":  "error",
 				"message": err.Error(),
