@@ -5421,6 +5421,16 @@ const docTemplate = `{
                 "class_id": {
                     "type": "string"
                 },
+                "payment_method": {
+                    "type": "string",
+                    "enum": [
+                        "VC",
+                        "VA",
+                        "BC",
+                        "SP",
+                        "NQ"
+                    ]
+                },
                 "schedule_id": {
                     "type": "string"
                 },
@@ -5786,6 +5796,16 @@ const docTemplate = `{
                         "monthly",
                         "quarterly",
                         "yearly"
+                    ]
+                },
+                "payment_method": {
+                    "type": "string",
+                    "enum": [
+                        "VC",
+                        "VA",
+                        "BC",
+                        "SP",
+                        "NQ"
                     ]
                 },
                 "schedule_id": {

@@ -484,6 +484,14 @@ definitions:
         type: string
       class_id:
         type: string
+      payment_method:
+        enum:
+        - VC
+        - VA
+        - BC
+        - SP
+        - NQ
+        type: string
       schedule_id:
         type: string
       student_id:
@@ -739,6 +747,14 @@ definitions:
         - monthly
         - quarterly
         - yearly
+        type: string
+      payment_method:
+        enum:
+        - VC
+        - VA
+        - BC
+        - SP
+        - NQ
         type: string
       schedule_id:
         type: string

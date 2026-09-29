@@ -108,11 +108,14 @@ func (h *EnrollmentHandler) Create(c *gin.Context) {
 		// KEL-75: the email claim from the verified token is the only source for the
 		// billing contact; the request body and headers are never consulted. The
 		// middleware has already normalised the value (TrimSpace, case preserved).
-		publicReq := &domain.PublicEnrollmentRequest{StudentID: req.StudentID, BillingCycle: req.BillingCycle, ScheduleID: req.ScheduleID, SenderEmail: c.GetString("email")}
+		publicReq := &domain.PublicEnrollmentRequest{StudentID: req.StudentID, BillingCycle: req.BillingCycle, ScheduleID: req.ScheduleID, PaymentMethod: req.PaymentMethod, SenderEmail: c.GetString("email")}
 		result, enrollErr := h.enrollmentUsecase.EnrollPublic(c.Request.Context(), parentID, req.ClassID, publicReq, key)
 		if enrollErr != nil {
 			status := http.StatusUnprocessableEntity
 			message := enrollErr.Error()
+			if errors.Is(enrollErr, domain.ErrInvalidPaymentMethod) {
+				status = http.StatusBadRequest
+			}
 			if errors.Is(enrollErr, domain.ErrPrivateCheckout) {
 				message = domain.ErrPrivateCheckout.Error()
 			}
@@ -147,7 +150,9 @@ func (h *EnrollmentHandler) Create(c *gin.Context) {
 		status := http.StatusInternalServerError
 		message := "Failed to create enrollment"
 		body := gin.H{"status": "error"}
-		if errors.Is(err, domain.ErrIdempotencyConflict) {
+		if errors.Is(err, domain.ErrInvalidPaymentMethod) {
+			status, message = http.StatusBadRequest, domain.ErrInvalidPaymentMethod.Error()
+		} else if errors.Is(err, domain.ErrIdempotencyConflict) {
 			status = http.StatusConflict
 		} else if errors.Is(err, domain.ErrDuplicateEnrollment) {
 			status, message = http.StatusConflict, domain.ErrDuplicateEnrollment.Error()
@@ -278,6 +283,8 @@ func (h *EnrollmentHandler) Cancel(c *gin.Context) {
 
 func catalogEnrollmentErrorStatus(err error) int {
 	switch {
+	case errors.Is(err, domain.ErrInvalidPaymentMethod):
+		return http.StatusBadRequest
 	case errors.Is(err, domain.ErrIdempotencyConflict), errors.Is(err, domain.ErrScheduleFull), errors.Is(err, domain.ErrDuplicateEnrollment):
 		return http.StatusConflict
 	case errors.Is(err, domain.ErrPrivateCheckout), errors.Is(err, domain.ErrStudentOwnership), errors.Is(err, domain.ErrClassNotEnrollable), errors.Is(err, domain.ErrScheduleClassMismatch), errors.Is(err, domain.ErrScheduleRequired), errors.Is(err, domain.ErrScheduleEnded), errors.Is(err, domain.ErrPlatformFeeExceedsGross):

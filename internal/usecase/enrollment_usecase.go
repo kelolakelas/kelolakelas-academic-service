@@ -166,6 +166,12 @@ func NewEnrollmentUsecase(enrollmentRepo repository.EnrollmentRepository, studen
 }
 
 func (u *enrollmentUsecase) EnrollPublic(ctx context.Context, parentID, classID uuid.UUID, req *domain.PublicEnrollmentRequest, idempotencyKey string) (*domain.PublicEnrollmentResponse, error) {
+	// Calls outside HTTP binding must not reserve a seat for a rejected channel.
+	switch req.PaymentMethod {
+	case "", "VC", "VA", "BC", "SP", "NQ":
+	default:
+		return nil, domain.ErrInvalidPaymentMethod
+	}
 	if parentID == uuid.Nil {
 		return nil, domain.ErrParentRequired
 	}
@@ -194,7 +200,7 @@ func (u *enrollmentUsecase) EnrollPublic(ctx context.Context, parentID, classID 
 			if studentErr != nil || classErr != nil {
 				return nil, fmt.Errorf("recover enrollment dependencies")
 			}
-			invoice, invoiceErr := u.billingClient.GenerateInvoice(ctx, billing.InvoiceRequest{TenantID: existing.TenantID, StudentID: existing.StudentID, ClassID: existing.ClassID, EnrollmentID: existing.ID, ParentID: parentID, BillingCycle: existing.BillingCycle, SubtotalAmount: class.Price, IdempotencyKey: idempotencyKey, Title: class.Name, SenderEmail: req.SenderEmail})
+			invoice, invoiceErr := u.billingClient.GenerateInvoice(ctx, billing.InvoiceRequest{TenantID: existing.TenantID, StudentID: existing.StudentID, ClassID: existing.ClassID, EnrollmentID: existing.ID, ParentID: parentID, BillingCycle: existing.BillingCycle, SubtotalAmount: class.Price, IdempotencyKey: idempotencyKey, Title: class.Name, SenderEmail: req.SenderEmail, PaymentMethod: req.PaymentMethod})
 			if invoiceErr != nil {
 				return nil, u.invoiceFailure(ctx, existing.ID, invoiceErr)
 			}
@@ -267,7 +273,7 @@ func (u *enrollmentUsecase) EnrollPublic(ctx context.Context, parentID, classID 
 		}
 		return nil, err
 	}
-	invoice, err := u.billingClient.GenerateInvoice(ctx, billing.InvoiceRequest{TenantID: class.TenantID, StudentID: student.ID, ClassID: class.ID, EnrollmentID: enrollment.ID, ParentID: parentID, BillingCycle: req.BillingCycle, SubtotalAmount: class.Price, IdempotencyKey: idempotencyKey, Title: class.Name, SenderEmail: req.SenderEmail})
+	invoice, err := u.billingClient.GenerateInvoice(ctx, billing.InvoiceRequest{TenantID: class.TenantID, StudentID: student.ID, ClassID: class.ID, EnrollmentID: enrollment.ID, ParentID: parentID, BillingCycle: req.BillingCycle, SubtotalAmount: class.Price, IdempotencyKey: idempotencyKey, Title: class.Name, SenderEmail: req.SenderEmail, PaymentMethod: req.PaymentMethod})
 	if err != nil {
 		return nil, u.invoiceFailure(ctx, enrollment.ID, err)
 	}
@@ -345,6 +351,11 @@ func (u *enrollmentUsecase) publicEnrollmentResponse(enrollment *domain.Enrollme
 }
 
 func (u *enrollmentUsecase) EnrollStudent(ctx context.Context, tenantID uuid.UUID, req *domain.EnrollStudentRequest) (*domain.EnrollmentResponse, error) {
+	switch req.PaymentMethod {
+	case "", "VC", "VA", "BC", "SP", "NQ":
+	default:
+		return nil, domain.ErrInvalidPaymentMethod
+	}
 	if req.IdempotencyKey == "" {
 		return nil, errors.New("idempotency key is required")
 	}
@@ -397,7 +408,7 @@ func (u *enrollmentUsecase) EnrollStudent(ctx context.Context, tenantID uuid.UUI
 	} else if err := create(ctx); err != nil {
 		return nil, fmt.Errorf("create enrollment: %w", err)
 	}
-	invoice, err := u.billingClient.GenerateInvoice(ctx, billing.InvoiceRequest{TenantID: tenantID, StudentID: req.StudentID, ClassID: req.ClassID, EnrollmentID: enrollment.ID, ParentID: student.ParentID, BillingCycle: req.BillingCycle, SubtotalAmount: class.Price, IdempotencyKey: req.IdempotencyKey, Title: class.Name})
+	invoice, err := u.billingClient.GenerateInvoice(ctx, billing.InvoiceRequest{TenantID: tenantID, StudentID: req.StudentID, ClassID: req.ClassID, EnrollmentID: enrollment.ID, ParentID: student.ParentID, BillingCycle: req.BillingCycle, SubtotalAmount: class.Price, IdempotencyKey: req.IdempotencyKey, Title: class.Name, PaymentMethod: req.PaymentMethod})
 	if err != nil {
 		return nil, u.invoiceFailure(ctx, enrollment.ID, err)
 	}
