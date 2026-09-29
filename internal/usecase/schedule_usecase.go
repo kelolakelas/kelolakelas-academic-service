@@ -22,6 +22,13 @@ var (
 	ErrInvalidEnrollmentClass  = errors.New("enrollment does not belong to the specified class")
 	ErrInvalidEnrollmentTenant = errors.New("enrollment does not belong to the specified tenant")
 	ErrInvalidEffectiveDate    = errors.New("effective_date outside schedule validity")
+	// ErrPrivateScheduleCapacity rejects a private-class schedule whose capacity
+	// is not exactly one student. A private schedule serves a single enrollment,
+	// so any other capacity is rejected at the use case boundary (never
+	// silent-clamped) for both tenant API calls and direct callers. Group
+	// schedules are unaffected. Historic private rows with capacity > 1 stay
+	// readable; this error only blocks new writes.
+	ErrPrivateScheduleCapacity = errors.New("private class schedules must have capacity 1")
 )
 
 type scheduleUsecase struct {
@@ -219,6 +226,12 @@ func (u *scheduleUsecase) CreateInitialSchedules(
 				// IF Class.type == "group": Explicitly set enrollment_id to NULL
 				enrollmentID = nil
 			} else if class.Type == "private" {
+				// A private schedule serves exactly one student, so a capacity
+				// other than 1 is rejected before anything is written. Group
+				// schedules accept any valid capacity and are unaffected.
+				if item.Capacity != 1 {
+					return ErrPrivateScheduleCapacity
+				}
 				// IF Class.type == "private": Require enrollment_id from the payload
 				if item.EnrollmentID == nil {
 					return ErrEnrollmentRequired
