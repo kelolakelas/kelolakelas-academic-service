@@ -90,14 +90,18 @@ func registerRoutes(r *gin.Engine, h routeHandlers, jwtSecret, internalCredentia
 		apiV1.PUT("/schedules/:id/tutor-permanent", middleware.RequirePermission(permissionClient, "schedule:update"), h.schedule.ChangeTutorPermanent)
 
 		// Session Routes
-		apiV1.GET("/sessions", h.session.ListSessions)
-		apiV1.GET("/sessions/:id", h.session.GetSession)
+		// Reads are shared by tenant members and parents (ADR 0002): members need
+		// schedule:read, parent tokens keep their existing handler behaviour.
+		apiV1.GET("/sessions", middleware.RequirePermissionForTenantResource(permissionClient, "schedule:read"), h.session.ListSessions)
+		apiV1.GET("/sessions/:id", middleware.RequirePermissionForTenantResource(permissionClient, "schedule:read"), h.session.GetSession)
 		apiV1.DELETE("/sessions/:id", middleware.RequirePermission(permissionClient, "schedule:update"), h.session.DeleteSession)
 		apiV1.POST("/sessions/reschedule", middleware.RequirePermission(permissionClient, "schedule:update"), h.schedule.RescheduleSession)
 		apiV1.POST("/sessions/:id/reschedule", middleware.RequirePermission(permissionClient, "schedule:update"), h.schedule.RescheduleSession)
 		apiV1.PATCH("/sessions/substitute-tutor", middleware.RequirePermission(permissionClient, "schedule:update"), h.schedule.ChangeTutorTemporary)
 		apiV1.PATCH("/sessions/:id/substitute-tutor", middleware.RequirePermission(permissionClient, "schedule:update"), h.schedule.ChangeTutorTemporary)
-		apiV1.GET("/sessions/:id/attendees", h.schedule.GetSessionAttendees)
+		// The attendee list is read alongside the session itself, so it carries the
+		// same schedule:read guard and parent-token behaviour as the session reads.
+		apiV1.GET("/sessions/:id/attendees", middleware.RequirePermissionForTenantResource(permissionClient, "schedule:read"), h.schedule.GetSessionAttendees)
 	}
 	internal := r.Group("/internal")
 	internal.Use(middleware.InternalServiceAuth(internalCredential))

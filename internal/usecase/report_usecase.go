@@ -17,8 +17,11 @@ type ReportUsecase interface {
 	List(ctx context.Context, tenantID uuid.UUID, query domain.ReportQuery) (*domain.ReportListResponse, error)
 	Create(ctx context.Context, tenantID, memberID uuid.UUID, req *domain.CreateReportRequest) (*domain.Report, error)
 	Get(ctx context.Context, tenantID, id uuid.UUID) (*domain.Report, error)
-	Update(ctx context.Context, tenantID, id uuid.UUID, req *domain.UpdateReportRequest) (*domain.Report, error)
-	Delete(ctx context.Context, tenantID, id uuid.UUID) error
+	// Update and Delete take the caller's member claim so a tutor who does not
+	// teach the report's class is rejected with ErrReportForbidden, exactly
+	// like Create (KEL-135).
+	Update(ctx context.Context, tenantID, memberID, id uuid.UUID, req *domain.UpdateReportRequest) (*domain.Report, error)
+	Delete(ctx context.Context, tenantID, memberID, id uuid.UUID) error
 }
 type reportUsecase struct {
 	repo        repository.ReportRepository
@@ -62,10 +65,20 @@ func (u *reportUsecase) Create(ctx context.Context, tenantID, memberID uuid.UUID
 func (u *reportUsecase) Get(ctx context.Context, tenantID, id uuid.UUID) (*domain.Report, error) {
 	return u.repo.GetByIDForTenant(ctx, tenantID, id)
 }
-func (u *reportUsecase) Update(ctx context.Context, tenantID, id uuid.UUID, req *domain.UpdateReportRequest) (*domain.Report, error) {
+func (u *reportUsecase) Update(ctx context.Context, tenantID, memberID, id uuid.UUID, req *domain.UpdateReportRequest) (*domain.Report, error) {
 	item, err := u.Get(ctx, tenantID, id)
 	if err != nil {
 		return nil, err
+	}
+	// KEL-135: same assignment rule as Create — only a tutor teaching the
+	// report's class may change it. The check reads the stored enrollment, so
+	// a caller cannot retarget the report to a class they teach.
+	assigned, err := u.enrollments.IsTutorForEnrollment(ctx, item.EnrollmentID, memberID)
+	if err != nil {
+		return nil, err
+	}
+	if !assigned {
+		return nil, domain.ErrReportForbidden
 	}
 	item.Title, item.EvaluationNotes, item.Score, item.UpdatedAt = req.Title, req.EvaluationNotes, req.Score, time.Now()
 	if err := u.repo.Update(ctx, item); err != nil {
@@ -73,13 +86,22 @@ func (u *reportUsecase) Update(ctx context.Context, tenantID, id uuid.UUID, req 
 	}
 	return item, nil
 }
-func (u *reportUsecase) Delete(ctx context.Context, tenantID, id uuid.UUID) error {
+func (u *reportUsecase) Delete(ctx context.Context, tenantID, memberID, id uuid.UUID) error {
 	item, err := u.Get(ctx, tenantID, id)
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return err
 	}
 	if err != nil {
 		return err
+	}
+	// KEL-135: same assignment rule as Create — only a tutor teaching the
+	// report's class may delete it.
+	assigned, err := u.enrollments.IsTutorForEnrollment(ctx, item.EnrollmentID, memberID)
+	if err != nil {
+		return err
+	}
+	if !assigned {
+		return domain.ErrReportForbidden
 	}
 	return u.repo.Delete(ctx, item.ID)
 }

@@ -179,9 +179,19 @@ func (h *ReportHandler) Update(c *gin.Context) {
 		c.JSON(400, gin.H{"status": "error", "message": e.Error(), "data": nil})
 		return
 	}
-	r, e := h.usecase.Update(c.Request.Context(), tenant, id, &req)
+	member, e := uuid.Parse(c.GetString("member_id"))
+	if e != nil {
+		c.JSON(401, gin.H{"status": "error", "message": "Invalid user context", "data": nil})
+		return
+	}
+	r, e := h.usecase.Update(c.Request.Context(), tenant, member, id, &req)
 	if errors.Is(e, gorm.ErrRecordNotFound) {
 		c.JSON(404, gin.H{"status": "error", "message": "Report not found", "data": nil})
+		return
+	}
+	// KEL-135: a tutor who does not teach the report's class cannot change it.
+	if errors.Is(e, domain.ErrReportForbidden) {
+		c.JSON(403, gin.H{"status": "error", "message": "Tutor is not assigned to this enrollment", "data": nil})
 		return
 	}
 	if e != nil {
@@ -212,9 +222,19 @@ func (h *ReportHandler) Delete(c *gin.Context) {
 		c.JSON(400, gin.H{"status": "error", "message": "Invalid report ID", "data": nil})
 		return
 	}
-	e = h.usecase.Delete(c.Request.Context(), tenant, id)
+	member, e := uuid.Parse(c.GetString("member_id"))
+	if e != nil {
+		c.JSON(401, gin.H{"status": "error", "message": "Invalid user context", "data": nil})
+		return
+	}
+	e = h.usecase.Delete(c.Request.Context(), tenant, member, id)
 	if errors.Is(e, gorm.ErrRecordNotFound) {
 		c.JSON(404, gin.H{"status": "error", "message": "Report not found", "data": nil})
+		return
+	}
+	// KEL-135: a tutor who does not teach the report's class cannot delete it.
+	if errors.Is(e, domain.ErrReportForbidden) {
+		c.JSON(403, gin.H{"status": "error", "message": "Tutor is not assigned to this enrollment", "data": nil})
 		return
 	}
 	if e != nil {

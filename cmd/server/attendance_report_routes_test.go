@@ -80,11 +80,11 @@ func (u *routeReportUsecase) Get(context.Context, uuid.UUID, uuid.UUID) (*domain
 	u.calls++
 	return &domain.Report{}, nil
 }
-func (u *routeReportUsecase) Update(context.Context, uuid.UUID, uuid.UUID, *domain.UpdateReportRequest) (*domain.Report, error) {
+func (u *routeReportUsecase) Update(context.Context, uuid.UUID, uuid.UUID, uuid.UUID, *domain.UpdateReportRequest) (*domain.Report, error) {
 	u.calls++
 	return &domain.Report{}, nil
 }
-func (u *routeReportUsecase) Delete(context.Context, uuid.UUID, uuid.UUID) error {
+func (u *routeReportUsecase) Delete(context.Context, uuid.UUID, uuid.UUID, uuid.UUID) error {
 	u.calls++
 	return nil
 }

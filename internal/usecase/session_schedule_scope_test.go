@@ -30,6 +30,32 @@ func (m *scopeTxStub) WithTransaction(ctx context.Context, fn func(context.Conte
 	return fn(ctx)
 }
 
+// scopeMembershipStub answers the KEL-135 substitute-tutor membership probe:
+// every candidate is an active member of the calling tenant, so the historic
+// scope fixtures keep exercising the session-ownership path. Dedicated
+// substitute-tutor tests cover cross-tenant, inactive, unknown, and
+// fail-closed membership verdicts.
+type scopeMembershipStub struct {
+	calls    int
+	tenants  []string
+	members  []string
+	active   bool
+	err      error
+	noClient bool
+}
+
+func (m *scopeMembershipStub) CheckActiveMember(_ context.Context, tenantID, memberID string) (bool, error) {
+	m.calls++
+	m.tenants = append(m.tenants, tenantID)
+	m.members = append(m.members, memberID)
+	if m.err != nil {
+		return false, m.err
+	}
+	return m.active, nil
+}
+
+func (m *scopeMembershipStub) Close() error { return nil }
+
 // scopeScheduleRepo filters by tenant the same way GetByIDForTenant does: a
 // schedule is only visible to the tenant that owns its class.
 type scopeScheduleRepo struct {
@@ -296,6 +322,7 @@ type scopeFixture struct {
 	schedules   *scopeScheduleRepo
 	sessions    *scopeSessionRepo
 	enrollments *scopeEnrollmentRepo
+	membership  *scopeMembershipStub
 	usecase     ScheduleUsecase
 }
 
@@ -328,6 +355,7 @@ func newScopeFixture() *scopeFixture {
 	schedules := &scopeScheduleRepo{ownerTenant: ownTenant, schedule: schedule}
 	sessions := newScopeSessionRepo(ownTenant, session)
 	enrollments := newScopeEnrollmentRepo(ownTenant)
+	membership := &scopeMembershipStub{active: true}
 
 	return &scopeFixture{
 		ownTenant:   ownTenant,
@@ -339,7 +367,8 @@ func newScopeFixture() *scopeFixture {
 		schedules:   schedules,
 		sessions:    sessions,
 		enrollments: enrollments,
-		usecase:     NewScheduleUsecase(tx, nil, schedules, sessions, enrollments),
+		membership:  membership,
+		usecase:     NewScheduleUsecase(tx, nil, schedules, sessions, enrollments, membership),
 	}
 }
 

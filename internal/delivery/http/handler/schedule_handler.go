@@ -328,6 +328,25 @@ func (h *ScheduleHandler) ChangeTutorTemporary(c *gin.Context) {
 			})
 			return
 		}
+		// KEL-135: the substitute tutor must be an active member of the calling
+		// tenant (validation, 400); an unverifiable membership answer is
+		// reported as 503 so it cannot be mistaken for an eligible tutor.
+		if errors.Is(err, usecase.ErrSubstituteTutorNotEligible) {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"status":  "error",
+				"message": err.Error(),
+				"data":    nil,
+			})
+			return
+		}
+		if errors.Is(err, usecase.ErrSubstituteTutorUnavailable) {
+			c.JSON(http.StatusServiceUnavailable, gin.H{
+				"status":  "error",
+				"message": err.Error(),
+				"data":    nil,
+			})
+			return
+		}
 		logInternalError(c.Request.Context(), "update substitute tutor", err)
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"status":  "error",
@@ -426,6 +445,7 @@ func (h *ScheduleHandler) ChangeTutorPermanent(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Security BearerAuth
+// @x-permission {"permission":"schedule:read","parent_tokens":"skipped"}
 // @Param id path string true "Session ID (UUID)"
 // @Success 200 {object} domain.HTTPResponse{data=domain.SessionAttendeesResponse}
 // @Failure 400 {object} domain.ErrorResponse
