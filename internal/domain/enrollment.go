@@ -20,6 +20,24 @@ var ErrScheduleFull = errors.New("schedule capacity is full")
 var ErrScheduleEnded = errors.New("schedule has ended")
 var ErrScheduleRequired = errors.New("a schedule is required for group enrollment")
 
+// Enrollment lifecycle statuses. 'suspended' (KEL-149) is set by the internal
+// billing-driven endpoints and holds no seat: every seat-counting predicate in
+// the repository counts only pending and active rows, so a suspended enrollment
+// frees its schedule slot until it is resumed or ended.
+const (
+	EnrollmentStatusPending   = "pending"
+	EnrollmentStatusActive    = "active"
+	EnrollmentStatusSuspended = "suspended"
+	EnrollmentStatusCompleted = "completed"
+	EnrollmentStatusDropped   = "dropped"
+)
+
+// ErrEnrollmentSuspendedConflict reports that an enrollment could not leave
+// `suspended` because the class or schedule no longer has a seat for it (or the
+// student already holds another live enrollment there). The enrollment stays
+// suspended; the caller's retry changes nothing until a seat frees up.
+var ErrEnrollmentSuspendedConflict = errors.New("enrollment cannot resume: no seat available")
+
 // ErrDuplicateEnrollment reports that the student already holds a pending or
 // active enrollment in the class (the rows covered by the partial unique index
 // idx_student_class_active). A dropped, completed, or soft-deleted enrollment
@@ -55,7 +73,7 @@ type Enrollment struct {
 	StudentID            uuid.UUID      `gorm:"type:uuid;not null;index:idx_student_class,unique" json:"student_id"`
 	ClassID              uuid.UUID      `gorm:"type:uuid;not null;index:idx_student_class,unique" json:"class_id"`
 	ScheduleID           *uuid.UUID     `gorm:"type:uuid;index:idx_enrollment_schedule_status" json:"schedule_id,omitempty"`
-	Status               string         `gorm:"type:varchar(50);not null;index:idx_tenant_status" json:"status"` // 'pending', 'active', 'completed', 'dropped'
+	Status               string         `gorm:"type:varchar(50);not null;index:idx_tenant_status" json:"status"` // 'pending', 'active', 'suspended', 'completed', 'dropped'
 	BillingCycle         string         `gorm:"type:varchar(20);not null;default:'monthly'" json:"billing_cycle"`
 	IdempotencyKey       *string        `gorm:"type:varchar(255);index:idx_enrollment_idempotency,unique" json:"-"`
 	PaymentTransactionID *uuid.UUID     `gorm:"type:uuid" json:"-"`

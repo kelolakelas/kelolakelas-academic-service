@@ -159,6 +159,15 @@ func (m *recordingEnrollmentUsecase) ActivateEnrollment(context.Context, uuid.UU
 func (m *recordingEnrollmentUsecase) ReleaseEnrollment(context.Context, uuid.UUID) (*domain.EnrollmentResponse, error) {
 	return nil, nil
 }
+func (m *recordingEnrollmentUsecase) SuspendEnrollment(context.Context, uuid.UUID) (*domain.EnrollmentResponse, error) {
+	return nil, nil
+}
+func (m *recordingEnrollmentUsecase) ResumeEnrollment(context.Context, uuid.UUID) (*domain.EnrollmentResponse, error) {
+	return nil, nil
+}
+func (m *recordingEnrollmentUsecase) EndEnrollment(context.Context, uuid.UUID) (*domain.EnrollmentResponse, error) {
+	return nil, nil
+}
 
 func (m *recordingEnrollmentUsecase) List(context.Context, *uuid.UUID, *uuid.UUID, domain.EnrollmentQuery) (*domain.EnrollmentListResponse, error) {
 	return nil, nil

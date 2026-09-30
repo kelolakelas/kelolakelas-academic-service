@@ -21,6 +21,12 @@ type duplicateEnrollmentRepo struct {
 func (r *duplicateEnrollmentRepo) GetByIDForUpdate(context.Context, uuid.UUID) (*domain.Enrollment, error) {
 	return nil, gorm.ErrRecordNotFound
 }
+
+// KEL-149: keeps the stub a full EnrollmentLockingRepository after the interface
+// grew ResumeUnderCapacity; the enroll path never calls it.
+func (r *duplicateEnrollmentRepo) ResumeUnderCapacity(context.Context, *domain.Enrollment) error {
+	return nil
+}
 func (r *duplicateEnrollmentRepo) GetByIdempotencyKeyForTenant(context.Context, uuid.UUID, string) (*domain.Enrollment, error) {
 	return nil, gorm.ErrRecordNotFound
 }

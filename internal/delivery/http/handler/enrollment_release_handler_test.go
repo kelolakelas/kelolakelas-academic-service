@@ -43,6 +43,15 @@ func (s *releaseEnrollmentUsecaseStub) ReleaseEnrollment(_ context.Context, enro
 	}
 	return &domain.EnrollmentResponse{ID: enrollmentID, Status: status}, nil
 }
+func (s *releaseEnrollmentUsecaseStub) SuspendEnrollment(context.Context, uuid.UUID) (*domain.EnrollmentResponse, error) {
+	return nil, nil
+}
+func (s *releaseEnrollmentUsecaseStub) ResumeEnrollment(context.Context, uuid.UUID) (*domain.EnrollmentResponse, error) {
+	return nil, nil
+}
+func (s *releaseEnrollmentUsecaseStub) EndEnrollment(context.Context, uuid.UUID) (*domain.EnrollmentResponse, error) {
+	return nil, nil
+}
 func (s *releaseEnrollmentUsecaseStub) List(context.Context, *uuid.UUID, *uuid.UUID, domain.EnrollmentQuery) (*domain.EnrollmentListResponse, error) {
 	return nil, nil
 }

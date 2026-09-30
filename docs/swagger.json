@@ -4590,6 +4590,85 @@
                 }
             }
         },
+        "/internal/enrollments/{id}/end": {
+            "put": {
+                "security": [
+                    {
+                        "InternalServiceCredential": []
+                    }
+                ],
+                "description": "Internal service-to-service endpoint that moves an `active` or `suspended` enrollment to `dropped` (KEL-149), the same terminal state a parent cancellation uses, so the seat is freed permanently and the student may enroll again. The transition is idempotent. A pending enrollment answers 409: it has no seat of its own and must go through the parent cancellation or the payment-failure release.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Enrollments"
+                ],
+                "summary": "End an active or suspended enrollment permanently",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Enrollment ID (UUID)",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.HTTPResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.EnrollmentResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/internal/enrollments/{id}/release": {
             "put": {
                 "security": [
@@ -4608,6 +4687,164 @@
                     "Enrollments"
                 ],
                 "summary": "Release the seat of an enrollment whose payment failed or expired",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Enrollment ID (UUID)",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.HTTPResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.EnrollmentResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/internal/enrollments/{id}/resume": {
+            "put": {
+                "security": [
+                    {
+                        "InternalServiceCredential": []
+                    }
+                ],
+                "description": "Internal service-to-service endpoint that returns a `suspended` enrollment to `active` (KEL-149). The seat is reclaimed under the schedule lock with the same capacity and duplicate checks a new enrollment passes, so a full schedule answers 409 and the enrollment stays suspended. Repeating the call on an already active enrollment answers it unchanged. A pending, completed or dropped enrollment answers 409.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Enrollments"
+                ],
+                "summary": "Resume a suspended enrollment by reclaiming its seat",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Enrollment ID (UUID)",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.HTTPResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.EnrollmentResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/internal/enrollments/{id}/suspend": {
+            "put": {
+                "security": [
+                    {
+                        "InternalServiceCredential": []
+                    }
+                ],
+                "description": "Internal service-to-service endpoint that moves an `active` enrollment to `suspended` (KEL-149). A suspended enrollment holds no seat: the schedule capacity and catalog availability stop counting it, the student disappears from upcoming session attendees, and attendance can no longer be recorded for it. The transition is idempotent — repeating it answers the suspended enrollment unchanged. A pending, completed or dropped enrollment answers 409 because suspension is defined only from active.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Enrollments"
+                ],
+                "summary": "Suspend an active enrollment and free its seat",
                 "parameters": [
                     {
                         "type": "string",
@@ -5457,7 +5694,7 @@
                     "type": "string"
                 },
                 "status": {
-                    "description": "'pending', 'active', 'completed', 'dropped'",
+                    "description": "'pending', 'active', 'suspended', 'completed', 'dropped'",
                     "type": "string"
                 },
                 "student": {

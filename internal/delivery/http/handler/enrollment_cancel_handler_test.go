@@ -36,6 +36,15 @@ func (s *cancelEnrollmentUsecaseStub) ActivateEnrollment(context.Context, uuid.U
 func (s *cancelEnrollmentUsecaseStub) ReleaseEnrollment(context.Context, uuid.UUID) (*domain.EnrollmentResponse, error) {
 	return nil, nil
 }
+func (s *cancelEnrollmentUsecaseStub) SuspendEnrollment(context.Context, uuid.UUID) (*domain.EnrollmentResponse, error) {
+	return nil, nil
+}
+func (s *cancelEnrollmentUsecaseStub) ResumeEnrollment(context.Context, uuid.UUID) (*domain.EnrollmentResponse, error) {
+	return nil, nil
+}
+func (s *cancelEnrollmentUsecaseStub) EndEnrollment(context.Context, uuid.UUID) (*domain.EnrollmentResponse, error) {
+	return nil, nil
+}
 func (s *cancelEnrollmentUsecaseStub) CancelPendingEnrollment(_ context.Context, parentID, enrollmentID uuid.UUID) (*domain.EnrollmentResponse, error) {
 	s.calls++
 	s.parentID, s.enrollmentID = parentID, enrollmentID

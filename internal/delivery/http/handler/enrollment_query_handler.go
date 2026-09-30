@@ -49,7 +49,7 @@ func parseEnrollmentQuery(c *gin.Context) (domain.EnrollmentQuery, error) {
 	}
 	if value := c.Query("status"); value != "" {
 		switch value {
-		case "pending", "active", "completed", "dropped":
+		case domain.EnrollmentStatusPending, domain.EnrollmentStatusActive, domain.EnrollmentStatusSuspended, domain.EnrollmentStatusCompleted, domain.EnrollmentStatusDropped:
 			q.Status = value
 		default:
 			return q, domain.ErrInvalidEnrollmentStatus

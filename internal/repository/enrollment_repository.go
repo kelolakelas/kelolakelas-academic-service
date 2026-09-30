@@ -133,6 +133,59 @@ func (r *enrollmentRepository) GetByIDForUpdate(ctx context.Context, id uuid.UUI
 	return &enrollment, nil
 }
 
+// ResumeUnderCapacity reclaims the seat a suspended enrollment gave up (KEL-149).
+// The caller holds this enrollment's row lock (GetByIDForUpdate) in the same
+// transaction, so the read-modify-write below is serialized against every other
+// transition on this enrollment. Seat reclamation re-runs the same checks a new
+// signup passes, in the same order, but every failure is reported as one
+// conflict, ErrEnrollmentSuspendedConflict, because the caller can only retry:
+// the enrollment must stay suspended either way.
+//
+//   - schedule-based (group) enrollments lock the schedule row first, exactly
+//     like CreateIfCapacityAvailable, so a concurrent signup on that schedule
+//     cannot also pass its count check (the overbooking mitigation);
+//   - the live-enrollment check catches the student who re-enrolled in the same
+//     class while this enrollment was suspended: the partial unique index
+//     idx_student_class_active covers both rows once this one flips to active,
+//     so the index violation is mapped to the same conflict instead of failing
+//     the transaction with a raw 23505;
+//   - a schedule that ended while the enrollment was suspended cannot be
+//     reclaimed.
+func (r *enrollmentRepository) ResumeUnderCapacity(ctx context.Context, enrollment *domain.Enrollment) error {
+	db := r.getDB(ctx)
+	if enrollment.ScheduleID != nil {
+		var schedule domain.ClassSchedule
+		if err := db.Clauses(clause.Locking{Strength: "UPDATE"}).Where("id = ? AND class_id = ? AND deleted_at IS NULL", *enrollment.ScheduleID, enrollment.ClassID).First(&schedule).Error; err != nil {
+			return domain.ErrEnrollmentSuspendedConflict
+		}
+		if scheduleHasEnded(schedule.ValidUntil) {
+			return domain.ErrEnrollmentSuspendedConflict
+		}
+		var count int64
+		if err := db.Model(&domain.Enrollment{}).Where("schedule_id = ? AND status IN ? AND deleted_at IS NULL", *enrollment.ScheduleID, []string{domain.EnrollmentStatusPending, domain.EnrollmentStatusActive}).Count(&count).Error; err != nil {
+			return err
+		}
+		if count >= int64(schedule.Capacity) {
+			return domain.ErrScheduleFull
+		}
+	}
+	if err := rejectLiveEnrollment(db, enrollment); err != nil {
+		if errors.Is(err, domain.ErrDuplicateEnrollment) {
+			return domain.ErrEnrollmentSuspendedConflict
+		}
+		return err
+	}
+	enrollment.Status = domain.EnrollmentStatusActive
+	enrollment.UpdatedAt = time.Now()
+	if err := db.Save(enrollment).Error; err != nil {
+		if errors.Is(mapDuplicateEnrollment(err), domain.ErrDuplicateEnrollment) {
+			return domain.ErrEnrollmentSuspendedConflict
+		}
+		return err
+	}
+	return nil
+}
+
 func (r *enrollmentRepository) GetByIdempotencyKeyForTenant(ctx context.Context, tenantID uuid.UUID, key string) (*domain.Enrollment, error) {
 	var enrollment domain.Enrollment
 	err := r.getDB(ctx).Where("tenant_id = ? AND idempotency_key = ?", tenantID, key).First(&enrollment).Error

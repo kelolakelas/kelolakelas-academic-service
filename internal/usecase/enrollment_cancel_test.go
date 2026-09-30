@@ -101,6 +101,13 @@ func (s *cancelEnrollmentRepoStub) GetByIdempotencyKeyAny(context.Context, strin
 	return nil, gorm.ErrRecordNotFound
 }
 
+// KEL-149: the locking interface grew ResumeUnderCapacity, and CancelPendingEnrollment
+// degrades its locked re-read to a plain read when the assertion fails. Implementing it
+// keeps the stub a full EnrollmentLockingRepository so the race tests keep their lock.
+func (s *cancelEnrollmentRepoStub) ResumeUnderCapacity(context.Context, *domain.Enrollment) error {
+	return nil
+}
+
 // cancelBillingStub records every withdrawal attempt so a test can assert that the
 // invoice is withdrawn before the seat is given back — and that a refused withdrawal
 // leaves the seat untouched.
