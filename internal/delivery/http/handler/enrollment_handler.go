@@ -438,3 +438,145 @@ func (h *EnrollmentHandler) ActivateInternal(c *gin.Context) {
 		"data":    res,
 	})
 }
+
+// writeInternalTransitionError answers the shared error table of the suspend,
+// resume and end endpoints. The caller's retry policy depends on the
+// distinction: 404 and 409 are permanent answers for this enrollment state,
+// everything else is an outage the caller may retry.
+func writeInternalTransitionError(c *gin.Context, operation string, err error) {
+	if errors.Is(err, usecase.ErrEnrollmentNotFound) {
+		c.JSON(http.StatusNotFound, gin.H{
+			"status":  "error",
+			"message": err.Error(),
+			"data":    nil,
+		})
+		return
+	}
+	status := http.StatusInternalServerError
+	message := "Failed to " + operation + " enrollment"
+	switch {
+	case errors.Is(err, domain.ErrInvalidEnrollmentTransition),
+		errors.Is(err, domain.ErrScheduleFull),
+		errors.Is(err, domain.ErrEnrollmentSuspendedConflict):
+		status = http.StatusConflict
+		message = message + ": " + err.Error()
+	default:
+		logInternalError(c.Request.Context(), operation+" enrollment", err)
+	}
+	c.JSON(status, gin.H{
+		"status":  "error",
+		"message": message,
+		"data":    nil,
+	})
+}
+
+// SuspendInternal godoc
+// @Summary Suspend an active enrollment and free its seat
+// @Description Internal service-to-service endpoint that moves an `active` enrollment to `suspended` (KEL-149). A suspended enrollment holds no seat: the schedule capacity and catalog availability stop counting it, the student disappears from upcoming session attendees, and attendance can no longer be recorded for it. The transition is idempotent — repeating it answers the suspended enrollment unchanged. A pending, completed or dropped enrollment answers 409 because suspension is defined only from active.
+// @Tags Enrollments
+// @Accept json
+// @Produce json
+// @Security InternalServiceCredential
+// @Param id path string true "Enrollment ID (UUID)"
+// @Success 200 {object} domain.HTTPResponse{data=domain.EnrollmentResponse}
+// @Failure 400 {object} domain.ErrorResponse
+// @Failure 401 {object} domain.ErrorResponse
+// @Failure 404 {object} domain.ErrorResponse
+// @Failure 409 {object} domain.ErrorResponse
+// @Failure 500 {object} domain.ErrorResponse
+// @Router /internal/enrollments/{id}/suspend [put]
+func (h *EnrollmentHandler) SuspendInternal(c *gin.Context) {
+	enrollmentID, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"status":  "error",
+			"message": "Invalid enrollment ID format",
+			"data":    nil,
+		})
+		return
+	}
+	res, err := h.enrollmentUsecase.SuspendEnrollment(c.Request.Context(), enrollmentID)
+	if err != nil {
+		writeInternalTransitionError(c, "suspend", err)
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{
+		"status":  "success",
+		"message": "Enrollment suspended successfully",
+		"data":    res,
+	})
+}
+
+// ResumeInternal godoc
+// @Summary Resume a suspended enrollment by reclaiming its seat
+// @Description Internal service-to-service endpoint that returns a `suspended` enrollment to `active` (KEL-149). The seat is reclaimed under the schedule lock with the same capacity and duplicate checks a new enrollment passes, so a full schedule answers 409 and the enrollment stays suspended. Repeating the call on an already active enrollment answers it unchanged. A pending, completed or dropped enrollment answers 409.
+// @Tags Enrollments
+// @Accept json
+// @Produce json
+// @Security InternalServiceCredential
+// @Param id path string true "Enrollment ID (UUID)"
+// @Success 200 {object} domain.HTTPResponse{data=domain.EnrollmentResponse}
+// @Failure 400 {object} domain.ErrorResponse
+// @Failure 401 {object} domain.ErrorResponse
+// @Failure 404 {object} domain.ErrorResponse
+// @Failure 409 {object} domain.ErrorResponse
+// @Failure 500 {object} domain.ErrorResponse
+// @Router /internal/enrollments/{id}/resume [put]
+func (h *EnrollmentHandler) ResumeInternal(c *gin.Context) {
+	enrollmentID, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"status":  "error",
+			"message": "Invalid enrollment ID format",
+			"data":    nil,
+		})
+		return
+	}
+	res, err := h.enrollmentUsecase.ResumeEnrollment(c.Request.Context(), enrollmentID)
+	if err != nil {
+		writeInternalTransitionError(c, "resume", err)
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{
+		"status":  "success",
+		"message": "Enrollment resumed successfully",
+		"data":    res,
+	})
+}
+
+// EndInternal godoc
+// @Summary End an active or suspended enrollment permanently
+// @Description Internal service-to-service endpoint that moves an `active` or `suspended` enrollment to `dropped` (KEL-149), the same terminal state a parent cancellation uses, so the seat is freed permanently and the student may enroll again. The transition is idempotent. A pending enrollment answers 409: it has no seat of its own and must go through the parent cancellation or the payment-failure release.
+// @Tags Enrollments
+// @Accept json
+// @Produce json
+// @Security InternalServiceCredential
+// @Param id path string true "Enrollment ID (UUID)"
+// @Success 200 {object} domain.HTTPResponse{data=domain.EnrollmentResponse}
+// @Failure 400 {object} domain.ErrorResponse
+// @Failure 401 {object} domain.ErrorResponse
+// @Failure 404 {object} domain.ErrorResponse
+// @Failure 409 {object} domain.ErrorResponse
+// @Failure 500 {object} domain.ErrorResponse
+// @Router /internal/enrollments/{id}/end [put]
+func (h *EnrollmentHandler) EndInternal(c *gin.Context) {
+	enrollmentID, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"status":  "error",
+			"message": "Invalid enrollment ID format",
+			"data":    nil,
+		})
+		return
+	}
+	res, err := h.enrollmentUsecase.EndEnrollment(c.Request.Context(), enrollmentID)
+	if err != nil {
+		writeInternalTransitionError(c, "end", err)
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{
+		"status":  "success",
+		"message": "Enrollment ended successfully",
+		"data":    res,
+	})
+}

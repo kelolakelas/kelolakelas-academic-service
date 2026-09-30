@@ -30,6 +30,12 @@ func (s *releaseEnrollmentRepoStub) GetByID(_ context.Context, id uuid.UUID) (*d
 func (s *releaseEnrollmentRepoStub) GetByIDForUpdate(ctx context.Context, id uuid.UUID) (*domain.Enrollment, error) {
 	return s.GetByID(ctx, id)
 }
+
+// KEL-149: keeps the stub a full EnrollmentLockingRepository after the interface
+// grew ResumeUnderCapacity; the release path never calls it.
+func (s *releaseEnrollmentRepoStub) ResumeUnderCapacity(context.Context, *domain.Enrollment) error {
+	return nil
+}
 func (s *releaseEnrollmentRepoStub) GetByIDForAccess(context.Context, *uuid.UUID, *uuid.UUID, uuid.UUID) (*domain.Enrollment, error) {
 	return nil, gorm.ErrRecordNotFound
 }

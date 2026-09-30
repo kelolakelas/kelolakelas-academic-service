@@ -21,6 +21,9 @@ type EnrollmentUsecase interface {
 	EnrollPublic(ctx context.Context, parentID, classID uuid.UUID, req *domain.PublicEnrollmentRequest, idempotencyKey string) (*domain.PublicEnrollmentResponse, error)
 	ActivateEnrollment(ctx context.Context, enrollmentID uuid.UUID) (*domain.EnrollmentResponse, error)
 	ReleaseEnrollment(ctx context.Context, enrollmentID uuid.UUID) (*domain.EnrollmentResponse, error)
+	SuspendEnrollment(ctx context.Context, enrollmentID uuid.UUID) (*domain.EnrollmentResponse, error)
+	ResumeEnrollment(ctx context.Context, enrollmentID uuid.UUID) (*domain.EnrollmentResponse, error)
+	EndEnrollment(ctx context.Context, enrollmentID uuid.UUID) (*domain.EnrollmentResponse, error)
 	CancelPendingEnrollment(ctx context.Context, parentID, enrollmentID uuid.UUID) (*domain.EnrollmentResponse, error)
 	List(ctx context.Context, tenantID, parentID *uuid.UUID, query domain.EnrollmentQuery) (*domain.EnrollmentListResponse, error)
 	GetByID(ctx context.Context, tenantID, parentID *uuid.UUID, id uuid.UUID) (*domain.EnrollmentResponse, error)
@@ -77,8 +80,10 @@ func (u *enrollmentUsecase) CancelPendingEnrollment(ctx context.Context, parentI
 	}
 	// An enrollment that already started cannot be withdrawn by the parent. This is
 	// checked before the withdrawal so an active enrollment never has its invoice
-	// torn down.
-	if visible.Status == "active" || visible.Status == "completed" {
+	// torn down. A suspended enrollment (KEL-149) also already started: it was
+	// active before billing parked it, so the parent cannot cancel it either and
+	// its invoice must stay untouched while it is parked.
+	if visible.Status == domain.EnrollmentStatusActive || visible.Status == domain.EnrollmentStatusSuspended || visible.Status == domain.EnrollmentStatusCompleted {
 		return nil, domain.ErrInvalidEnrollmentTransition
 	}
 	// The withdrawal always runs, even for an enrollment that is already `dropped`.
@@ -514,6 +519,147 @@ func (u *enrollmentUsecase) ReleaseEnrollment(ctx context.Context, enrollmentID 
 		}
 	}
 
+	return enrollmentResponse(enrollment), nil
+}
+
+// SuspendEnrollment parks an active enrollment (KEL-149): the status moves to
+// `suspended`, which every seat-counting predicate excludes, so the schedule
+// slot becomes available to other students while the enrollment itself keeps
+// its history and can be resumed or ended later. The transition is idempotent
+// — repeating it answers the suspended enrollment unchanged — and refuses
+// every other starting state, because a pending enrollment has no seat to give
+// up and a terminal one cannot be revived into suspension.
+func (u *enrollmentUsecase) SuspendEnrollment(ctx context.Context, enrollmentID uuid.UUID) (*domain.EnrollmentResponse, error) {
+	load := u.enrollmentRepo.GetByID
+	if lockingRepo, ok := u.enrollmentRepo.(repository.EnrollmentLockingRepository); ok {
+		load = lockingRepo.GetByIDForUpdate
+	}
+	var enrollment *domain.Enrollment
+	var err error
+	if u.txManager != nil {
+		err = u.txManager.WithTransaction(ctx, func(txCtx context.Context) error {
+			enrollment, err = load(txCtx, enrollmentID)
+			if err != nil || enrollment.Status != domain.EnrollmentStatusActive {
+				return err
+			}
+			enrollment.Status = domain.EnrollmentStatusSuspended
+			enrollment.UpdatedAt = time.Now()
+			return u.enrollmentRepo.Update(txCtx, enrollment)
+		})
+	} else {
+		enrollment, err = load(ctx, enrollmentID)
+	}
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, ErrEnrollmentNotFound
+		}
+		return nil, fmt.Errorf("failed to fetch enrollment: %w", err)
+	}
+	if enrollment.Status == domain.EnrollmentStatusSuspended {
+		return enrollmentResponse(enrollment), nil
+	}
+	if enrollment.Status != domain.EnrollmentStatusActive {
+		return nil, domain.ErrInvalidEnrollmentTransition
+	}
+	if u.txManager == nil {
+		enrollment.Status = domain.EnrollmentStatusSuspended
+		enrollment.UpdatedAt = time.Now()
+		if err := u.enrollmentRepo.Update(ctx, enrollment); err != nil {
+			return nil, fmt.Errorf("failed to update enrollment status: %w", err)
+		}
+	}
+	return enrollmentResponse(enrollment), nil
+}
+
+// ResumeEnrollment returns a suspended enrollment to `active` by reclaiming the
+// seat it gave up (KEL-149). The seat is reclaimed under the enrollment row
+// lock and, for schedule-based enrollments, the schedule lock, re-running the
+// capacity and duplicate checks a new signup passes. When no seat is available
+// the answer is a conflict (ErrScheduleFull or ErrEnrollmentSuspendedConflict)
+// and the enrollment stays suspended; repeating the call changes nothing.
+func (u *enrollmentUsecase) ResumeEnrollment(ctx context.Context, enrollmentID uuid.UUID) (*domain.EnrollmentResponse, error) {
+	lockingRepo, ok := u.enrollmentRepo.(repository.EnrollmentLockingRepository)
+	if !ok {
+		return nil, fmt.Errorf("enrollment repository cannot resume under capacity")
+	}
+	var enrollment *domain.Enrollment
+	var err error
+	if u.txManager != nil {
+		err = u.txManager.WithTransaction(ctx, func(txCtx context.Context) error {
+			enrollment, err = lockingRepo.GetByIDForUpdate(txCtx, enrollmentID)
+			if err != nil || enrollment.Status != domain.EnrollmentStatusSuspended {
+				return err
+			}
+			return lockingRepo.ResumeUnderCapacity(txCtx, enrollment)
+		})
+	} else {
+		enrollment, err = lockingRepo.GetByIDForUpdate(ctx, enrollmentID)
+		if err == nil && enrollment.Status == domain.EnrollmentStatusSuspended {
+			if resumeErr := lockingRepo.ResumeUnderCapacity(ctx, enrollment); resumeErr != nil {
+				return nil, resumeErr
+			}
+		}
+	}
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, ErrEnrollmentNotFound
+		}
+		return nil, err
+	}
+	if enrollment.Status == domain.EnrollmentStatusActive {
+		return enrollmentResponse(enrollment), nil
+	}
+	// The only state that reaches here without an error is an enrollment that
+	// was never suspended, so the request cannot resume anything.
+	return nil, domain.ErrInvalidEnrollmentTransition
+}
+
+// EndEnrollment terminates an active or suspended enrollment (KEL-149) by
+// moving it to `dropped`, the same terminal state a parent cancellation or an
+// expired payment uses, which frees the seat permanently and lets the student
+// enroll again. The transition is idempotent: repeating it answers the dropped
+// enrollment unchanged. Every other starting state is refused — a pending
+// enrollment must go through the parent cancellation or the payment-failure
+// release, which also unwind billing.
+func (u *enrollmentUsecase) EndEnrollment(ctx context.Context, enrollmentID uuid.UUID) (*domain.EnrollmentResponse, error) {
+	load := u.enrollmentRepo.GetByID
+	if lockingRepo, ok := u.enrollmentRepo.(repository.EnrollmentLockingRepository); ok {
+		load = lockingRepo.GetByIDForUpdate
+	}
+	var enrollment *domain.Enrollment
+	var err error
+	if u.txManager != nil {
+		err = u.txManager.WithTransaction(ctx, func(txCtx context.Context) error {
+			enrollment, err = load(txCtx, enrollmentID)
+			if err != nil || (enrollment.Status != domain.EnrollmentStatusActive && enrollment.Status != domain.EnrollmentStatusSuspended) {
+				return err
+			}
+			enrollment.Status = domain.EnrollmentStatusDropped
+			enrollment.UpdatedAt = time.Now()
+			return u.enrollmentRepo.Update(txCtx, enrollment)
+		})
+	} else {
+		enrollment, err = load(ctx, enrollmentID)
+	}
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, ErrEnrollmentNotFound
+		}
+		return nil, fmt.Errorf("failed to fetch enrollment: %w", err)
+	}
+	if enrollment.Status == domain.EnrollmentStatusDropped {
+		return enrollmentResponse(enrollment), nil
+	}
+	if enrollment.Status != domain.EnrollmentStatusActive && enrollment.Status != domain.EnrollmentStatusSuspended {
+		return nil, domain.ErrInvalidEnrollmentTransition
+	}
+	if u.txManager == nil {
+		enrollment.Status = domain.EnrollmentStatusDropped
+		enrollment.UpdatedAt = time.Now()
+		if err := u.enrollmentRepo.Update(ctx, enrollment); err != nil {
+			return nil, fmt.Errorf("failed to update enrollment status: %w", err)
+		}
+	}
 	return enrollmentResponse(enrollment), nil
 }
 

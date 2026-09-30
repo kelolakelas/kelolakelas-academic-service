@@ -64,6 +64,12 @@ func (r *feeEnrollmentRepo) GetByIDForUpdate(ctx context.Context, id uuid.UUID) 
 	return r.GetByID(ctx, id)
 }
 
+// KEL-149: keeps the stub a full EnrollmentLockingRepository after the interface
+// grew ResumeUnderCapacity; the marketplace fee path never calls it.
+func (r *feeEnrollmentRepo) ResumeUnderCapacity(context.Context, *domain.Enrollment) error {
+	return nil
+}
+
 func (r *feeEnrollmentRepo) CreateIfCapacityAvailable(_ context.Context, enrollment *domain.Enrollment) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()

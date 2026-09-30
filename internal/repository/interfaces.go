@@ -120,6 +120,11 @@ type EnrollmentLockingRepository interface {
 	GetByIDForUpdate(ctx context.Context, id uuid.UUID) (*domain.Enrollment, error)
 	GetByIdempotencyKeyForTenant(ctx context.Context, tenantID uuid.UUID, key string) (*domain.Enrollment, error)
 	GetByIdempotencyKeyAny(ctx context.Context, key string) (*domain.Enrollment, error)
+	// ResumeUnderCapacity reclaims the seat of a suspended enrollment. The caller
+	// holds the enrollment row lock in the same transaction; it fails with
+	// ErrScheduleFull, ErrDuplicateEnrollment or ErrEnrollmentSuspendedConflict
+	// without writing anything, so the enrollment stays suspended.
+	ResumeUnderCapacity(ctx context.Context, enrollment *domain.Enrollment) error
 }
 
 type AttendanceRepository interface {

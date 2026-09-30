@@ -103,6 +103,9 @@ func registerRoutes(r *gin.Engine, h routeHandlers, jwtSecret, internalCredentia
 	internal.Use(middleware.InternalServiceAuth(internalCredential))
 	internal.PUT("/enrollments/:id/activate", h.enrollment.ActivateInternal)
 	internal.PUT("/enrollments/:id/release", h.enrollment.ReleaseInternal)
+	internal.PUT("/enrollments/:id/suspend", h.enrollment.SuspendInternal)
+	internal.PUT("/enrollments/:id/resume", h.enrollment.ResumeInternal)
+	internal.PUT("/enrollments/:id/end", h.enrollment.EndInternal)
 	internal.GET("/chat-context/schedule-requests/:id", h.chatContext.ScheduleRequest)
 	internal.GET("/chat-context/reports/:id", h.chatContext.Report)
 }

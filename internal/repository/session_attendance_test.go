@@ -24,8 +24,12 @@ func TestFindForAttendanceFindsGroupSessionByEnrollmentSchedule(t *testing.T) {
 
 	sessionID, classID, scheduleID, enrollmentID, tenantID := uuid.New(), uuid.New(), uuid.New(), uuid.New(), uuid.New()
 	date := time.Date(2026, 8, 22, 0, 0, 0, 0, time.UTC)
+	// KEL-149: the query now guards both branches with the enrollment status —
+	// NOT EXISTS (… pe.status = 'suspended') on the private-session branch and
+	// e.status <> 'suspended' on the group branch — so the value args grew from
+	// six to eight; the ninth placeholder is LIMIT 1.
 	mock.ExpectQuery(`SELECT .*FROM "class_sessions".*EXISTS \(SELECT 1 FROM enrollments`).
-		WithArgs(sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(), 1).
+		WithArgs(sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(), sqlmock.AnyArg(), 1).
 		WillReturnRows(sqlmock.NewRows([]string{"id", "class_id", "schedule_id", "enrollment_id", "tutor_id", "session_date", "start_time", "end_time", "status", "deleted_at"}).
 			AddRow(sessionID, classID, scheduleID, nil, uuid.New(), date, "16:00:00", "17:00:00", "scheduled", nil))
 

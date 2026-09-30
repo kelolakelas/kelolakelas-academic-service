@@ -56,10 +56,17 @@ func (r *sessionRepository) DeleteByTenant(ctx context.Context, tenantID, id uui
 	return r.getDB(ctx).Where("id = ? AND class_id IN (SELECT id FROM classes WHERE tenant_id = ?)", id, tenantID).Delete(&domain.ClassSession{}).Error
 }
 
+// FindForAttendance resolves the session an attendance record belongs to. The
+// enrollment must not be suspended (KEL-149): a suspended enrollment frees its
+// seat, so its student is not attending while suspended and an attendance write
+// for it is refused by finding no session, the same way a mismatched
+// schedule/enrollment pair already is. Every other status keeps today's
+// behaviour, including late attendance for an enrollment that has since
+// completed or been dropped.
 func (r *sessionRepository) FindForAttendance(ctx context.Context, tenantID, scheduleID, enrollmentID uuid.UUID, date time.Time) (*domain.ClassSession, error) {
 	var session domain.ClassSession
 	err := r.getDB(ctx).Joins("JOIN classes c ON c.id = class_sessions.class_id").
-		Where("c.tenant_id = ? AND class_sessions.schedule_id = ? AND class_sessions.session_date = ? AND ((class_sessions.enrollment_id = ? AND class_sessions.enrollment_id IS NOT NULL) OR (class_sessions.enrollment_id IS NULL AND EXISTS (SELECT 1 FROM enrollments e WHERE e.id = ? AND e.schedule_id = ? AND e.deleted_at IS NULL)))", tenantID, scheduleID, date, enrollmentID, enrollmentID, scheduleID).
+		Where("c.tenant_id = ? AND class_sessions.schedule_id = ? AND class_sessions.session_date = ? AND ((class_sessions.enrollment_id = ? AND class_sessions.enrollment_id IS NOT NULL AND NOT EXISTS (SELECT 1 FROM enrollments pe WHERE pe.id = class_sessions.enrollment_id AND pe.status = ?)) OR (class_sessions.enrollment_id IS NULL AND EXISTS (SELECT 1 FROM enrollments e WHERE e.id = ? AND e.schedule_id = ? AND e.status <> ? AND e.deleted_at IS NULL)))", tenantID, scheduleID, date, enrollmentID, domain.EnrollmentStatusSuspended, enrollmentID, scheduleID, domain.EnrollmentStatusSuspended).
 		First(&session).Error
 	return &session, err
 }

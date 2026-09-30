@@ -40,6 +40,15 @@ func (m *emailRecordingEnrollmentUsecase) ActivateEnrollment(context.Context, uu
 func (m *emailRecordingEnrollmentUsecase) ReleaseEnrollment(context.Context, uuid.UUID) (*domain.EnrollmentResponse, error) {
 	return nil, nil
 }
+func (m *emailRecordingEnrollmentUsecase) SuspendEnrollment(context.Context, uuid.UUID) (*domain.EnrollmentResponse, error) {
+	return nil, nil
+}
+func (m *emailRecordingEnrollmentUsecase) ResumeEnrollment(context.Context, uuid.UUID) (*domain.EnrollmentResponse, error) {
+	return nil, nil
+}
+func (m *emailRecordingEnrollmentUsecase) EndEnrollment(context.Context, uuid.UUID) (*domain.EnrollmentResponse, error) {
+	return nil, nil
+}
 
 func (m *emailRecordingEnrollmentUsecase) List(context.Context, *uuid.UUID, *uuid.UUID, domain.EnrollmentQuery) (*domain.EnrollmentListResponse, error) {
 	return nil, nil
