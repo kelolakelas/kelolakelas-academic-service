@@ -3274,7 +3274,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "List class sessions scoped to the active tenant",
+                "description": "List class sessions scoped to the active tenant. ` + "`" + `mine=true` + "`" + ` limits the list to sessions where the caller is the tutor, derived from the verified JWT member claim; any client-supplied ` + "`" + `tutor_id` + "`" + ` is ignored in that case.",
                 "produces": [
                     "application/json"
                 ],
@@ -3282,6 +3282,20 @@ const docTemplate = `{
                     "Sessions"
                 ],
                 "summary": "List tenant sessions",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Set to \\",
+                        "name": "mine",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by tutor (ignored when mine=true)",
+                        "name": "tutor_id",
+                        "in": "query"
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "OK",
@@ -3313,12 +3327,28 @@ const docTemplate = `{
                             "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
                         }
                     },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
+                        }
+                    },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
                             "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
                         }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
+                        }
                     }
+                },
+                "x-permission": {
+                    "parent_tokens": "skipped",
+                    "permission": "schedule:read"
                 }
             }
         },
@@ -3559,6 +3589,12 @@ const docTemplate = `{
                             "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
                         }
                     },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
+                        }
+                    },
                     "404": {
                         "description": "Not Found",
                         "schema": {
@@ -3570,7 +3606,17 @@ const docTemplate = `{
                         "schema": {
                             "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
                         }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
+                        }
                     }
+                },
+                "x-permission": {
+                    "parent_tokens": "skipped",
+                    "permission": "schedule:read"
                 }
             },
             "delete": {
@@ -3719,6 +3765,10 @@ const docTemplate = `{
                             "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
                         }
                     }
+                },
+                "x-permission": {
+                    "parent_tokens": "skipped",
+                    "permission": "schedule:read"
                 }
             }
         },

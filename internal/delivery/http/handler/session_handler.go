@@ -78,14 +78,30 @@ func sessionTenantID(c *gin.Context) (uuid.UUID, error) { return uuid.Parse(c.Ge
 
 // ListSessions godoc
 // @Summary List tenant sessions
-// @Description List class sessions scoped to the active tenant
+// @Description List class sessions scoped to the active tenant. `mine=true` limits the list to sessions where the caller is the tutor, derived from the verified JWT member claim; any client-supplied `tutor_id` is ignored in that case.
 // @Tags Sessions
 // @Produce json
 // @Security BearerAuth
+// @x-permission {"permission":"schedule:read","parent_tokens":"skipped"}
+// @Param mine query string false "Set to \"true\" to list only the caller's own sessions"
+// @Param tutor_id query string false "Filter by tutor (ignored when mine=true)"
 // @Success 200 {object} domain.HTTPResponse{data=domain.SessionListResponse}
 // @Failure 400,401,500 {object} domain.ErrorResponse
+// @Failure 403 {object} domain.ErrorResponse
+// @Failure 503 {object} domain.ErrorResponse
 // @Router /api/v1/sessions [get]
 func (h *SessionHandler) ListSessions(c *gin.Context) {
+	// KEL-135: the own-session filter is derived from the verified JWT member
+	// claim, never from client input. A caller-supplied tutor_id must not be
+	// able to enumerate another tutor's sessions through this flag, so it is
+	// stripped before parsing: even a malformed tutor_id is ignored when
+	// mine=true. The pre-check reads URL.Query directly because gin caches
+	// the parsed query on the first c.Query call.
+	if c.Request.URL.Query().Get("mine") == "true" {
+		stripped := c.Request.URL.Query()
+		stripped.Del("tutor_id")
+		c.Request.URL.RawQuery = stripped.Encode()
+	}
 	query, err := parseSessionQuery(c)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"status": "error", "message": err.Error(), "data": nil})
@@ -95,6 +111,16 @@ func (h *SessionHandler) ListSessions(c *gin.Context) {
 	if err != nil {
 		c.JSON(http.StatusUnauthorized, gin.H{"status": "error", "message": "Invalid tenant context", "data": nil})
 		return
+	}
+	// The caller-supplied tutor_id was stripped above, so only the verified
+	// member claim decides the filter here.
+	if c.Query("mine") == "true" {
+		memberID, err := uuid.Parse(c.GetString("member_id"))
+		if err != nil || memberID == uuid.Nil {
+			c.JSON(http.StatusUnauthorized, gin.H{"status": "error", "message": "Invalid user context", "data": nil})
+			return
+		}
+		query.TutorID = &memberID
 	}
 	result, err := h.usecase.ListSessions(c.Request.Context(), tenantID, query)
 	if err != nil {
@@ -110,9 +136,12 @@ func (h *SessionHandler) ListSessions(c *gin.Context) {
 // @Tags Sessions
 // @Produce json
 // @Security BearerAuth
+// @x-permission {"permission":"schedule:read","parent_tokens":"skipped"}
 // @Param id path string true "Session UUID"
 // @Success 200 {object} domain.HTTPResponse{data=domain.ClassSession}
 // @Failure 400,401,404,500 {object} domain.ErrorResponse
+// @Failure 403 {object} domain.ErrorResponse
+// @Failure 503 {object} domain.ErrorResponse
 // @Router /api/v1/sessions/{id} [get]
 func (h *SessionHandler) GetSession(c *gin.Context) {
 	id, err := uuid.Parse(c.Param("id"))

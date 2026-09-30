@@ -10,6 +10,7 @@ import (
 
 	"github.com/kelolakelas/kelolakelas-academic-service/internal/domain"
 	"github.com/kelolakelas/kelolakelas-academic-service/internal/repository"
+	"github.com/kelolakelas/kelolakelas-academic-service/pkg/grpcclient"
 	"gorm.io/gorm"
 )
 
@@ -29,6 +30,16 @@ var (
 	// schedules are unaffected. Historic private rows with capacity > 1 stay
 	// readable; this error only blocks new writes.
 	ErrPrivateScheduleCapacity = errors.New("private class schedules must have capacity 1")
+	// ErrSubstituteTutorNotEligible rejects assigning a session to a member id
+	// that is not an active membership of the calling tenant: another tenant's
+	// member, an inactive member, and an unknown id all land here, so the
+	// caller cannot distinguish them. Answered as 400 (validation).
+	ErrSubstituteTutorNotEligible = errors.New("substitute tutor must be an active member of this tenant")
+	// ErrSubstituteTutorUnavailable fails a substitution closed when the
+	// membership answer cannot be trusted: identity unreachable, timed out, or
+	// malformed, or no membership client wired. Answered as 503, never as a
+	// guess that the tutor is eligible.
+	ErrSubstituteTutorUnavailable = errors.New("substitute tutor membership could not be verified")
 )
 
 type scheduleUsecase struct {
@@ -37,6 +48,10 @@ type scheduleUsecase struct {
 	scheduleRepo   repository.ScheduleRepository
 	sessionRepo    repository.SessionRepository
 	enrollmentRepo repository.EnrollmentRepository
+	// membership validates a substitute tutor against identity before the
+	// session row is reassigned (KEL-135). A nil client fails closed: every
+	// substitution is rejected instead of assigned without verification.
+	membership grpcclient.MembershipClient
 }
 
 func (u *scheduleUsecase) ListSchedules(ctx context.Context, tenantID uuid.UUID, query domain.ListQuery) (*domain.ScheduleListResponse, error) {
@@ -100,13 +115,23 @@ func NewScheduleUsecase(
 	scheduleRepo repository.ScheduleRepository,
 	sessionRepo repository.SessionRepository,
 	enrollmentRepo repository.EnrollmentRepository,
+	membershipClients ...grpcclient.MembershipClient,
 ) ScheduleUsecase {
+	// membershipClients is variadic so pre-KEL-135 call sites (main wiring and
+	// historic tests) keep compiling; new wiring must pass the identity-backed
+	// client. A missing or nil client fails closed: every substitution is
+	// rejected instead of assigned without verification.
+	var membership grpcclient.MembershipClient
+	if len(membershipClients) > 0 {
+		membership = membershipClients[0]
+	}
 	return &scheduleUsecase{
 		txManager:      txManager,
 		classRepo:      classRepo,
 		scheduleRepo:   scheduleRepo,
 		sessionRepo:    sessionRepo,
 		enrollmentRepo: enrollmentRepo,
+		membership:     membership,
 	}
 }
 
@@ -475,9 +500,36 @@ func (u *scheduleUsecase) ChangeTutorTemporary(
 	tenantID uuid.UUID,
 	req *domain.SubstituteTutorRequest,
 ) (*domain.SubstituteTutorResponse, error) {
+	// KEL-135: resolve the session first so an unknown id or another tenant's
+	// session keeps answering ErrSessionNotFound (never a membership verdict),
+	// then validate the substitute before touching any row. The membership
+	// probe stays outside the write transaction so a slow identity never holds
+	// a DB transaction open; cross-tenant, inactive, and unknown member ids
+	// are validation errors, while an unreachable or malformed identity answer
+	// is a 503-style unavailability.
+	sessionCheck, err := u.sessionRepo.GetByIDForTenant(ctx, tenantID, req.SessionID)
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, ErrSessionNotFound
+	}
+	if err != nil {
+		return nil, err
+	}
+	if sessionCheck == nil {
+		return nil, ErrSessionNotFound
+	}
+	if u.membership == nil {
+		return nil, ErrSubstituteTutorUnavailable
+	}
+	active, err := u.membership.CheckActiveMember(ctx, tenantID.String(), req.SubstituteTutorID.String())
+	if err != nil {
+		return nil, ErrSubstituteTutorUnavailable
+	}
+	if !active {
+		return nil, ErrSubstituteTutorNotEligible
+	}
 	var session *domain.ClassSession
 
-	err := u.txManager.WithTransaction(ctx, func(txCtx context.Context) error {
+	txErr := u.txManager.WithTransaction(ctx, func(txCtx context.Context) error {
 		var err error
 		session, err = u.sessionRepo.GetByIDForTenant(txCtx, tenantID, req.SessionID)
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -494,8 +546,8 @@ func (u *scheduleUsecase) ChangeTutorTemporary(
 		session.TutorID = req.SubstituteTutorID
 		return u.sessionRepo.Update(txCtx, session)
 	})
-	if err != nil {
-		return nil, err
+	if txErr != nil {
+		return nil, txErr
 	}
 
 	return &domain.SubstituteTutorResponse{

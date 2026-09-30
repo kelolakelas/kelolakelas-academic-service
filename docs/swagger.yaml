@@ -3144,7 +3144,18 @@ paths:
         permission: schedule:update
   /api/v1/sessions:
     get:
-      description: List class sessions scoped to the active tenant
+      description: List class sessions scoped to the active tenant. `mine=true` limits
+        the list to sessions where the caller is the tutor, derived from the verified
+        JWT member claim; any client-supplied `tutor_id` is ignored in that case.
+      parameters:
+      - description: Set to \
+        in: query
+        name: mine
+        type: string
+      - description: Filter by tutor (ignored when mine=true)
+        in: query
+        name: tutor_id
+        type: string
       produces:
       - application/json
       responses:
@@ -3165,8 +3176,16 @@ paths:
           description: Unauthorized
           schema:
             $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
         "500":
           description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+        "503":
+          description: Service Unavailable
           schema:
             $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
       security:
@@ -3174,6 +3193,9 @@ paths:
       summary: List tenant sessions
       tags:
       - Sessions
+      x-permission:
+        parent_tokens: skipped
+        permission: schedule:read
   /api/v1/sessions/{id}:
     delete:
       consumes:
@@ -3252,6 +3274,10 @@ paths:
           description: Unauthorized
           schema:
             $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
         "404":
           description: Not Found
           schema:
@@ -3260,11 +3286,18 @@ paths:
           description: Internal Server Error
           schema:
             $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
       security:
       - BearerAuth: []
       summary: Get tenant session
       tags:
       - Sessions
+      x-permission:
+        parent_tokens: skipped
+        permission: schedule:read
   /api/v1/sessions/{id}/attendees:
     get:
       consumes:
@@ -3309,6 +3342,9 @@ paths:
       summary: Get session attendees
       tags:
       - Sessions
+      x-permission:
+        parent_tokens: skipped
+        permission: schedule:read
   /api/v1/sessions/{id}/reschedule:
     post:
       consumes:

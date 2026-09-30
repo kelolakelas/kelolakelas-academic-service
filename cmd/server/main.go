@@ -66,6 +66,15 @@ func main() {
 		os.Exit(1)
 	}
 	defer permissionClient.Close()
+	// KEL-135: the substitute-tutor guard validates the candidate against the
+	// membership row in identity. It reuses the permission-check bound so a
+	// slow identity fails the substitution closed instead of holding it open.
+	membershipClient, err := grpcclient.NewMembershipClient(cfg.IdentityGRPCHost, time.Duration(cfg.IdentityPermissionTimeoutMs)*time.Millisecond)
+	if err != nil {
+		slog.Error("Failed to initialize identity membership client", "error", err)
+		os.Exit(1)
+	}
+	defer membershipClient.Close()
 	catalogPolicyClient, err := grpcclient.NewCatalogPolicyClient(cfg.IdentityGRPCHost, time.Duration(cfg.CatalogPolicyTimeout)*time.Millisecond)
 	if err != nil {
 		slog.Error("Failed to initialize public catalog policy client", "error", err)
@@ -89,7 +98,7 @@ func main() {
 	categoryUsecase := usecase.NewCategoryUsecase(categoryRepo, tenantClient, txManager)
 	classUsecase := usecase.NewClassUsecase(classRepo, scheduleRepo, sessionRepo, enrollmentRepo, tenantClient, txManager, categoryRepo)
 	classCreationUsecase := usecase.NewClassCreationUsecase(txManager, categoryRepo, classRepo, classTeacherRepo, scheduleRepo, sessionRepo, tenantClient)
-	scheduleUsecase := usecase.NewScheduleUsecase(txManager, classRepo, scheduleRepo, sessionRepo, enrollmentRepo)
+	scheduleUsecase := usecase.NewScheduleUsecase(txManager, classRepo, scheduleRepo, sessionRepo, enrollmentRepo, membershipClient)
 	enrollmentUsecase := usecase.NewEnrollmentUsecase(enrollmentRepo, studentRepo, classRepo, billingClient, txManager)
 
 	// Initialize Handlers
@@ -173,6 +182,7 @@ func main() {
 		// os.Exit skips deferred calls, so release the identity clients first.
 		tenantClient.Close()
 		permissionClient.Close()
+		membershipClient.Close()
 		catalogPolicyClient.Close()
 		os.Exit(1)
 	}
