@@ -89,10 +89,11 @@ func concretePath(path string) string {
 // publicRoutes answer without credentials. Everything under /internal takes the
 // service credential; every other route takes a user JWT.
 var publicRoutes = map[string]bool{
-	"get /health":                      true,
-	"get /ready":                       true,
-	"get /api/v1/catalog/classes":      true,
-	"get /api/v1/catalog/classes/{id}": true,
+	"get /health":                              true,
+	"get /ready":                               true,
+	"get /api/v1/catalog/classes":              true,
+	"get /api/v1/catalog/classes/{id}":         true,
+	"get /api/v1/catalog/classes/{id}/reviews": true,
 }
 
 func expectedScheme(route contractRoute) string {

@@ -15,6 +15,7 @@ type routeHandlers struct {
 	health         gin.HandlerFunc
 	ready          gin.HandlerFunc
 	catalog        *handler.CatalogHandler
+	review         *handler.ReviewHandler
 	category       *handler.CategoryHandler
 	class          *handler.ClassHandler
 	list           *handler.ListHandler
@@ -42,6 +43,7 @@ func registerRoutes(r *gin.Engine, h routeHandlers, jwtSecret, internalCredentia
 	apiV1 := r.Group("/api/v1")
 	apiV1.GET("/catalog/classes", h.catalog.ListClasses)
 	apiV1.GET("/catalog/classes/:id", h.catalog.GetClass)
+	apiV1.GET("/catalog/classes/:id/reviews", h.review.List)
 	apiV1.Use(middleware.AuthMiddleware(jwtSecret))
 	{
 		apiV1.GET("/categories", h.list.ListCategories)
@@ -67,6 +69,7 @@ func registerRoutes(r *gin.Engine, h routeHandlers, jwtSecret, internalCredentia
 		apiV1.POST("/tenants/:tenant_id/enrollments", middleware.RequirePermissionUnlessParent(permissionClient, "enrollment:create"), h.enrollment.Create)
 		apiV1.POST("/catalog/classes/:class_id/enrollments", h.enrollment.CreateCatalogEnrollment)
 		apiV1.POST("/enrollments/:id/cancel", h.enrollment.Cancel)
+		apiV1.PUT("/enrollments/:id/review", h.review.Upsert)
 		apiV1.GET("/enrollments", middleware.RequirePermissionUnlessParent(permissionClient, "enrollment:read"), h.enrollment.ListQuery)
 		apiV1.GET("/enrollments/:id", middleware.RequirePermissionUnlessParent(permissionClient, "enrollment:read"), h.enrollment.GetQuery)
 		apiV1.PATCH("/enrollments/:id/schedule", h.enrollment.AssignSchedule)

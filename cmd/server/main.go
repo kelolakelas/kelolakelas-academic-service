@@ -113,7 +113,9 @@ func main() {
 	studentHandler := handler.NewStudentHandler(usecase.NewStudentUsecase(studentRepo, studentNoteRepo, txManager))
 	attendanceHandler := handler.NewAttendanceHandler(usecase.NewAttendanceUsecase(repository.NewAttendanceRepository(db), sessionRepo, enrollmentRepo))
 	reportHandler := handler.NewReportHandler(usecase.NewReportUsecase(repository.NewReportRepository(db), enrollmentRepo))
-	catalogHandler := handler.NewCatalogHandler(usecase.NewCatalogUsecase(repository.NewCatalogRepository(db), tenantClient, time.Duration(cfg.CatalogTenantInfoTTL)*time.Minute, catalogPolicyClient, time.Duration(cfg.CatalogPolicyCacheTTL)*time.Second))
+	catalogUsecase := usecase.NewCatalogUsecase(repository.NewCatalogRepository(db), tenantClient, time.Duration(cfg.CatalogTenantInfoTTL)*time.Minute, catalogPolicyClient, time.Duration(cfg.CatalogPolicyCacheTTL)*time.Second)
+	catalogHandler := handler.NewCatalogHandler(catalogUsecase)
+	reviewHandler := handler.NewReviewHandler(repository.NewReviewRepository(db), catalogUsecase)
 
 	// Initialize Router
 	sqlDB, err := db.DB()
@@ -127,6 +129,7 @@ func main() {
 		health:         healthHandler("academic-service"),
 		ready:          readinessHandler(sqlDB, cfg.IdentityGRPCHost),
 		catalog:        catalogHandler,
+		review:         reviewHandler,
 		category:       categoryHandler,
 		class:          classHandler,
 		list:           listHandler,
