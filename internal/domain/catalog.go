@@ -83,6 +83,8 @@ type CatalogItem struct {
 	Schedules       json.RawMessage  `json:"schedules"`
 	DistanceKM      *float64         `json:"distance_km,omitempty"`
 	IsEnrollable    bool             `json:"is_enrollable"`
+	RatingAverage   *float64         `json:"rating_average"`
+	RatingCount     int64            `json:"rating_count"`
 	CreatedAt       time.Time        `json:"created_at"`
 }
 

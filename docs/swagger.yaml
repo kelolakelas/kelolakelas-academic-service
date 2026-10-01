@@ -102,6 +102,10 @@ definitions:
         type: string
       price:
         type: integer
+      rating_average:
+        type: number
+      rating_count:
+        type: integer
       schedules:
         items:
           type: integer
@@ -845,6 +849,17 @@ definitions:
       payment:
         $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.PaymentResponse'
     type: object
+  github_com_kelolakelas_kelolakelas-academic-service_internal_domain.PublicReview:
+    properties:
+      comment:
+        type: string
+      created_at:
+        type: string
+      rating:
+        type: integer
+      updated_at:
+        type: string
+    type: object
   github_com_kelolakelas_kelolakelas-academic-service_internal_domain.RejectPrivateScheduleRequest:
     properties:
       reason:
@@ -939,6 +954,22 @@ definitions:
         $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ClassSession'
       original_session:
         $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ClassSession'
+    type: object
+  github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ReviewListResponse:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.PublicReview'
+        type: array
+      pagination:
+        $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.Pagination'
+    type: object
+  github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ReviewRequest:
+    properties:
+      comment:
+        type: string
+      rating:
+        type: integer
     type: object
   github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ScheduleItemRequest:
     properties:
@@ -1747,6 +1778,55 @@ paths:
       summary: Get a public catalog class
       tags:
       - Catalog
+  /api/v1/catalog/classes/{id}/reviews:
+    get:
+      parameters:
+      - description: Class UUID
+        in: path
+        name: id
+        required: true
+        type: string
+      - default: 1
+        description: Page number
+        in: query
+        name: page
+        type: integer
+      - default: 20
+        description: Items per page
+        in: query
+        name: page_size
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.HTTPResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ReviewListResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+      summary: List public class reviews
+      tags:
+      - Reviews
   /api/v1/categories:
     get:
       parameters:
@@ -2348,6 +2428,50 @@ paths:
       summary: Cancel a parent-owned pending enrollment
       tags:
       - Enrollments
+  /api/v1/enrollments/{id}/review:
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: Enrollment UUID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Rating and optional comment (max 2000 characters)
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ReviewRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.HTTPResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Create or replace the parent's review for an eligible enrollment
+      tags:
+      - Reviews
   /api/v1/enrollments/{id}/schedule:
     patch:
       consumes:
