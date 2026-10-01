@@ -22,6 +22,15 @@ type attendanceSessionRepo struct {
 func (r *attendanceSessionRepo) FindForAttendance(context.Context, uuid.UUID, uuid.UUID, uuid.UUID, time.Time) (*domain.ClassSession, error) {
 	return r.session, r.findError
 }
+func (r *attendanceSessionRepo) FindSessionForAttendance(_ context.Context, _ uuid.UUID, id uuid.UUID) (*domain.ClassSession, error) {
+	if r.session == nil || r.session.ID != id {
+		return nil, r.findError
+	}
+	return r.session, r.findError
+}
+func (r *attendanceSessionRepo) ListSessionsForAttendanceCohort(context.Context, uuid.UUID, uuid.UUID, string) ([]domain.ClassSession, error) {
+	return nil, nil
+}
 func (r *attendanceSessionRepo) IsTutorForSession(context.Context, uuid.UUID, uuid.UUID, uuid.UUID) (bool, error) {
 	return r.assigned, nil
 }
@@ -35,11 +44,20 @@ type attendanceRepo struct {
 func (r *attendanceRepo) GetByUnique(context.Context, uuid.UUID, uuid.UUID, time.Time) (*domain.Attendance, error) {
 	return r.existing, nil
 }
+func (r *attendanceRepo) GetBySessionEnrollment(_ context.Context, _, _ uuid.UUID) (*domain.Attendance, error) {
+	return r.existing, nil
+}
+func (r *attendanceRepo) UpsertBulk(_ context.Context, _ uuid.UUID, _ uuid.UUID, _ []domain.BulkAttendanceItem) ([]domain.Attendance, error) {
+	return nil, nil
+}
 func (r *attendanceRepo) Create(_ context.Context, attendance *domain.Attendance) error {
 	r.created = attendance
 	return nil
 }
 
+// The legacy schedule_id + date form keeps working (KEL-134 AC4): a matching
+// schedule resolves and stores, a mismatched one is rejected, and a duplicate
+// is refused.
 func TestAttendanceCreateScheduleMatching(t *testing.T) {
 	enrollmentID, sessionID, scheduleID := uuid.New(), uuid.New(), uuid.New()
 	date := "2026-08-22"
@@ -64,7 +82,7 @@ func TestAttendanceCreateScheduleMatching(t *testing.T) {
 			attendances := &attendanceRepo{existing: test.existing}
 			uc := NewAttendanceUsecase(attendances, sessions)
 			result, err := uc.Create(context.Background(), uuid.New(), uuid.New(), &domain.CreateAttendanceRequest{
-				EnrollmentID: enrollmentID, ScheduleID: scheduleID, Date: date, Status: "present",
+				EnrollmentID: enrollmentID, ScheduleID: &scheduleID, Date: date, Status: "present",
 			})
 			if !errors.Is(err, test.wantError) {
 				t.Fatalf("error = %v, want %v", err, test.wantError)
@@ -80,13 +98,17 @@ type attendanceInputRepo struct {
 	repository.AttendanceRepository
 }
 
+func (r *attendanceInputRepo) GetBySessionEnrollment(context.Context, uuid.UUID, uuid.UUID) (*domain.Attendance, error) {
+	return nil, nil
+}
+
 func TestAttendanceCreateRejectsUnassignedTutor(t *testing.T) {
 	scheduleID := uuid.New()
 	sessions := &attendanceSessionRepo{session: &domain.ClassSession{ID: uuid.New(), ScheduleID: &scheduleID}}
 	sessions.assigned = false
 	uc := NewAttendanceUsecase(&attendanceInputRepo{}, sessions)
 	_, err := uc.Create(context.Background(), uuid.New(), uuid.New(), &domain.CreateAttendanceRequest{
-		EnrollmentID: uuid.New(), ScheduleID: scheduleID, Date: "2026-08-22", Status: "present",
+		EnrollmentID: uuid.New(), ScheduleID: &scheduleID, Date: "2026-08-22", Status: "present",
 	})
 	if !errors.Is(err, domain.ErrAttendanceForbidden) {
 		t.Fatalf("error = %v, want %v", err, domain.ErrAttendanceForbidden)

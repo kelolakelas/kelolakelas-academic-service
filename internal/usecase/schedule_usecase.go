@@ -366,15 +366,16 @@ func (u *scheduleUsecase) RescheduleSession(
 
 		// Insert new Class_Sessions: keeping same class_id and tutor_id, schedule_id = null, status = 'scheduled'
 		newSession = &domain.ClassSession{
-			ID:           uuid.New(),
-			ClassID:      targetSession.ClassID,
-			ScheduleID:   nil, // schedule_id = null
-			EnrollmentID: targetSession.EnrollmentID,
-			TutorID:      targetSession.TutorID,
-			SessionDate:  normalizeDate(req.NewSessionDate),
-			StartTime:    req.NewStartTime,
-			EndTime:      req.NewEndTime,
-			Status:       "scheduled",
+			ID:                       uuid.New(),
+			ClassID:                  targetSession.ClassID,
+			ScheduleID:               nil, // schedule_id = null
+			EnrollmentID:             targetSession.EnrollmentID,
+			RescheduledFromSessionID: &targetSession.ID,
+			TutorID:                  targetSession.TutorID,
+			SessionDate:              normalizeDate(req.NewSessionDate),
+			StartTime:                req.NewStartTime,
+			EndTime:                  req.NewEndTime,
+			Status:                   "scheduled",
 		}
 
 		if err := u.sessionRepo.Create(txCtx, newSession); err != nil {
@@ -666,11 +667,37 @@ func (u *scheduleUsecase) GetSessionAttendees(
 		return []*domain.Enrollment{enrollment}, nil
 	}
 
-	// Group sessions only include enrollments assigned to this schedule.
-	if session.ScheduleID == nil {
-		return nil, ErrScheduleNotFound
+	// Group sessions only include enrollments assigned to this schedule. A
+	// reschedule replacement has a nil schedule: it covers its origin
+	// session's schedule instead (KEL-134). The origin link written at
+	// reschedule time is followed first; replacements created before the
+	// KEL-134 migration carry no link, so the origin session that still has
+	// status 'rescheduled' in the same class is used as a fallback.
+	cohortScheduleID := session.ScheduleID
+	if cohortScheduleID == nil {
+		var originScheduleID *uuid.UUID
+		if session.RescheduledFromSessionID != nil {
+			origin, err := u.sessionRepo.GetByIDForTenant(ctx, tenantID, *session.RescheduledFromSessionID)
+			if err != nil || origin == nil {
+				return nil, ErrSessionNotFound
+			}
+			originScheduleID = origin.ScheduleID
+		} else {
+			origins, err := u.sessionRepo.ListSessionsForAttendanceCohort(ctx, tenantID, session.ClassID, "rescheduled")
+			if err != nil {
+				return nil, err
+			}
+			if len(origins) != 1 {
+				return nil, ErrScheduleNotFound
+			}
+			originScheduleID = origins[0].ScheduleID
+		}
+		if originScheduleID == nil {
+			return nil, ErrScheduleNotFound
+		}
+		cohortScheduleID = originScheduleID
 	}
-	enrollments, err := u.enrollmentRepo.GetActiveByScheduleID(ctx, tenantID, *session.ScheduleID)
+	enrollments, err := u.enrollmentRepo.GetActiveByScheduleID(ctx, tenantID, *cohortScheduleID)
 	if err != nil {
 		return nil, err
 	}

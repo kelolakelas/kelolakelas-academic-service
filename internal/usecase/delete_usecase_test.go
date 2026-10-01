@@ -131,6 +131,12 @@ func (m *deleteSessionRepoMock) DeleteByTenant(context.Context, uuid.UUID, uuid.
 func (m *deleteSessionRepoMock) FindForAttendance(context.Context, uuid.UUID, uuid.UUID, uuid.UUID, time.Time) (*domain.ClassSession, error) {
 	return nil, nil
 }
+func (m *deleteSessionRepoMock) FindSessionForAttendance(context.Context, uuid.UUID, uuid.UUID) (*domain.ClassSession, error) {
+	return nil, nil
+}
+func (m *deleteSessionRepoMock) ListSessionsForAttendanceCohort(context.Context, uuid.UUID, uuid.UUID, string) ([]domain.ClassSession, error) {
+	return nil, nil
+}
 func (m *deleteSessionRepoMock) IsTutorForSession(context.Context, uuid.UUID, uuid.UUID, uuid.UUID) (bool, error) {
 	return false, nil
 }

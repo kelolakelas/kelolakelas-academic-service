@@ -12,6 +12,9 @@ import (
 func registerAttendanceReportRoutes(api *gin.RouterGroup, client grpcclient.PermissionClient, attendance *handler.AttendanceHandler, report *handler.ReportHandler) {
 	api.GET("/attendance", middleware.RequirePermissionForTenantResource(client, "attendance:read"), attendance.List)
 	api.POST("/attendance", middleware.RequirePermissionForTenantResource(client, "attendance:create"), attendance.Create)
+	api.POST("/attendance/by-session", middleware.RequirePermissionForTenantResource(client, "attendance:create"), attendance.CreateBySession)
+	api.POST("/attendance/bulk", middleware.RequirePermissionForTenantResource(client, "attendance:create"), attendance.CreateBulk)
+	api.GET("/attendance/by-session", middleware.RequirePermissionForTenantResource(client, "attendance:read"), attendance.GetBySession)
 	api.GET("/attendance/:id", middleware.RequirePermissionForTenantResource(client, "attendance:read"), attendance.Get)
 	api.PATCH("/attendance/:id", middleware.RequirePermissionForTenantResource(client, "attendance:update"), attendance.Update)
 	api.GET("/reports", middleware.RequirePermissionForTenantResource(client, "report:read"), report.List)

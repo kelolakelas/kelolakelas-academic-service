@@ -105,8 +105,263 @@
                             ]
                         }
                     },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
+                        }
+                    },
                     "403": {
                         "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
+                        }
+                    }
+                },
+                "x-permission": {
+                    "parent_tokens": "skipped",
+                    "permission": "attendance:create"
+                }
+            }
+        },
+        "/api/v1/attendance/bulk": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Record the status of a whole session's students in one idempotent request.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Attendance"
+                ],
+                "summary": "Create bulk attendance",
+                "parameters": [
+                    {
+                        "description": "Bulk attendance payload",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.BulkAttendanceRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.HTTPResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.BulkAttendanceResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
+                        }
+                    }
+                },
+                "x-permission": {
+                    "parent_tokens": "skipped",
+                    "permission": "attendance:create"
+                }
+            }
+        },
+        "/api/v1/attendance/by-session": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Read one attendance row addressed at a session id, including reschedule replacements.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Attendance"
+                ],
+                "summary": "Get attendance by session and enrollment",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Session UUID",
+                        "name": "session_id",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Enrollment UUID",
+                        "name": "enrollment_id",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.HTTPResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.Attendance"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
+                        }
+                    }
+                },
+                "x-permission": {
+                    "parent_tokens": "skipped",
+                    "permission": "attendance:read"
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Record attendance addressed directly at a session id, including reschedule replacements.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Attendance"
+                ],
+                "summary": "Create attendance by session",
+                "parameters": [
+                    {
+                        "description": "Attendance payload",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.CreateAttendanceBySessionRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.HTTPResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.Attendance"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
                         }
@@ -5044,6 +5299,61 @@
                 }
             }
         },
+        "github_com_kelolakelas_kelolakelas-academic-service_internal_domain.BulkAttendanceItem": {
+            "type": "object",
+            "required": [
+                "enrollment_id",
+                "status"
+            ],
+            "properties": {
+                "enrollment_id": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string",
+                    "enum": [
+                        "present",
+                        "absent",
+                        "late",
+                        "excused"
+                    ]
+                }
+            }
+        },
+        "github_com_kelolakelas_kelolakelas-academic-service_internal_domain.BulkAttendanceRequest": {
+            "type": "object",
+            "required": [
+                "items",
+                "session_id"
+            ],
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "maxItems": 200,
+                    "minItems": 1,
+                    "items": {
+                        "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.BulkAttendanceItem"
+                    }
+                },
+                "session_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_kelolakelas_kelolakelas-academic-service_internal_domain.BulkAttendanceResponse": {
+            "type": "object",
+            "properties": {
+                "attendances": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.Attendance"
+                    }
+                },
+                "session_id": {
+                    "type": "string"
+                }
+            }
+        },
         "github_com_kelolakelas_kelolakelas-academic-service_internal_domain.CatalogItem": {
             "type": "object",
             "properties": {
@@ -5361,6 +5671,18 @@
                 "id": {
                     "type": "string"
                 },
+                "rescheduled_from": {
+                    "description": "RescheduledFrom is the origin session of a reschedule replacement.",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ClassSession"
+                        }
+                    ]
+                },
+                "rescheduled_from_session_id": {
+                    "description": "RescheduledFromSessionID links a reschedule replacement to its origin\nsession (KEL-134). Rescheduled replacements are created with a nil\nschedule, so the origin link is what ties them back to the original\nschedule's enrollments. Nil for regular sessions; old replacements\ncreated before the migration keep nil and use the status/ClassID\nfallback in the use cases.",
+                    "type": "string"
+                },
                 "schedule": {
                     "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ClassSchedule"
                 },
@@ -5382,12 +5704,35 @@
                 }
             }
         },
+        "github_com_kelolakelas_kelolakelas-academic-service_internal_domain.CreateAttendanceBySessionRequest": {
+            "type": "object",
+            "required": [
+                "enrollment_id",
+                "session_id",
+                "status"
+            ],
+            "properties": {
+                "enrollment_id": {
+                    "type": "string"
+                },
+                "session_id": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string",
+                    "enum": [
+                        "present",
+                        "absent",
+                        "late",
+                        "excused"
+                    ]
+                }
+            }
+        },
         "github_com_kelolakelas_kelolakelas-academic-service_internal_domain.CreateAttendanceRequest": {
             "type": "object",
             "required": [
-                "date",
                 "enrollment_id",
-                "schedule_id",
                 "status"
             ],
             "properties": {
@@ -5398,6 +5743,10 @@
                     "type": "string"
                 },
                 "schedule_id": {
+                    "description": "ScheduleID + Date is the legacy addressing form and keeps working\n(KEL-134 AC4). SessionID is the newer form that also addresses\nreschedule replacements (whose schedule is nil). Exactly one form is\naccepted: SessionID XOR (ScheduleID, Date).",
+                    "type": "string"
+                },
+                "session_id": {
                     "type": "string"
                 },
                 "status": {

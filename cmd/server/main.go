@@ -111,7 +111,7 @@ func main() {
 	chatContextHandler := handler.NewChatContextHandler(repository.NewChatContextRepository(db))
 	sessionHandler := handler.NewSessionHandler(scheduleUsecase)
 	studentHandler := handler.NewStudentHandler(usecase.NewStudentUsecase(studentRepo, studentNoteRepo, txManager))
-	attendanceHandler := handler.NewAttendanceHandler(usecase.NewAttendanceUsecase(repository.NewAttendanceRepository(db), sessionRepo))
+	attendanceHandler := handler.NewAttendanceHandler(usecase.NewAttendanceUsecase(repository.NewAttendanceRepository(db), sessionRepo, enrollmentRepo))
 	reportHandler := handler.NewReportHandler(usecase.NewReportUsecase(repository.NewReportRepository(db), enrollmentRepo))
 	catalogHandler := handler.NewCatalogHandler(usecase.NewCatalogUsecase(repository.NewCatalogRepository(db), tenantClient, time.Duration(cfg.CatalogTenantInfoTTL)*time.Minute, catalogPolicyClient, time.Duration(cfg.CatalogPolicyCacheTTL)*time.Second))
 
