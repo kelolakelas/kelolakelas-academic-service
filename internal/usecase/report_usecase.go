@@ -15,8 +15,14 @@ import (
 
 type ReportUsecase interface {
 	List(ctx context.Context, tenantID uuid.UUID, query domain.ReportQuery) (*domain.ReportListResponse, error)
+	// ListForParent lists reports across every tenant that belong to the
+	// parent's children (KEL-140). The tenant claim is never consulted.
+	ListForParent(ctx context.Context, parentID uuid.UUID, query domain.ReportQuery) (*domain.ReportListResponse, error)
 	Create(ctx context.Context, tenantID, memberID uuid.UUID, req *domain.CreateReportRequest) (*domain.Report, error)
 	Get(ctx context.Context, tenantID, id uuid.UUID) (*domain.Report, error)
+	// GetForParent resolves one report for a parent (KEL-140), or
+	// gorm.ErrRecordNotFound when the report does not belong to the parent.
+	GetForParent(ctx context.Context, parentID, id uuid.UUID) (*domain.Report, error)
 	// Update and Delete take the caller's member claim so a tutor who does not
 	// teach the report's class is rejected with ErrReportForbidden, exactly
 	// like Create (KEL-135).
@@ -64,6 +70,28 @@ func (u *reportUsecase) Create(ctx context.Context, tenantID, memberID uuid.UUID
 }
 func (u *reportUsecase) Get(ctx context.Context, tenantID, id uuid.UUID) (*domain.Report, error) {
 	return u.repo.GetByIDForTenant(ctx, tenantID, id)
+}
+
+// ListForParent lists reports across every tenant that belong to the
+// parent's children (KEL-140). Pagination defaults match List.
+func (u *reportUsecase) ListForParent(ctx context.Context, parentID uuid.UUID, query domain.ReportQuery) (*domain.ReportListResponse, error) {
+	if query.Page < 1 {
+		query.Page = 1
+	}
+	if query.PageSize < 1 || query.PageSize > 100 {
+		query.PageSize = 20
+	}
+	items, total, err := u.repo.ListForParent(ctx, parentID, query)
+	if err != nil {
+		return nil, err
+	}
+	return &domain.ReportListResponse{Items: items, Pagination: domain.Pagination{Page: query.Page, PageSize: query.PageSize, TotalItems: total, TotalPages: int(math.Ceil(float64(total) / float64(query.PageSize)))}}, nil
+}
+
+// GetForParent resolves one report for a parent (KEL-140). A report of
+// another parent's child answers gorm.ErrRecordNotFound (404 upstream).
+func (u *reportUsecase) GetForParent(ctx context.Context, parentID, id uuid.UUID) (*domain.Report, error) {
+	return u.repo.GetForParent(ctx, parentID, id)
 }
 func (u *reportUsecase) Update(ctx context.Context, tenantID, memberID, id uuid.UUID, req *domain.UpdateReportRequest) (*domain.Report, error) {
 	item, err := u.Get(ctx, tenantID, id)

@@ -56,6 +56,13 @@ func (m *marketplaceEnrollmentRepo) GetActiveByClassID(context.Context, uuid.UUI
 func (m *marketplaceEnrollmentRepo) GetActiveByScheduleID(context.Context, uuid.UUID, uuid.UUID) ([]*domain.Enrollment, error) {
 	return nil, nil
 }
+
+// GetActiveByScheduleIDForParent is never exercised by the marketplace flow;
+// the stub keeps the fake satisfying repository.EnrollmentRepository so
+// production interface growth keeps compiling.
+func (m *marketplaceEnrollmentRepo) GetActiveByScheduleIDForParent(context.Context, uuid.UUID, uuid.UUID) ([]*domain.Enrollment, error) {
+	return nil, nil
+}
 func (m *marketplaceEnrollmentRepo) TransferSchedule(context.Context, uuid.UUID, uuid.UUID, uuid.UUID, uuid.UUID) error {
 	return nil
 }

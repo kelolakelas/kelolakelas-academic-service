@@ -51,7 +51,11 @@ type scopeScheduleUsecase struct {
 	scheduleIDs []uuid.UUID
 	attendeesT  uuid.UUID
 	attendeesID uuid.UUID
-	err         error
+	// attendeesParent/attendeesParentID record the KEL-140 parent-scoped
+	// attendee read, which carries the parent id instead of a tenant.
+	attendeesParent   uuid.UUID
+	attendeesParentID uuid.UUID
+	err               error
 }
 
 func (m *scopeScheduleUsecase) note(name string, tenantID uuid.UUID) {
@@ -89,6 +93,21 @@ func (m *scopeScheduleUsecase) GetSessionAttendees(_ context.Context, tenantID, 
 	if m.err != nil {
 		return nil, m.err
 	}
+	return []*domain.Enrollment{}, nil
+}
+
+// ListSessionsForParent, GetSessionForParent, and GetSessionAttendeesForParent
+// are never reached by the tenant-scope routes mirrored here; the stubs keep
+// the fake satisfying usecase.ScheduleUsecase so production interface growth
+// keeps compiling.
+func (m *scopeScheduleUsecase) ListSessionsForParent(context.Context, uuid.UUID, domain.SessionQuery) (*domain.SessionListResponse, error) {
+	return &domain.SessionListResponse{}, nil
+}
+func (m *scopeScheduleUsecase) GetSessionForParent(context.Context, uuid.UUID, uuid.UUID) (*domain.ClassSession, error) {
+	return nil, nil
+}
+func (m *scopeScheduleUsecase) GetSessionAttendeesForParent(_ context.Context, parentID, sessionID uuid.UUID) ([]*domain.Enrollment, error) {
+	m.attendeesParent, m.attendeesParentID = parentID, sessionID
 	return []*domain.Enrollment{}, nil
 }
 
@@ -341,7 +360,6 @@ func TestSessionScheduleMutationsRejectMissingTenantClaim(t *testing.T) {
 		{"permanent schedule", http.MethodPut, "/api/v1/schedules/" + scheduleID.String() + "/permanent", permanentScheduleBody(scheduleID)},
 		{"substitute tutor", http.MethodPatch, "/api/v1/sessions/" + sessionID.String() + "/substitute-tutor", substituteTutorBody(sessionID)},
 		{"permanent tutor", http.MethodPatch, "/api/v1/schedules/" + scheduleID.String() + "/tutor-permanent", permanentTutorBody(scheduleID)},
-		{"attendees", http.MethodGet, "/api/v1/sessions/" + sessionID.String() + "/attendees", ""},
 	}
 
 	for _, tc := range cases {
@@ -353,6 +371,34 @@ func TestSessionScheduleMutationsRejectMissingTenantClaim(t *testing.T) {
 			}
 			if len(schedule.mutations) != 0 {
 				t.Fatalf("use case ran without a tenant claim: %v", schedule.mutations)
+			}
+		})
+	}
+}
+
+// KEL-140: a parent reads only the parent's own children attending the
+// session, across every tenant. The tenant claim is ignored even when
+// present, so a parent token with no tenant claim reaches the parent-scoped
+// attendee path (200) instead of the mutation-style 403 above.
+func TestSessionAttendeesParentReadIgnoresTenantClaim(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	parentID := uuid.New()
+	sessionID := uuid.New()
+	for _, tenant := range []string{"", "not-a-uuid", uuid.New().String()} {
+		t.Run("tenant="+tenant, func(t *testing.T) {
+			token := signToken(t, middleware.Claims{UserID: parentID.String(), TenantID: tenant, IsParent: true})
+			schedule := &scopeScheduleUsecase{}
+			res := doJSONRequest(sessionScheduleScopeRouter(schedule, &scopePermissionClientStub{}),
+				http.MethodGet, "/api/v1/sessions/"+sessionID.String()+"/attendees", token, "")
+			if res.Code != http.StatusOK {
+				t.Fatalf("status=%d want=%d body=%s", res.Code, http.StatusOK, res.Body.String())
+			}
+			if schedule.attendeesParent != parentID || schedule.attendeesParentID != sessionID {
+				t.Fatalf("parent attendees called with parent=%s session=%s want parent=%s session=%s",
+					schedule.attendeesParent, schedule.attendeesParentID, parentID, sessionID)
+			}
+			if len(schedule.mutations) != 0 {
+				t.Fatalf("tenant-scoped attendee path ran for a parent: %v", schedule.mutations)
 			}
 		})
 	}

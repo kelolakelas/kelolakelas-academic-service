@@ -206,6 +206,16 @@ func (m *scopeSessionRepo) ListByTenant(context.Context, uuid.UUID, domain.Sessi
 	return nil, 0, nil
 }
 
+// ListSessionsForParent and GetSessionForParent never run in the tenant-scope
+// flow; the stubs keep the fake satisfying repository.SessionRepository.
+func (m *scopeSessionRepo) ListSessionsForParent(context.Context, uuid.UUID, domain.SessionQuery) ([]domain.ClassSession, int64, error) {
+	return nil, 0, nil
+}
+
+func (m *scopeSessionRepo) GetSessionForParent(context.Context, uuid.UUID, uuid.UUID) (*domain.ClassSession, error) {
+	return nil, gorm.ErrRecordNotFound
+}
+
 func (m *scopeSessionRepo) Update(context.Context, *domain.ClassSession) error {
 	m.updates++
 	return nil
@@ -301,6 +311,12 @@ func (m *scopeEnrollmentRepo) GetActiveByScheduleID(_ context.Context, tenantID,
 		return nil, nil
 	}
 	return m.bySchedule[scheduleID], nil
+}
+
+// GetActiveByScheduleIDForParent never runs in the tenant-scope flow; the
+// stub keeps the fake satisfying repository.EnrollmentRepository.
+func (m *scopeEnrollmentRepo) GetActiveByScheduleIDForParent(context.Context, uuid.UUID, uuid.UUID) ([]*domain.Enrollment, error) {
+	return nil, nil
 }
 
 func (m *scopeEnrollmentRepo) TransferSchedule(_ context.Context, tenantID, _, oldID, newID uuid.UUID) error {

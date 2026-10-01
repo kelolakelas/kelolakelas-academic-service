@@ -297,6 +297,19 @@ func (r *enrollmentRepository) GetActiveByScheduleID(ctx context.Context, tenant
 	return enrollments, err
 }
 
+// GetActiveByScheduleIDForParent returns the live (pending/active)
+// enrollments on a schedule that belong to the parent's children (KEL-140),
+// so a parent-scoped attendee list never exposes other students. The tenant
+// claim is never consulted.
+func (r *enrollmentRepository) GetActiveByScheduleIDForParent(ctx context.Context, parentID, scheduleID uuid.UUID) ([]*domain.Enrollment, error) {
+	var enrollments []*domain.Enrollment
+	err := r.getDB(ctx).Preload("Student").
+		Joins("JOIN students s ON s.id = enrollments.student_id").
+		Where("enrollments.schedule_id = ? AND s.parent_id = ? AND enrollments.status IN ? AND enrollments.deleted_at IS NULL", scheduleID, parentID, []string{"pending", "active"}).
+		Find(&enrollments).Error
+	return enrollments, err
+}
+
 // TransferSchedule moves only live enrollments; the caller holds the old schedule
 // row lock in the same transaction, serializing this with capacity-checked signups.
 func (r *enrollmentRepository) TransferSchedule(ctx context.Context, tenantID, classID, oldScheduleID, newScheduleID uuid.UUID) error {

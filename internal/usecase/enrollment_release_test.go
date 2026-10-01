@@ -60,6 +60,12 @@ func (s *releaseEnrollmentRepoStub) GetActiveByClassID(context.Context, uuid.UUI
 func (s *releaseEnrollmentRepoStub) GetActiveByScheduleID(context.Context, uuid.UUID, uuid.UUID) ([]*domain.Enrollment, error) {
 	return nil, nil
 }
+
+// GetActiveByScheduleIDForParent never runs in the release flow; the stub
+// keeps the fake satisfying repository.EnrollmentRepository.
+func (s *releaseEnrollmentRepoStub) GetActiveByScheduleIDForParent(context.Context, uuid.UUID, uuid.UUID) ([]*domain.Enrollment, error) {
+	return nil, nil
+}
 func (s *releaseEnrollmentRepoStub) TransferSchedule(context.Context, uuid.UUID, uuid.UUID, uuid.UUID, uuid.UUID) error {
 	return nil
 }

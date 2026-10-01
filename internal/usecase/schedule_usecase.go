@@ -93,6 +93,30 @@ func (u *scheduleUsecase) GetSession(ctx context.Context, tenantID, sessionID uu
 	return u.sessionRepo.GetByIDForTenant(ctx, tenantID, sessionID)
 }
 
+// ListSessionsForParent lists sessions across every tenant that belong to the
+// parent's children (KEL-140). Pagination is applied by the caller-facing
+// ListSessions helper's own defaults: page floors to 1 and page_size to 20
+// when outside 1..100, so a parent and a member paginate identically.
+func (u *scheduleUsecase) ListSessionsForParent(ctx context.Context, parentID uuid.UUID, query domain.SessionQuery) (*domain.SessionListResponse, error) {
+	if query.Page < 1 {
+		query.Page = 1
+	}
+	if query.PageSize < 1 || query.PageSize > 100 {
+		query.PageSize = 20
+	}
+	items, total, err := u.sessionRepo.ListSessionsForParent(ctx, parentID, query)
+	if err != nil {
+		return nil, err
+	}
+	return &domain.SessionListResponse{Items: items, Pagination: domain.Pagination{Page: query.Page, PageSize: query.PageSize, TotalItems: total, TotalPages: int(math.Ceil(float64(total) / float64(query.PageSize)))}}, nil
+}
+
+// GetSessionForParent resolves one session for a parent (KEL-140), or
+// gorm.ErrRecordNotFound when the session does not belong to the parent.
+func (u *scheduleUsecase) GetSessionForParent(ctx context.Context, parentID, sessionID uuid.UUID) (*domain.ClassSession, error) {
+	return u.sessionRepo.GetSessionForParent(ctx, parentID, sessionID)
+}
+
 func (u *scheduleUsecase) DeleteSession(ctx context.Context, tenantID, sessionID uuid.UUID) error {
 	return u.txManager.WithTransaction(ctx, func(txCtx context.Context) error {
 		session, err := u.sessionRepo.GetByID(txCtx, sessionID)
@@ -698,6 +722,67 @@ func (u *scheduleUsecase) GetSessionAttendees(
 		cohortScheduleID = originScheduleID
 	}
 	enrollments, err := u.enrollmentRepo.GetActiveByScheduleID(ctx, tenantID, *cohortScheduleID)
+	if err != nil {
+		return nil, err
+	}
+
+	return enrollments, nil
+}
+
+// GetSessionAttendeesForParent returns only the parent's own children
+// attending the session (KEL-140). The session is resolved through the parent
+// session ownership predicate, never the tenant claim, and group cohorts are
+// read through the parent-scoped enrollment lookup; anything else answers
+// not-found and leaks no other student.
+func (u *scheduleUsecase) GetSessionAttendeesForParent(
+	ctx context.Context,
+	parentID uuid.UUID,
+	sessionID uuid.UUID,
+) ([]*domain.Enrollment, error) {
+	session, err := u.sessionRepo.GetSessionForParent(ctx, parentID, sessionID)
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, ErrSessionNotFound
+	}
+	if err != nil {
+		return nil, err
+	}
+	if session == nil {
+		return nil, ErrSessionNotFound
+	}
+
+	// Private session: the single enrollment must belong to the parent; the
+	// parent-scoped access check answers not-found otherwise.
+	if session.EnrollmentID != nil {
+		enrollment, err := u.enrollmentRepo.GetByIDForAccess(ctx, nil, &parentID, *session.EnrollmentID)
+		if err != nil || enrollment == nil {
+			return nil, ErrEnrollmentNotFound
+		}
+		return []*domain.Enrollment{enrollment}, nil
+	}
+
+	// Group session: the cohort schedule of a reschedule replacement is its
+	// origin session's schedule (KEL-134). The origin is resolved through the
+	// same parent ownership predicate; without the link there is no safe
+	// parent-scoped cohort to read, so the call fails closed instead of
+	// falling back to a tenant-wide lookup it has no tenant for.
+	cohortScheduleID := session.ScheduleID
+	if cohortScheduleID == nil {
+		if session.RescheduledFromSessionID == nil {
+			return nil, ErrScheduleNotFound
+		}
+		origin, err := u.sessionRepo.GetSessionForParent(ctx, parentID, *session.RescheduledFromSessionID)
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, ErrSessionNotFound
+		}
+		if err != nil || origin == nil {
+			return nil, ErrSessionNotFound
+		}
+		if origin.ScheduleID == nil {
+			return nil, ErrScheduleNotFound
+		}
+		cohortScheduleID = origin.ScheduleID
+	}
+	enrollments, err := u.enrollmentRepo.GetActiveByScheduleIDForParent(ctx, parentID, *cohortScheduleID)
 	if err != nil {
 		return nil, err
 	}

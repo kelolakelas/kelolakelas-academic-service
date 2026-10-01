@@ -63,6 +63,17 @@ type SessionRepository interface {
 	IsTutorForSession(ctx context.Context, tenantID, sessionID, memberID uuid.UUID) (bool, error)
 	ListSessionsForAttendanceCohort(ctx context.Context, tenantID, classID uuid.UUID, status string) ([]domain.ClassSession, error)
 	ListByTenant(ctx context.Context, tenantID uuid.UUID, query domain.SessionQuery) ([]domain.ClassSession, int64, error)
+	// ListSessionsForParent lists sessions across every tenant that belong to
+	// the parent's children (KEL-140): a session is included when it is a
+	// private session of one of the parent's enrollments, a group session of a
+	// schedule holding a live (pending/active) enrollment of the parent, or a
+	// reschedule replacement linked to such an origin session. The tenant claim
+	// is never consulted, so a parent-scoped list cannot leak another tenant.
+	ListSessionsForParent(ctx context.Context, parentID uuid.UUID, query domain.SessionQuery) ([]domain.ClassSession, int64, error)
+	// GetSessionForParent resolves one session for a parent (KEL-140): the
+	// session is returned only when it satisfies the same ownership predicate
+	// as ListSessionsForParent, otherwise gorm.ErrRecordNotFound.
+	GetSessionForParent(ctx context.Context, parentID, id uuid.UUID) (*domain.ClassSession, error)
 	Update(ctx context.Context, session *domain.ClassSession) error
 	CancelFutureSessionsBySchedule(ctx context.Context, tenantID, scheduleID uuid.UUID, fromDate time.Time) error
 	CancelFutureSessionsByClass(ctx context.Context, tenantID, classID uuid.UUID, fromDate time.Time) error
@@ -110,6 +121,11 @@ type EnrollmentRepository interface {
 	IsTutorForEnrollment(ctx context.Context, enrollmentID, memberID uuid.UUID) (bool, error)
 	GetActiveByClassID(ctx context.Context, classID uuid.UUID) ([]*domain.Enrollment, error)
 	GetActiveByScheduleID(ctx context.Context, tenantID, scheduleID uuid.UUID) ([]*domain.Enrollment, error)
+	// GetActiveByScheduleIDForParent returns the live (pending/active)
+	// enrollments on a schedule that belong to the parent's children
+	// (KEL-140), so a parent-scoped attendee list never exposes other
+	// students. The tenant claim is never consulted.
+	GetActiveByScheduleIDForParent(ctx context.Context, parentID, scheduleID uuid.UUID) ([]*domain.Enrollment, error)
 	TransferSchedule(ctx context.Context, tenantID, classID, oldScheduleID, newScheduleID uuid.UUID) error
 	AssignSchedule(ctx context.Context, enrollmentID, scheduleID uuid.UUID) error
 	Update(ctx context.Context, enrollment *domain.Enrollment) error
@@ -139,6 +155,16 @@ type AttendanceRepository interface {
 	GetByID(ctx context.Context, id uuid.UUID) (*domain.Attendance, error)
 	GetByIDForTenant(ctx context.Context, tenantID, id uuid.UUID) (*domain.Attendance, error)
 	List(ctx context.Context, tenantID uuid.UUID, query domain.AttendanceQuery) ([]domain.Attendance, int64, error)
+	// ListForParent lists attendance rows across every tenant that belong to
+	// the parent's children (KEL-140): a row is included only when its
+	// enrollment is held by a student whose parent_id is the caller. The
+	// tenant claim is never consulted. Client-supplied enrollment, student, or
+	// schedule filters narrow the parent's own rows and can never widen them
+	// to another parent's children.
+	ListForParent(ctx context.Context, parentID uuid.UUID, query domain.AttendanceQuery) ([]domain.Attendance, int64, error)
+	// GetForParent resolves one attendance row for a parent (KEL-140), or
+	// gorm.ErrRecordNotFound when the row does not belong to the parent.
+	GetForParent(ctx context.Context, parentID, id uuid.UUID) (*domain.Attendance, error)
 	GetByUnique(ctx context.Context, enrollmentID, sessionID uuid.UUID, date time.Time) (*domain.Attendance, error)
 	// GetBySessionEnrollment resolves a single (session, enrollment) row
 	// without the legacy date component (KEL-134).
@@ -156,6 +182,16 @@ type ReportRepository interface {
 	GetByID(ctx context.Context, id uuid.UUID) (*domain.Report, error)
 	GetByIDForTenant(ctx context.Context, tenantID, id uuid.UUID) (*domain.Report, error)
 	List(ctx context.Context, tenantID uuid.UUID, query domain.ReportQuery) ([]domain.Report, int64, error)
+	// ListForParent lists reports across every tenant that belong to the
+	// parent's children (KEL-140): a report is included only when its
+	// enrollment is held by a student whose parent_id is the caller. The
+	// tenant claim is never consulted. Client-supplied enrollment, student, or
+	// reporter filters narrow the parent's own rows and can never widen them
+	// to another parent's children.
+	ListForParent(ctx context.Context, parentID uuid.UUID, query domain.ReportQuery) ([]domain.Report, int64, error)
+	// GetForParent resolves one report for a parent (KEL-140), or
+	// gorm.ErrRecordNotFound when the report does not belong to the parent.
+	GetForParent(ctx context.Context, parentID, id uuid.UUID) (*domain.Report, error)
 	Update(ctx context.Context, report *domain.Report) error
 	Delete(ctx context.Context, id uuid.UUID) error
 }

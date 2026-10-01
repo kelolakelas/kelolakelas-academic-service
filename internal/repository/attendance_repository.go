@@ -173,6 +173,77 @@ func (r *attendanceRepository) List(ctx context.Context, tenantID uuid.UUID, que
 	return items, total, err
 }
 
+// ListForParent lists attendance rows across every tenant that belong to the
+// parent's children (KEL-140): a row is included only when its enrollment is
+// held by a student whose parent_id is the caller. The tenant claim is never
+// consulted, so a parent token carrying any tenant_id (or none) sees the same
+// rows. Client-supplied enrollment, student, or schedule filters narrow the
+// parent's own rows and can never widen them to another parent's children.
+func (r *attendanceRepository) ListForParent(ctx context.Context, parentID uuid.UUID, query domain.AttendanceQuery) ([]domain.Attendance, int64, error) {
+	db := r.db.WithContext(ctx).
+		Table("attendances a").
+		Joins("JOIN class_sessions cs ON cs.id = a.session_id").
+		Joins("JOIN enrollments e_own ON e_own.id = a.enrollment_id").
+		Joins("JOIN students s_own ON s_own.id = e_own.student_id").
+		Where("s_own.parent_id = ?", parentID)
+
+	if query.EnrollmentID != nil {
+		db = db.Where("a.enrollment_id = ?", *query.EnrollmentID)
+	}
+
+	if query.StudentID != nil {
+		db = db.Where("e_own.student_id = ?", *query.StudentID)
+	}
+
+	if query.ScheduleID != nil {
+		db = db.Joins("JOIN class_schedules sch ON sch.id = cs.schedule_id").
+			Where("sch.id = ?", *query.ScheduleID)
+	}
+
+	if query.Status != "" {
+		db = db.Where("a.status = ?", query.Status)
+	}
+
+	if query.DateFrom != nil {
+		db = db.Where("a.date >= ?", *query.DateFrom)
+	}
+
+	if query.DateTo != nil {
+		db = db.Where("a.date <= ?", *query.DateTo)
+	}
+
+	var total int64
+	if err := db.Session(&gorm.Session{}).Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+
+	var items []domain.Attendance
+	err := db.Select("a.*").
+		Preload("Session").
+		Order("a.date DESC").
+		Limit(query.PageSize).
+		Offset((query.Page - 1) * query.PageSize).
+		Find(&items).Error
+	return items, total, err
+}
+
+// GetForParent resolves one attendance row for a parent (KEL-140), or
+// gorm.ErrRecordNotFound when the row does not belong to the parent's
+// children. The caller answers not-found (404), never forbidden, so ids do
+// not leak across parents.
+func (r *attendanceRepository) GetForParent(ctx context.Context, parentID, id uuid.UUID) (*domain.Attendance, error) {
+	var item domain.Attendance
+	err := r.db.WithContext(ctx).
+		Table("attendances a").
+		Joins("JOIN enrollments e ON e.id = a.enrollment_id").
+		Joins("JOIN students s ON s.id = e.student_id").
+		Where("a.id = ? AND s.parent_id = ?", id, parentID).
+		Select("a.*").
+		Preload("Session").
+		First(&item).Error
+	return &item, err
+}
+
 func (r *attendanceRepository) Update(ctx context.Context, attendance *domain.Attendance) error {
 	return r.db.WithContext(ctx).Save(attendance).Error
 }
