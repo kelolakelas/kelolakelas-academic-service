@@ -454,11 +454,6 @@ func (h *ScheduleHandler) ChangeTutorPermanent(c *gin.Context) {
 // @Failure 500 {object} domain.ErrorResponse
 // @Router /api/v1/sessions/{id}/attendees [get]
 func (h *ScheduleHandler) GetSessionAttendees(c *gin.Context) {
-	tenantID, err := tenantIDFromContext(c)
-	if err != nil {
-		writeTenantError(c, err)
-		return
-	}
 	sessionIDStr := c.Param("id")
 	sessionID, err := uuid.Parse(sessionIDStr)
 	if err != nil {
@@ -467,6 +462,49 @@ func (h *ScheduleHandler) GetSessionAttendees(c *gin.Context) {
 			"message": "Invalid session ID format",
 			"data":    nil,
 		})
+		return
+	}
+	// KEL-140: a parent reads only the parent's own children attending the
+	// session, across every tenant. The tenant claim is ignored even when
+	// present (AC 3); another parent's session answers 404, never 403.
+	if c.GetBool("is_parent") {
+		parentID, err := authenticatedUserID(c)
+		if err != nil {
+			c.JSON(http.StatusUnauthorized, gin.H{
+				"status":  "error",
+				"message": "Invalid user context",
+				"data":    nil,
+			})
+			return
+		}
+		attendees, err := h.scheduleUsecase.GetSessionAttendeesForParent(c.Request.Context(), *parentID, sessionID)
+		if err != nil {
+			if errors.Is(err, usecase.ErrSessionNotFound) || errors.Is(err, usecase.ErrEnrollmentNotFound) {
+				c.JSON(http.StatusNotFound, gin.H{
+					"status":  "error",
+					"message": err.Error(),
+					"data":    nil,
+				})
+				return
+			}
+			logInternalError(c.Request.Context(), "get session attendees", err)
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"status":  "error",
+				"message": "Failed to get session attendees",
+				"data":    nil,
+			})
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{
+			"status":  "success",
+			"message": "Session attendees retrieved successfully",
+			"data":    attendees,
+		})
+		return
+	}
+	tenantID, err := tenantIDFromContext(c)
+	if err != nil {
+		writeTenantError(c, err)
 		return
 	}
 

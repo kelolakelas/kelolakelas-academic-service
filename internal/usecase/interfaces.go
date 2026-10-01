@@ -38,6 +38,12 @@ type ScheduleUsecase interface {
 	DeleteSchedule(ctx context.Context, tenantID, id uuid.UUID) error
 	ListSessions(ctx context.Context, tenantID uuid.UUID, query domain.SessionQuery) (*domain.SessionListResponse, error)
 	GetSession(ctx context.Context, tenantID, sessionID uuid.UUID) (*domain.ClassSession, error)
+	// ListSessionsForParent lists sessions across every tenant that belong
+	// to the parent's children (KEL-140). The tenant claim is never consulted.
+	ListSessionsForParent(ctx context.Context, parentID uuid.UUID, query domain.SessionQuery) (*domain.SessionListResponse, error)
+	// GetSessionForParent resolves one session for a parent (KEL-140), or
+	// gorm.ErrRecordNotFound when the session does not belong to the parent.
+	GetSessionForParent(ctx context.Context, parentID, sessionID uuid.UUID) (*domain.ClassSession, error)
 	DeleteSession(ctx context.Context, tenantID, sessionID uuid.UUID) error
 	// Scenario 1: Create Initial Schedules for an Existing Class
 	CreateInitialSchedules(ctx context.Context, tenantID uuid.UUID, req *domain.CreateInitialSchedulesRequest) (*domain.CreateInitialSchedulesResponse, error)
@@ -56,6 +62,11 @@ type ScheduleUsecase interface {
 
 	// Attendance/Session Read Logic
 	GetSessionAttendees(ctx context.Context, tenantID, sessionID uuid.UUID) ([]*domain.Enrollment, error)
+	// GetSessionAttendeesForParent returns only the parent's own children
+	// attending the session (KEL-140): the session must satisfy the parent
+	// session ownership predicate, and group cohorts are read through the
+	// parent-scoped enrollment lookup, so no other student is exposed.
+	GetSessionAttendeesForParent(ctx context.Context, parentID, sessionID uuid.UUID) ([]*domain.Enrollment, error)
 }
 
 type ClassCreationUsecase interface {

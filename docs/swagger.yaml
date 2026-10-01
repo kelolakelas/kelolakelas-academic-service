@@ -1253,7 +1253,7 @@ paths:
       tags:
       - Attendance
       x-permission:
-        parent_tokens: skipped
+        parent_tokens: denied
         permission: attendance:create
   /api/v1/attendance/{id}:
     get:
@@ -1332,7 +1332,7 @@ paths:
       tags:
       - Attendance
       x-permission:
-        parent_tokens: skipped
+        parent_tokens: denied
         permission: attendance:update
   /api/v1/attendance/bulk:
     post:
@@ -1381,7 +1381,7 @@ paths:
       tags:
       - Attendance
       x-permission:
-        parent_tokens: skipped
+        parent_tokens: denied
         permission: attendance:create
   /api/v1/attendance/by-session:
     get:
@@ -1484,7 +1484,7 @@ paths:
       tags:
       - Attendance
       x-permission:
-        parent_tokens: skipped
+        parent_tokens: denied
         permission: attendance:create
   /api/v1/catalog/classes:
     get:
@@ -2465,7 +2465,7 @@ paths:
       tags:
       - Reports
       x-permission:
-        parent_tokens: skipped
+        parent_tokens: denied
         permission: report:create
   /api/v1/reports/{id}:
     delete:
@@ -2496,7 +2496,7 @@ paths:
       tags:
       - Reports
       x-permission:
-        parent_tokens: skipped
+        parent_tokens: denied
         permission: report:delete
     get:
       parameters:
@@ -2574,7 +2574,7 @@ paths:
       tags:
       - Reports
       x-permission:
-        parent_tokens: skipped
+        parent_tokens: denied
         permission: report:update
   /api/v1/schedule-requests:
     get:

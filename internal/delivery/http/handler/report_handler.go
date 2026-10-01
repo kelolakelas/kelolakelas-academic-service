@@ -61,6 +61,27 @@ func parseReportQuery(c *gin.Context) (domain.ReportQuery, error) {
 // @Failure 503 {object} domain.ErrorResponse
 // @Router /api/v1/reports [get]
 func (h *ReportHandler) List(c *gin.Context) {
+	// KEL-140: a parent reads across every tenant through ownership, never
+	// through the tenant claim, which is ignored even when present (AC 3).
+	if c.GetBool("is_parent") {
+		parentID, e := authenticatedUserID(c)
+		if e != nil {
+			c.JSON(401, gin.H{"status": "error", "message": "Invalid user context", "data": nil})
+			return
+		}
+		q, e := parseReportQuery(c)
+		if e != nil {
+			c.JSON(400, gin.H{"status": "error", "message": e.Error(), "data": nil})
+			return
+		}
+		r, e := h.usecase.ListForParent(c.Request.Context(), *parentID, q)
+		if e != nil {
+			c.JSON(500, gin.H{"status": "error", "message": "Failed to fetch reports", "data": nil})
+			return
+		}
+		c.JSON(200, gin.H{"status": "success", "message": "Reports fetched successfully", "data": r})
+		return
+	}
 	tenant, e := reportTenant(c)
 	if e != nil {
 		c.JSON(401, gin.H{"status": "error", "message": "Invalid tenant context", "data": nil})
@@ -84,7 +105,7 @@ func (h *ReportHandler) List(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Security BearerAuth
-// @x-permission {"permission":"report:create","parent_tokens":"skipped"}
+// @x-permission {"permission":"report:create","parent_tokens":"denied"}
 // @Param request body domain.CreateReportRequest true "Report payload"
 // @Success 201 {object} domain.HTTPResponse{data=domain.Report}
 // @Failure 403 {object} domain.ErrorResponse
@@ -129,6 +150,31 @@ func (h *ReportHandler) Create(c *gin.Context) {
 // @Failure 503 {object} domain.ErrorResponse
 // @Router /api/v1/reports/{id} [get]
 func (h *ReportHandler) Get(c *gin.Context) {
+	// KEL-140: same ownership read as List; the tenant claim is ignored.
+	// Another parent's report answers 404, never 403, so ids do not leak.
+	if c.GetBool("is_parent") {
+		parentID, e := authenticatedUserID(c)
+		if e != nil {
+			c.JSON(401, gin.H{"status": "error", "message": "Invalid user context", "data": nil})
+			return
+		}
+		id, e := uuid.Parse(c.Param("id"))
+		if e != nil {
+			c.JSON(400, gin.H{"status": "error", "message": "Invalid report ID", "data": nil})
+			return
+		}
+		r, e := h.usecase.GetForParent(c.Request.Context(), *parentID, id)
+		if errors.Is(e, gorm.ErrRecordNotFound) {
+			c.JSON(404, gin.H{"status": "error", "message": "Report not found", "data": nil})
+			return
+		}
+		if e != nil {
+			c.JSON(500, gin.H{"status": "error", "message": "Failed to fetch report", "data": nil})
+			return
+		}
+		c.JSON(200, gin.H{"status": "success", "message": "Report fetched successfully", "data": r})
+		return
+	}
 	tenant, e := reportTenant(c)
 	if e != nil {
 		c.JSON(401, gin.H{"status": "error", "message": "Invalid tenant context", "data": nil})
@@ -156,7 +202,7 @@ func (h *ReportHandler) Get(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Security BearerAuth
-// @x-permission {"permission":"report:update","parent_tokens":"skipped"}
+// @x-permission {"permission":"report:update","parent_tokens":"denied"}
 // @Param id path string true "Report UUID"
 // @Param request body domain.UpdateReportRequest true "Report payload"
 // @Success 200 {object} domain.HTTPResponse{data=domain.Report}
@@ -205,7 +251,7 @@ func (h *ReportHandler) Update(c *gin.Context) {
 // @Tags Reports
 // @Produce json
 // @Security BearerAuth
-// @x-permission {"permission":"report:delete","parent_tokens":"skipped"}
+// @x-permission {"permission":"report:delete","parent_tokens":"denied"}
 // @Param id path string true "Report UUID"
 // @Success 200 {object} domain.HTTPResponse
 // @Failure 403 {object} domain.ErrorResponse

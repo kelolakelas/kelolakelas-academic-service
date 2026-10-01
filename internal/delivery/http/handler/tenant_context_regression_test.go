@@ -135,6 +135,19 @@ func (m *recordingScheduleUsecase) GetSessionAttendees(context.Context, uuid.UUI
 	return nil, nil
 }
 
+// The KEL-140 parent-scoped session reads never run on the tenant-scoped
+// list routes under test; the stubs keep the fake satisfying
+// usecase.ScheduleUsecase so production interface growth keeps compiling.
+func (m *recordingScheduleUsecase) ListSessionsForParent(context.Context, uuid.UUID, domain.SessionQuery) (*domain.SessionListResponse, error) {
+	return nil, nil
+}
+func (m *recordingScheduleUsecase) GetSessionForParent(context.Context, uuid.UUID, uuid.UUID) (*domain.ClassSession, error) {
+	return nil, nil
+}
+func (m *recordingScheduleUsecase) GetSessionAttendeesForParent(context.Context, uuid.UUID, uuid.UUID) ([]*domain.Enrollment, error) {
+	return nil, nil
+}
+
 type recordingEnrollmentUsecase struct {
 	enrollCalls  int
 	enrollTenant uuid.UUID

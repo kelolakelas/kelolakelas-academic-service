@@ -79,6 +79,12 @@ func (s *cancelEnrollmentRepoStub) GetActiveByClassID(context.Context, uuid.UUID
 func (s *cancelEnrollmentRepoStub) GetActiveByScheduleID(context.Context, uuid.UUID, uuid.UUID) ([]*domain.Enrollment, error) {
 	return nil, nil
 }
+
+// GetActiveByScheduleIDForParent never runs in the cancel flow; the stub
+// keeps the fake satisfying repository.EnrollmentRepository.
+func (s *cancelEnrollmentRepoStub) GetActiveByScheduleIDForParent(context.Context, uuid.UUID, uuid.UUID) ([]*domain.Enrollment, error) {
+	return nil, nil
+}
 func (s *cancelEnrollmentRepoStub) TransferSchedule(context.Context, uuid.UUID, uuid.UUID, uuid.UUID, uuid.UUID) error {
 	return nil
 }

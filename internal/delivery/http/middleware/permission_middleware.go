@@ -14,8 +14,20 @@ import (
 // to the route it guards: the role, the tenant, and the membership are all read
 // from the verified JWT claim, so a caller without a role, tenant, or member_id
 // claim is denied before identity is consulted.
+//
+// KEL-140: a parent token carries ownership rather than a role, so it can never
+// satisfy a permission check. It is denied here, before identity is consulted,
+// even when the token also carries tenant membership claims (ADR 0002 counts
+// such a token as a parent). Parent reads are served by the ownership rules
+// inside the handlers on routes guarded by RequirePermissionUnlessParent or
+// RequirePermissionForTenantResource; parent writes are denied everywhere.
 func RequirePermission(client grpcclient.PermissionClient, permission string) gin.HandlerFunc {
 	return func(c *gin.Context) {
+		if c.GetBool("is_parent") {
+			permissionFailure(c, http.StatusForbidden)
+			c.Abort()
+			return
+		}
 		if !permissionAllowed(c, client, permission) {
 			c.Abort()
 			return
@@ -66,9 +78,35 @@ func RequirePermissionForTenantResource(client grpcclient.PermissionClient, perm
 	}
 }
 
-// permissionAllowed writes the failure response and reports false when the caller
-// must not proceed. A denial is a 403 without any data change, and an unreachable
-// or unusable authorization service is a 503, matching the catalogue mutations.
+// RequirePermissionForTenantResourceDenyParent guards the mutation routes that
+// share the tenant-resource table with parent reads (KEL-140). Invalid tenant
+// claims keep the existing handler path (401 before any usecase), exactly like
+// RequirePermissionForTenantResource. A parent token carrying a valid tenant
+// is denied here with 403 before identity is consulted, so parent writes
+// never reach a handler; tenant members require the permission.
+func RequirePermissionForTenantResourceDenyParent(client grpcclient.PermissionClient, permission string) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		if _, err := uuid.Parse(c.GetString("tenant_id")); err != nil {
+			c.Next()
+			return
+		}
+		if c.GetBool("is_parent") {
+			permissionFailure(c, http.StatusForbidden)
+			c.Abort()
+			return
+		}
+		if !permissionAllowed(c, client, permission) {
+			c.Abort()
+			return
+		}
+		c.Next()
+	}
+}
+
+// permissionFailure writes the failure response for a denied or unavailable
+// authorization check. A denial is a 403 without any data change, and an
+// unreachable or unusable authorization service is a 503, matching the
+// catalogue mutations.
 func permissionFailure(c *gin.Context, status int) {
 	message := "Permission denied"
 	if status == http.StatusServiceUnavailable {

@@ -121,6 +121,12 @@ func (s *updateEnrollmentRepoStub) GetActiveByClassID(context.Context, uuid.UUID
 func (s *updateEnrollmentRepoStub) GetActiveByScheduleID(context.Context, uuid.UUID, uuid.UUID) ([]*domain.Enrollment, error) {
 	return nil, nil
 }
+
+// GetActiveByScheduleIDForParent never runs in the class-update flow; the
+// stub keeps the fake satisfying repository.EnrollmentRepository.
+func (s *updateEnrollmentRepoStub) GetActiveByScheduleIDForParent(context.Context, uuid.UUID, uuid.UUID) ([]*domain.Enrollment, error) {
+	return nil, nil
+}
 func (s *updateEnrollmentRepoStub) TransferSchedule(context.Context, uuid.UUID, uuid.UUID, uuid.UUID, uuid.UUID) error {
 	return nil
 }

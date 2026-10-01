@@ -146,6 +146,86 @@ func (r *sessionRepository) ListByTenant(ctx context.Context, tenantID uuid.UUID
 	return sessions, total, err
 }
 
+// parentSessionOwnership is the KEL-140 ownership predicate shared by the
+// parent-scoped session reads: a session belongs to the parent when it is a
+// private session of one of the parent's live (pending/active) enrollments, a
+// group session of a schedule holding such an enrollment, or a reschedule
+// replacement (nil schedule) linked to such an origin session. The tenant
+// claim is never consulted. The table argument is the session table alias in
+// the calling query ("cs" for the Table form, "class_sessions" otherwise).
+func parentSessionOwnership(table string) string {
+	liveEnrollments := `SELECT e.id FROM enrollments e JOIN students s ON s.id = e.student_id WHERE s.parent_id = ? AND e.status IN ('pending','active') AND e.deleted_at IS NULL`
+	liveSchedules := `SELECT e.schedule_id FROM enrollments e JOIN students s ON s.id = e.student_id WHERE s.parent_id = ? AND e.status IN ('pending','active') AND e.deleted_at IS NULL AND e.schedule_id IS NOT NULL`
+	origin := `SELECT o.id FROM class_sessions o WHERE (o.enrollment_id IS NOT NULL AND o.enrollment_id IN (` + liveEnrollments + `)) OR (o.schedule_id IS NOT NULL AND o.schedule_id IN (` + liveSchedules + `))`
+	pred := `(` + table + `.enrollment_id IS NOT NULL AND ` + table + `.enrollment_id IN (` + liveEnrollments + `)) OR (` + table + `.schedule_id IS NOT NULL AND ` + table + `.schedule_id IN (` + liveSchedules + `)) OR (` + table + `.schedule_id IS NULL AND ` + table + `.rescheduled_from_session_id IS NOT NULL AND ` + table + `.rescheduled_from_session_id IN (` + origin + `))`
+	return pred
+}
+
+// parentSessionArgs carries one parent id per subquery of
+// parentSessionOwnership: the live-enrollment and live-schedule lookups each
+// appear twice (the session itself and the reschedule origin).
+func parentSessionArgs(parentID uuid.UUID) []any {
+	return []any{parentID, parentID, parentID, parentID}
+}
+
+// ListSessionsForParent lists sessions across every tenant that belong to the
+// parent's children (KEL-140, see parentSessionOwnership). Client-supplied
+// filters narrow the parent's own sessions and can never widen them to
+// another parent's children or to a whole tenant.
+func (r *sessionRepository) ListSessionsForParent(ctx context.Context, parentID uuid.UUID, query domain.SessionQuery) ([]domain.ClassSession, int64, error) {
+	pred := parentSessionOwnership("cs")
+	db := r.getDB(ctx).Table("class_sessions cs").Joins("JOIN classes c ON c.id = cs.class_id").Where(pred, parentSessionArgs(parentID)...)
+	if query.ClassID != nil {
+		db = db.Where("cs.class_id = ?", *query.ClassID)
+	}
+	if query.ScheduleID != nil {
+		db = db.Where("cs.schedule_id = ?", *query.ScheduleID)
+	}
+	if query.EnrollmentID != nil {
+		db = db.Where("cs.enrollment_id = ?", *query.EnrollmentID)
+	}
+	if query.TutorID != nil {
+		db = db.Where("cs.tutor_id = ?", *query.TutorID)
+	}
+	if query.Status != "" {
+		db = db.Where("cs.status = ?", query.Status)
+	}
+	if query.DateFrom != nil {
+		db = db.Where("cs.session_date >= ?", *query.DateFrom)
+	}
+	if query.DateTo != nil {
+		db = db.Where("cs.session_date <= ?", *query.DateTo)
+	}
+	if query.Search != "" {
+		db = db.Where("c.name ILIKE ? ESCAPE '\\'", "%"+escapeLikePattern(query.Search)+"%")
+	}
+	var total int64
+	if err := db.Session(&gorm.Session{}).Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+	var sessions []domain.ClassSession
+	err := db.Select("cs.*").Preload("Class").Preload("Schedule").Preload("Enrollment").
+		Order("cs.session_date DESC, cs.start_time ASC").Limit(query.PageSize).Offset((query.Page - 1) * query.PageSize).Find(&sessions).Error
+	return sessions, total, err
+}
+
+// GetSessionForParent resolves one session for a parent (KEL-140), or
+// gorm.ErrRecordNotFound when the session does not satisfy the same ownership
+// predicate as ListSessionsForParent. The caller answers not-found (404),
+// never forbidden, so ids do not leak across parents.
+func (r *sessionRepository) GetSessionForParent(ctx context.Context, parentID, id uuid.UUID) (*domain.ClassSession, error) {
+	var session domain.ClassSession
+	pred := parentSessionOwnership("class_sessions")
+	err := r.getDB(ctx).Joins("JOIN classes c ON c.id = class_sessions.class_id").
+		Where(pred, parentSessionArgs(parentID)...).
+		Where("class_sessions.id = ?", id).
+		Preload("Class").Preload("Schedule").Preload("Enrollment").First(&session).Error
+	if err != nil {
+		return nil, err
+	}
+	return &session, nil
+}
+
 func (r *sessionRepository) Update(ctx context.Context, session *domain.ClassSession) error {
 	return r.getDB(ctx).Save(session).Error
 }

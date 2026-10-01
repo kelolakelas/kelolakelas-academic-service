@@ -138,7 +138,7 @@ const docTemplate = `{
                     }
                 },
                 "x-permission": {
-                    "parent_tokens": "skipped",
+                    "parent_tokens": "denied",
                     "permission": "attendance:create"
                 }
             }
@@ -217,7 +217,7 @@ const docTemplate = `{
                     }
                 },
                 "x-permission": {
-                    "parent_tokens": "skipped",
+                    "parent_tokens": "denied",
                     "permission": "attendance:create"
                 }
             }
@@ -381,7 +381,7 @@ const docTemplate = `{
                     }
                 },
                 "x-permission": {
-                    "parent_tokens": "skipped",
+                    "parent_tokens": "denied",
                     "permission": "attendance:create"
                 }
             }
@@ -513,7 +513,7 @@ const docTemplate = `{
                     }
                 },
                 "x-permission": {
-                    "parent_tokens": "skipped",
+                    "parent_tokens": "denied",
                     "permission": "attendance:update"
                 }
             }
@@ -2066,7 +2066,7 @@ const docTemplate = `{
                     }
                 },
                 "x-permission": {
-                    "parent_tokens": "skipped",
+                    "parent_tokens": "denied",
                     "permission": "report:create"
                 }
             }
@@ -2174,7 +2174,7 @@ const docTemplate = `{
                     }
                 },
                 "x-permission": {
-                    "parent_tokens": "skipped",
+                    "parent_tokens": "denied",
                     "permission": "report:delete"
                 }
             },
@@ -2245,7 +2245,7 @@ const docTemplate = `{
                     }
                 },
                 "x-permission": {
-                    "parent_tokens": "skipped",
+                    "parent_tokens": "denied",
                     "permission": "report:update"
                 }
             }

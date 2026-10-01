@@ -72,6 +72,28 @@ func parseAttendanceQuery(c *gin.Context) (domain.AttendanceQuery, error) {
 // @Failure 503 {object} domain.ErrorResponse
 // @Router /api/v1/attendance [get]
 func (h *AttendanceHandler) List(c *gin.Context) {
+	// KEL-140: a parent reads across every tenant through ownership, never
+	// through the tenant claim, which is ignored even when present (AC 3).
+	// Client-supplied filters narrow the parent's own rows inside the query.
+	if c.GetBool("is_parent") {
+		parentID, e := authenticatedUserID(c)
+		if e != nil {
+			c.JSON(401, gin.H{"status": "error", "message": "Invalid user context", "data": nil})
+			return
+		}
+		q, e := parseAttendanceQuery(c)
+		if e != nil {
+			c.JSON(400, gin.H{"status": "error", "message": e.Error(), "data": nil})
+			return
+		}
+		r, e := h.usecase.ListForParent(c.Request.Context(), *parentID, q)
+		if e != nil {
+			c.JSON(500, gin.H{"status": "error", "message": "Failed to fetch attendance", "data": nil})
+			return
+		}
+		c.JSON(200, gin.H{"status": "success", "message": "Attendance fetched successfully", "data": r})
+		return
+	}
 	tenant, e := attendanceTenant(c)
 	if e != nil {
 		c.JSON(401, gin.H{"status": "error", "message": "Invalid tenant context", "data": nil})
@@ -95,7 +117,7 @@ func (h *AttendanceHandler) List(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Security BearerAuth
-// @x-permission {"permission":"attendance:create","parent_tokens":"skipped"}
+// @x-permission {"permission":"attendance:create","parent_tokens":"denied"}
 // @Param request body domain.CreateAttendanceRequest true "Attendance payload"
 // @Success 201 {object} domain.HTTPResponse{data=domain.Attendance}
 // @Failure 400 {object} domain.ErrorResponse
@@ -153,7 +175,7 @@ func writeAttendanceCreateResult(c *gin.Context, e error, r *domain.Attendance) 
 // @Accept json
 // @Produce json
 // @Security BearerAuth
-// @x-permission {"permission":"attendance:create","parent_tokens":"skipped"}
+// @x-permission {"permission":"attendance:create","parent_tokens":"denied"}
 // @Param request body domain.CreateAttendanceBySessionRequest true "Attendance payload"
 // @Success 201 {object} domain.HTTPResponse{data=domain.Attendance}
 // @Failure 400 {object} domain.ErrorResponse
@@ -188,7 +210,7 @@ func (h *AttendanceHandler) CreateBySession(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Security BearerAuth
-// @x-permission {"permission":"attendance:create","parent_tokens":"skipped"}
+// @x-permission {"permission":"attendance:create","parent_tokens":"denied"}
 // @Param request body domain.BulkAttendanceRequest true "Bulk attendance payload"
 // @Success 201 {object} domain.HTTPResponse{data=domain.BulkAttendanceResponse}
 // @Failure 400 {object} domain.ErrorResponse
@@ -243,6 +265,31 @@ func (h *AttendanceHandler) CreateBulk(c *gin.Context) {
 // @Failure 503 {object} domain.ErrorResponse
 // @Router /api/v1/attendance/{id} [get]
 func (h *AttendanceHandler) Get(c *gin.Context) {
+	// KEL-140: same ownership read as List; the tenant claim is ignored.
+	// Another parent's row answers 404, never 403, so ids do not leak.
+	if c.GetBool("is_parent") {
+		parentID, e := authenticatedUserID(c)
+		if e != nil {
+			c.JSON(401, gin.H{"status": "error", "message": "Invalid user context", "data": nil})
+			return
+		}
+		id, e := uuid.Parse(c.Param("id"))
+		if e != nil {
+			c.JSON(400, gin.H{"status": "error", "message": "Invalid attendance ID", "data": nil})
+			return
+		}
+		r, e := h.usecase.GetForParent(c.Request.Context(), *parentID, id)
+		if errors.Is(e, gorm.ErrRecordNotFound) {
+			c.JSON(404, gin.H{"status": "error", "message": "Attendance not found", "data": nil})
+			return
+		}
+		if e != nil {
+			c.JSON(500, gin.H{"status": "error", "message": "Failed to fetch attendance", "data": nil})
+			return
+		}
+		c.JSON(200, gin.H{"status": "success", "message": "Attendance fetched successfully", "data": r})
+		return
+	}
 	tenant, e := attendanceTenant(c)
 	if e != nil {
 		c.JSON(401, gin.H{"status": "error", "message": "Invalid tenant context", "data": nil})
@@ -280,11 +327,6 @@ func (h *AttendanceHandler) Get(c *gin.Context) {
 // @Failure 503 {object} domain.ErrorResponse
 // @Router /api/v1/attendance/by-session [get]
 func (h *AttendanceHandler) GetBySession(c *gin.Context) {
-	tenant, e := attendanceTenant(c)
-	if e != nil {
-		c.JSON(401, gin.H{"status": "error", "message": "Invalid tenant context", "data": nil})
-		return
-	}
 	sessionID, e := uuid.Parse(c.Query("session_id"))
 	if e != nil {
 		c.JSON(400, gin.H{"status": "error", "message": "Invalid session ID", "data": nil})
@@ -293,6 +335,31 @@ func (h *AttendanceHandler) GetBySession(c *gin.Context) {
 	enrollmentID, e := uuid.Parse(c.Query("enrollment_id"))
 	if e != nil {
 		c.JSON(400, gin.H{"status": "error", "message": "Invalid enrollment ID", "data": nil})
+		return
+	}
+	// KEL-140: same ownership read as Get; the tenant claim is ignored.
+	// A foreign session, enrollment, or missing row answers 404, never 403.
+	if c.GetBool("is_parent") {
+		parentID, e := authenticatedUserID(c)
+		if e != nil {
+			c.JSON(401, gin.H{"status": "error", "message": "Invalid user context", "data": nil})
+			return
+		}
+		r, e := h.usecase.GetBySessionForParent(c.Request.Context(), *parentID, sessionID, enrollmentID)
+		if errors.Is(e, usecase.ErrAttendanceSessionNotFound) || errors.Is(e, domain.ErrAttendanceNotFound) || errors.Is(e, gorm.ErrRecordNotFound) {
+			c.JSON(404, gin.H{"status": "error", "message": "Attendance not found", "data": nil})
+			return
+		}
+		if e != nil {
+			c.JSON(500, gin.H{"status": "error", "message": "Failed to fetch attendance", "data": nil})
+			return
+		}
+		c.JSON(200, gin.H{"status": "success", "message": "Attendance fetched successfully", "data": r})
+		return
+	}
+	tenant, e := attendanceTenant(c)
+	if e != nil {
+		c.JSON(401, gin.H{"status": "error", "message": "Invalid tenant context", "data": nil})
 		return
 	}
 	r, e := h.usecase.GetBySession(c.Request.Context(), tenant, sessionID, enrollmentID)
@@ -312,7 +379,7 @@ func (h *AttendanceHandler) GetBySession(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Security BearerAuth
-// @x-permission {"permission":"attendance:update","parent_tokens":"skipped"}
+// @x-permission {"permission":"attendance:update","parent_tokens":"denied"}
 // @Param id path string true "Attendance UUID"
 // @Param request body domain.UpdateAttendanceRequest true "Attendance payload"
 // @Success 200 {object} domain.HTTPResponse{data=domain.Attendance}

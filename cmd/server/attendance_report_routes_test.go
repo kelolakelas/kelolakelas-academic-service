@@ -36,8 +36,9 @@ func (p *routePermissionClient) CheckPermission(_ context.Context, tenant, role,
 func (*routePermissionClient) Close() error { return nil }
 
 type routeAttendanceUsecase struct {
-	calls     int
-	createErr error
+	calls       int
+	parentCalls int
+	createErr   error
 }
 
 func (u *routeAttendanceUsecase) List(context.Context, uuid.UUID, domain.AttendanceQuery) (*domain.AttendanceListResponse, error) {
@@ -73,14 +74,31 @@ func (u *routeAttendanceUsecase) Get(context.Context, uuid.UUID, uuid.UUID) (*do
 	u.calls++
 	return &domain.Attendance{}, nil
 }
+
+// ListForParent, GetForParent, and GetBySessionForParent serve the KEL-140
+// parent reads; parentCalls counts them so the parent policy test can prove
+// the parent path (not the tenant path) ran.
+func (u *routeAttendanceUsecase) ListForParent(context.Context, uuid.UUID, domain.AttendanceQuery) (*domain.AttendanceListResponse, error) {
+	u.parentCalls++
+	return &domain.AttendanceListResponse{}, nil
+}
+func (u *routeAttendanceUsecase) GetForParent(context.Context, uuid.UUID, uuid.UUID) (*domain.Attendance, error) {
+	u.parentCalls++
+	return &domain.Attendance{}, nil
+}
+func (u *routeAttendanceUsecase) GetBySessionForParent(context.Context, uuid.UUID, uuid.UUID, uuid.UUID) (*domain.Attendance, error) {
+	u.parentCalls++
+	return &domain.Attendance{}, nil
+}
 func (u *routeAttendanceUsecase) Update(context.Context, uuid.UUID, uuid.UUID, uuid.UUID, *domain.UpdateAttendanceRequest) (*domain.Attendance, error) {
 	u.calls++
 	return &domain.Attendance{}, nil
 }
 
 type routeReportUsecase struct {
-	calls     int
-	createErr error
+	calls       int
+	parentCalls int
+	createErr   error
 }
 
 func (u *routeReportUsecase) List(context.Context, uuid.UUID, domain.ReportQuery) (*domain.ReportListResponse, error) {
@@ -105,6 +123,18 @@ func (u *routeReportUsecase) Update(context.Context, uuid.UUID, uuid.UUID, uuid.
 func (u *routeReportUsecase) Delete(context.Context, uuid.UUID, uuid.UUID, uuid.UUID) error {
 	u.calls++
 	return nil
+}
+
+// ListForParent and GetForParent serve the KEL-140 parent reads;
+// parentCalls counts them so the parent policy test can prove the parent
+// path (not the tenant path) ran.
+func (u *routeReportUsecase) ListForParent(context.Context, uuid.UUID, domain.ReportQuery) (*domain.ReportListResponse, error) {
+	u.parentCalls++
+	return &domain.ReportListResponse{}, nil
+}
+func (u *routeReportUsecase) GetForParent(context.Context, uuid.UUID, uuid.UUID) (*domain.Report, error) {
+	u.parentCalls++
+	return &domain.Report{}, nil
 }
 
 func routeToken(t *testing.T, claims middleware.Claims) string {
@@ -201,20 +231,54 @@ func TestAttendanceReportRoutesPermissionMatrix(t *testing.T) {
 	}
 }
 
-func TestAttendanceReportRoutesParentTenantCompatibility(t *testing.T) {
+func TestAttendanceReportRoutesParentReadsIgnoreTenantClaim(t *testing.T) {
 	id := uuid.NewString()
+	// KEL-140: parent reads ignore the tenant claim entirely (AC 1 and AC 3),
+	// so a parent token with no tenant, a malformed tenant, a foreign tenant,
+	// or a valid tenant all reach the same parent-scoped read path without
+	// consulting identity. Mutations keep the existing handler 401 path for
+	// an invalid tenant claim.
 	for _, route := range []struct {
 		method, path string
+		parentCalls  func(a *routeAttendanceUsecase, r *routeReportUsecase) int
 	}{
-		{http.MethodGet, "/api/v1/attendance"},
-		{http.MethodPost, "/api/v1/attendance"},
-		{http.MethodGet, "/api/v1/attendance/" + id},
-		{http.MethodPatch, "/api/v1/attendance/" + id},
-		{http.MethodGet, "/api/v1/reports"},
-		{http.MethodPost, "/api/v1/reports"},
-		{http.MethodGet, "/api/v1/reports/" + id},
-		{http.MethodPatch, "/api/v1/reports/" + id},
-		{http.MethodDelete, "/api/v1/reports/" + id},
+		{http.MethodGet, "/api/v1/attendance", func(a *routeAttendanceUsecase, _ *routeReportUsecase) int { return a.parentCalls }},
+		{http.MethodGet, "/api/v1/attendance/" + id, func(a *routeAttendanceUsecase, _ *routeReportUsecase) int { return a.parentCalls }},
+		{http.MethodGet, "/api/v1/reports", func(_ *routeAttendanceUsecase, r *routeReportUsecase) int { return r.parentCalls }},
+		{http.MethodGet, "/api/v1/reports/" + id, func(_ *routeAttendanceUsecase, r *routeReportUsecase) int { return r.parentCalls }},
+	} {
+		for _, tenant := range []string{"", "not-a-uuid", uuid.NewString()} {
+			t.Run(route.method+" "+route.path+" tenant="+tenant, func(t *testing.T) {
+				p := &routePermissionClient{err: errors.New("unavailable")}
+				a, r := &routeAttendanceUsecase{}, &routeReportUsecase{}
+				engine, claims := routeFixture(t, p, a, r)
+				claims.IsParent, claims.TenantID = true, tenant
+				response := routeRequest(engine, route.method, route.path, `{}`, routeToken(t, claims))
+				if response.Code != http.StatusOK {
+					t.Fatalf("status=%d body=%s, want parent-scoped read 200", response.Code, response.Body.String())
+				}
+				if len(p.calls) != 0 {
+					t.Fatalf("parent read consulted identity: %v", p.calls)
+				}
+				if got := route.parentCalls(a, r); got != 1 {
+					t.Fatalf("parent usecase calls=%d, want exactly 1", got)
+				}
+			})
+		}
+	}
+}
+
+func TestAttendanceReportRoutesParentMutationsKeepTenantError(t *testing.T) {
+	id := uuid.NewString()
+	enrollment := uuid.NewString()
+	for _, route := range []struct {
+		method, path, body string
+	}{
+		{http.MethodPost, "/api/v1/attendance", fmt.Sprintf(`{"enrollment_id":%q,"schedule_id":%q,"date":"2026-09-26","status":"present"}`, enrollment, uuid.NewString())},
+		{http.MethodPatch, "/api/v1/attendance/" + id, `{"status":"late"}`},
+		{http.MethodPost, "/api/v1/reports", fmt.Sprintf(`{"enrollment_id":%q,"title":"Progress"}`, enrollment)},
+		{http.MethodPatch, "/api/v1/reports/" + id, `{"title":"Updated"}`},
+		{http.MethodDelete, "/api/v1/reports/" + id, ""},
 	} {
 		for _, tenant := range []string{"", "not-a-uuid"} {
 			t.Run(route.method+" "+route.path+" tenant="+tenant, func(t *testing.T) {
@@ -222,26 +286,47 @@ func TestAttendanceReportRoutesParentTenantCompatibility(t *testing.T) {
 				a, r := &routeAttendanceUsecase{}, &routeReportUsecase{}
 				engine, claims := routeFixture(t, p, a, r)
 				claims.IsParent, claims.TenantID = true, tenant
-				response := routeRequest(engine, route.method, route.path, `{}`, routeToken(t, claims))
+				response := routeRequest(engine, route.method, route.path, route.body, routeToken(t, claims))
 				if response.Code != http.StatusUnauthorized || response.Body.String() != "{\"data\":null,\"message\":\"Invalid tenant context\",\"status\":\"error\"}" {
 					t.Fatalf("status=%d body=%s, want original tenant error", response.Code, response.Body.String())
 				}
-				if len(p.calls) != 0 || a.calls != 0 || r.calls != 0 {
-					t.Fatalf("invalid tenant reached permission/usecase: %v %d %d", p.calls, a.calls, r.calls)
+				if len(p.calls) != 0 || a.calls != 0 || a.parentCalls != 0 || r.calls != 0 || r.parentCalls != 0 {
+					t.Fatalf("invalid tenant reached permission/usecase: %v %d %d %d %d", p.calls, a.calls, a.parentCalls, r.calls, r.parentCalls)
 				}
 			})
 		}
 	}
-	// Before permission gating, a parent token carrying a tenant could reach the
-	// handler without a member role. Preserve that route rather than defining a
-	// new parent policy here.
-	p := &routePermissionClient{err: errors.New("unavailable")}
-	a, r := &routeAttendanceUsecase{}, &routeReportUsecase{}
-	engine, claims := routeFixture(t, p, a, r)
-	claims.IsParent, claims.RoleID, claims.MemberID = true, "", ""
-	response := routeRequest(engine, http.MethodGet, "/api/v1/reports", "", routeToken(t, claims))
-	if response.Code != http.StatusOK || r.calls != 1 || a.calls != 0 || len(p.calls) != 0 {
-		t.Fatalf("parent tenant response=%d permission=%v usecases=%d,%d body=%s", response.Code, p.calls, a.calls, r.calls, response.Body.String())
+}
+
+func TestAttendanceReportRoutesParentMutationsAreForbidden(t *testing.T) {
+	id := uuid.NewString()
+	enrollment := uuid.NewString()
+	for _, route := range []struct {
+		method, path, body string
+	}{
+		{http.MethodPost, "/api/v1/attendance", fmt.Sprintf(`{"enrollment_id":%q,"schedule_id":%q,"date":"2026-09-26","status":"present"}`, enrollment, uuid.NewString())},
+		{http.MethodPost, "/api/v1/attendance/by-session", fmt.Sprintf(`{"enrollment_id":%q,"session_id":%q,"status":"present"}`, enrollment, uuid.NewString())},
+		{http.MethodPost, "/api/v1/attendance/bulk", fmt.Sprintf(`{"session_id":%q,"items":[{"enrollment_id":%q,"status":"present"}]}`, uuid.NewString(), enrollment)},
+		{http.MethodPatch, "/api/v1/attendance/" + id, `{"status":"late"}`},
+		{http.MethodPost, "/api/v1/reports", fmt.Sprintf(`{"enrollment_id":%q,"title":"Progress"}`, enrollment)},
+		{http.MethodPatch, "/api/v1/reports/" + id, `{"title":"Updated"}`},
+		{http.MethodDelete, "/api/v1/reports/" + id, ""},
+	} {
+		t.Run(route.method+" "+route.path, func(t *testing.T) {
+			// Identity is unreachable: a 403 must come from the parent deny
+			// guard alone, with no permission lookup and no usecase run.
+			p := &routePermissionClient{err: errors.New("unavailable")}
+			a, r := &routeAttendanceUsecase{}, &routeReportUsecase{}
+			engine, claims := routeFixture(t, p, a, r)
+			claims.IsParent, claims.RoleID, claims.MemberID = true, "", ""
+			response := routeRequest(engine, route.method, route.path, route.body, routeToken(t, claims))
+			if response.Code != http.StatusForbidden {
+				t.Fatalf("status=%d body=%s, want parent mutation 403", response.Code, response.Body.String())
+			}
+			if len(p.calls) != 0 || a.calls != 0 || a.parentCalls != 0 || r.calls != 0 || r.parentCalls != 0 {
+				t.Fatalf("parent mutation reached permission/usecase: %v %d %d %d %d", p.calls, a.calls, a.parentCalls, r.calls, r.parentCalls)
+			}
+		})
 	}
 }
 

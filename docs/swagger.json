@@ -131,7 +131,7 @@
                     }
                 },
                 "x-permission": {
-                    "parent_tokens": "skipped",
+                    "parent_tokens": "denied",
                     "permission": "attendance:create"
                 }
             }
@@ -210,7 +210,7 @@
                     }
                 },
                 "x-permission": {
-                    "parent_tokens": "skipped",
+                    "parent_tokens": "denied",
                     "permission": "attendance:create"
                 }
             }
@@ -374,7 +374,7 @@
                     }
                 },
                 "x-permission": {
-                    "parent_tokens": "skipped",
+                    "parent_tokens": "denied",
                     "permission": "attendance:create"
                 }
             }
@@ -506,7 +506,7 @@
                     }
                 },
                 "x-permission": {
-                    "parent_tokens": "skipped",
+                    "parent_tokens": "denied",
                     "permission": "attendance:update"
                 }
             }
@@ -2059,7 +2059,7 @@
                     }
                 },
                 "x-permission": {
-                    "parent_tokens": "skipped",
+                    "parent_tokens": "denied",
                     "permission": "report:create"
                 }
             }
@@ -2167,7 +2167,7 @@
                     }
                 },
                 "x-permission": {
-                    "parent_tokens": "skipped",
+                    "parent_tokens": "denied",
                     "permission": "report:delete"
                 }
             },
@@ -2238,7 +2238,7 @@
                     }
                 },
                 "x-permission": {
-                    "parent_tokens": "skipped",
+                    "parent_tokens": "denied",
                     "permission": "report:update"
                 }
             }

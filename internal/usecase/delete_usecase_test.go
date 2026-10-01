@@ -143,6 +143,15 @@ func (m *deleteSessionRepoMock) IsTutorForSession(context.Context, uuid.UUID, uu
 func (m *deleteSessionRepoMock) ListByTenant(context.Context, uuid.UUID, domain.SessionQuery) ([]domain.ClassSession, int64, error) {
 	return nil, 0, nil
 }
+
+// ListSessionsForParent and GetSessionForParent never run in the class-delete
+// flow; the stubs keep the mock satisfying repository.SessionRepository.
+func (m *deleteSessionRepoMock) ListSessionsForParent(context.Context, uuid.UUID, domain.SessionQuery) ([]domain.ClassSession, int64, error) {
+	return nil, 0, nil
+}
+func (m *deleteSessionRepoMock) GetSessionForParent(context.Context, uuid.UUID, uuid.UUID) (*domain.ClassSession, error) {
+	return nil, nil
+}
 func (m *deleteSessionRepoMock) Update(context.Context, *domain.ClassSession) error { return nil }
 func (m *deleteSessionRepoMock) CancelFutureSessionsBySchedule(_ context.Context, _ uuid.UUID, id uuid.UUID, _ time.Time) error {
 	m.cancelScheduleID = id
@@ -187,6 +196,12 @@ func (m *deleteEnrollmentRepoMock) GetActiveByClassID(context.Context, uuid.UUID
 	return m.active, m.err
 }
 func (m *deleteEnrollmentRepoMock) GetActiveByScheduleID(context.Context, uuid.UUID, uuid.UUID) ([]*domain.Enrollment, error) {
+	return nil, nil
+}
+
+// GetActiveByScheduleIDForParent never runs in the class-delete flow; the
+// stub keeps the mock satisfying repository.EnrollmentRepository.
+func (m *deleteEnrollmentRepoMock) GetActiveByScheduleIDForParent(context.Context, uuid.UUID, uuid.UUID) ([]*domain.Enrollment, error) {
 	return nil, nil
 }
 func (m *deleteEnrollmentRepoMock) TransferSchedule(context.Context, uuid.UUID, uuid.UUID, uuid.UUID, uuid.UUID) error {

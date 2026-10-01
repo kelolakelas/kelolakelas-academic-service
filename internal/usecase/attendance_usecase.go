@@ -30,6 +30,9 @@ var ErrAttendanceEnrollmentMismatch = errors.New("enrollment does not belong to 
 
 type AttendanceUsecase interface {
 	List(ctx context.Context, tenantID uuid.UUID, query domain.AttendanceQuery) (*domain.AttendanceListResponse, error)
+	// ListForParent lists attendance rows across every tenant that belong to
+	// the parent's children (KEL-140). The tenant claim is never consulted.
+	ListForParent(ctx context.Context, parentID uuid.UUID, query domain.AttendanceQuery) (*domain.AttendanceListResponse, error)
 	Create(ctx context.Context, tenantID, memberID uuid.UUID, req *domain.CreateAttendanceRequest) (*domain.Attendance, error)
 	// CreateBySession records one attendance row addressed directly at a
 	// session id, including reschedule replacements (KEL-134 AC1).
@@ -39,6 +42,14 @@ type AttendanceUsecase interface {
 	CreateBulk(ctx context.Context, tenantID, memberID uuid.UUID, req *domain.BulkAttendanceRequest) (*domain.BulkAttendanceResponse, error)
 	Get(ctx context.Context, tenantID, id uuid.UUID) (*domain.Attendance, error)
 	GetBySession(ctx context.Context, tenantID, sessionID, enrollmentID uuid.UUID) (*domain.Attendance, error)
+	// GetForParent resolves one attendance row for a parent (KEL-140), or
+	// gorm.ErrRecordNotFound when the row does not belong to the parent.
+	GetForParent(ctx context.Context, parentID, id uuid.UUID) (*domain.Attendance, error)
+	// GetBySessionForParent reads one attendance row addressed at a session
+	// id for a parent (KEL-140): the session must satisfy the parent session
+	// ownership predicate and the row's enrollment must belong to the
+	// parent, otherwise not-found (never forbidden, so ids do not leak).
+	GetBySessionForParent(ctx context.Context, parentID, sessionID, enrollmentID uuid.UUID) (*domain.Attendance, error)
 	Update(ctx context.Context, tenantID, memberID, id uuid.UUID, req *domain.UpdateAttendanceRequest) (*domain.Attendance, error)
 }
 
@@ -159,6 +170,62 @@ func (u *attendanceUsecase) CreateBulk(ctx context.Context, tenantID, memberID u
 
 func (u *attendanceUsecase) Get(ctx context.Context, tenantID, id uuid.UUID) (*domain.Attendance, error) {
 	return u.repo.GetByIDForTenant(ctx, tenantID, id)
+}
+
+// ListForParent lists attendance rows across every tenant that belong to the
+// parent's children (KEL-140). Pagination defaults match List; a foreign
+// enrollment, student, or schedule filter only narrows the parent's own rows.
+func (u *attendanceUsecase) ListForParent(ctx context.Context, parentID uuid.UUID, query domain.AttendanceQuery) (*domain.AttendanceListResponse, error) {
+	if query.Page < 1 {
+		query.Page = 1
+	}
+	if query.PageSize < 1 || query.PageSize > 100 {
+		query.PageSize = 20
+	}
+	items, total, err := u.repo.ListForParent(ctx, parentID, query)
+	if err != nil {
+		return nil, err
+	}
+	return &domain.AttendanceListResponse{Items: items, Pagination: domain.Pagination{Page: query.Page, PageSize: query.PageSize, TotalItems: total, TotalPages: int(math.Ceil(float64(total) / float64(query.PageSize)))}}, nil
+}
+
+// GetForParent resolves one attendance row for a parent (KEL-140). A row of
+// another parent's child answers gorm.ErrRecordNotFound (404 upstream), never
+// forbidden, so ids do not leak.
+func (u *attendanceUsecase) GetForParent(ctx context.Context, parentID, id uuid.UUID) (*domain.Attendance, error) {
+	return u.repo.GetForParent(ctx, parentID, id)
+}
+
+// GetBySessionForParent reads one attendance row addressed at a session id
+// for a parent (KEL-140). The session must satisfy the parent session
+// ownership predicate and the row's enrollment must belong to the parent;
+// otherwise the call answers not-found, never forbidden, so ids do not leak.
+func (u *attendanceUsecase) GetBySessionForParent(ctx context.Context, parentID, sessionID, enrollmentID uuid.UUID) (*domain.Attendance, error) {
+	if u.enrollments == nil {
+		return nil, errors.New("attendance parent reads are unavailable")
+	}
+	session, err := u.sessions.GetSessionForParent(ctx, parentID, sessionID)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, ErrAttendanceSessionNotFound
+		}
+		return nil, err
+	}
+	_ = session
+	if _, err := u.enrollments.GetByIDForAccess(ctx, nil, &parentID, enrollmentID); err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, domain.ErrAttendanceNotFound
+		}
+		return nil, err
+	}
+	item, err := u.repo.GetBySessionEnrollment(ctx, sessionID, enrollmentID)
+	if err != nil {
+		return nil, err
+	}
+	if item == nil {
+		return nil, domain.ErrAttendanceNotFound
+	}
+	return item, nil
 }
 
 // GetBySession reads one attendance row addressed at a session id (KEL-134

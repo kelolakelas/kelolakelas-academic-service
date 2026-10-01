@@ -107,6 +107,24 @@ func (h *SessionHandler) ListSessions(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"status": "error", "message": err.Error(), "data": nil})
 		return
 	}
+	// KEL-140: a parent reads across every tenant through ownership, never
+	// through the tenant claim. The claim is ignored even when present (AC 3),
+	// so a foreign tenant header can only narrow to the parent's own rows.
+	// The mine=true tutor shortcut is a member filter and never applies here.
+	if c.GetBool("is_parent") {
+		parentID, err := authenticatedUserID(c)
+		if err != nil {
+			c.JSON(http.StatusUnauthorized, gin.H{"status": "error", "message": "Invalid user context", "data": nil})
+			return
+		}
+		result, err := h.usecase.ListSessionsForParent(c.Request.Context(), *parentID, query)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"status": "error", "message": "Failed to fetch sessions", "data": nil})
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{"status": "success", "message": "Sessions fetched successfully", "data": result})
+		return
+	}
 	tenantID, err := sessionTenantID(c)
 	if err != nil {
 		c.JSON(http.StatusUnauthorized, gin.H{"status": "error", "message": "Invalid tenant context", "data": nil})
@@ -147,6 +165,26 @@ func (h *SessionHandler) GetSession(c *gin.Context) {
 	id, err := uuid.Parse(c.Param("id"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"status": "error", "message": "Invalid session ID", "data": nil})
+		return
+	}
+	// KEL-140: same ownership read as ListSessions; the tenant claim is
+	// ignored. Another parent's session answers 404, never 403.
+	if c.GetBool("is_parent") {
+		parentID, err := authenticatedUserID(c)
+		if err != nil {
+			c.JSON(http.StatusUnauthorized, gin.H{"status": "error", "message": "Invalid user context", "data": nil})
+			return
+		}
+		session, err := h.usecase.GetSessionForParent(c.Request.Context(), *parentID, id)
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			c.JSON(http.StatusNotFound, gin.H{"status": "error", "message": "Session not found", "data": nil})
+			return
+		}
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"status": "error", "message": "Failed to fetch session", "data": nil})
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{"status": "success", "message": "Session fetched successfully", "data": session})
 		return
 	}
 	tenantID, err := sessionTenantID(c)
