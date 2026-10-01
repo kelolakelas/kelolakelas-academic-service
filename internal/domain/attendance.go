@@ -45,9 +45,43 @@ type AttendanceListResponse struct {
 
 type CreateAttendanceRequest struct {
 	EnrollmentID uuid.UUID `json:"enrollment_id" binding:"required"`
-	ScheduleID   uuid.UUID `json:"schedule_id" binding:"required"`
-	Date         string    `json:"date" binding:"required,datetime=2006-01-02"`
+	// ScheduleID + Date is the legacy addressing form and keeps working
+	// (KEL-134 AC4). SessionID is the newer form that also addresses
+	// reschedule replacements (whose schedule is nil). Exactly one form is
+	// accepted: SessionID XOR (ScheduleID, Date).
+	ScheduleID *uuid.UUID `json:"schedule_id,omitempty"`
+	SessionID  *uuid.UUID `json:"session_id,omitempty"`
+	Date       string     `json:"date,omitempty" binding:"omitempty,datetime=2006-01-02"`
+	Status     string     `json:"status" binding:"required,oneof=present absent late excused"`
+}
+
+// CreateAttendanceBySessionRequest records attendance addressed directly at a
+// session (KEL-134). It covers reschedule replacements that the legacy
+// schedule_id + date form cannot address.
+type CreateAttendanceBySessionRequest struct {
+	EnrollmentID uuid.UUID `json:"enrollment_id" binding:"required"`
+	SessionID    uuid.UUID `json:"session_id" binding:"required"`
 	Status       string    `json:"status" binding:"required,oneof=present absent late excused"`
+}
+
+// BulkAttendanceItem is one row of a bulk attendance request (KEL-134).
+type BulkAttendanceItem struct {
+	EnrollmentID uuid.UUID `json:"enrollment_id" binding:"required"`
+	Status       string    `json:"status" binding:"required,oneof=present absent late excused"`
+}
+
+// BulkAttendanceRequest records the status of a whole session's students in
+// one request (KEL-134). The write is idempotent: repeating the same request
+// updates rows instead of creating duplicates.
+type BulkAttendanceRequest struct {
+	SessionID uuid.UUID            `json:"session_id" binding:"required"`
+	Items     []BulkAttendanceItem `json:"items" binding:"required,min=1,max=200,dive"`
+}
+
+// BulkAttendanceResponse carries one result row per requested enrollment.
+type BulkAttendanceResponse struct {
+	SessionID   uuid.UUID    `json:"session_id"`
+	Attendances []Attendance `json:"attendances"`
 }
 
 type UpdateAttendanceRequest struct {

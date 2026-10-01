@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"errors"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -51,6 +52,82 @@ func (r *attendanceRepository) GetByUnique(ctx context.Context, enrollmentID, se
 		return nil, nil
 	}
 	return &item, err
+}
+
+// GetBySessionEnrollment resolves one attendance row by (session, enrollment)
+// for session-addressed reads (KEL-134).
+func (r *attendanceRepository) GetBySessionEnrollment(ctx context.Context, sessionID, enrollmentID uuid.UUID) (*domain.Attendance, error) {
+	var item domain.Attendance
+	err := r.db.WithContext(ctx).
+		Where("session_id = ? AND enrollment_id = ?", sessionID, enrollmentID).
+		First(&item).Error
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, nil
+	}
+	return &item, err
+}
+
+// UpsertBulk writes every row of one session atomically and idempotently
+// (KEL-134): one statement with ON CONFLICT (session_id, enrollment_id)
+// DO UPDATE, so repeating the same request updates rows instead of creating
+// duplicates, and two concurrent identical requests serialize on the unique
+// index with at most one winner per row. The tenant scope is part of the
+// statement: a caller passing another tenant's session id matches zero rows
+// in the session guard and writes nothing. Rows keep the session's own date
+// so legacy date-scoped reads keep working.
+func (r *attendanceRepository) UpsertBulk(ctx context.Context, tenantID, sessionID uuid.UUID, items []domain.BulkAttendanceItem) ([]domain.Attendance, error) {
+	if len(items) == 0 {
+		return nil, errors.New("no attendance items")
+	}
+	var out []domain.Attendance
+	err := r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		// Session guard first, tenant-scoped in SQL: a session owned by
+		// another tenant reports gorm.ErrRecordNotFound and nothing is
+		// written. The guard also supplies the session date for the rows.
+		var sessionDate time.Time
+		if err := tx.Table("class_sessions cs").
+			Joins("JOIN classes c ON c.id = cs.class_id").
+			Where("cs.id = ? AND c.tenant_id = ?", sessionID, tenantID).
+			Select("cs.session_date").
+			Scan(&sessionDate).Error; err != nil {
+			return err
+		}
+		if sessionDate.IsZero() {
+			return gorm.ErrRecordNotFound
+		}
+		valueStrings := make([]string, 0, len(items))
+		args := make([]any, 0, len(items)*3+2)
+		for _, item := range items {
+			valueStrings = append(valueStrings, "(?::uuid,?::uuid,?)")
+			args = append(args, uuid.New(), item.EnrollmentID, item.Status)
+		}
+		// The tenant predicate stays in the write statement rather than
+		// trusting the earlier guard read: a caller that passes another
+		// tenant's session id must touch zero rows even if the guard raced.
+		// GORM rebinds ? to $N for postgres, so the VALUES placeholders and
+		// these two share one positional sequence.
+		args = append(args, sessionID, tenantID)
+		stmt := `INSERT INTO attendances (id, enrollment_id, session_id, date, status, created_at, updated_at)
+			SELECT v.id, v.enrollment_id, s.id, s.session_date, v.status, now(), now()
+			FROM (VALUES ` + strings.Join(valueStrings, ",") + `) AS v(id, enrollment_id, status)
+			JOIN (SELECT cs.id, cs.session_date FROM class_sessions cs JOIN classes c ON c.id = cs.class_id WHERE cs.id = ?::uuid AND c.tenant_id = ?::uuid) AS s ON true
+			ON CONFLICT (session_id, enrollment_id) DO UPDATE SET status = EXCLUDED.status, date = EXCLUDED.date, updated_at = now()`
+		if err := tx.Exec(stmt, args...).Error; err != nil {
+			return err
+		}
+		enrollmentIDs := make([]uuid.UUID, 0, len(items))
+		for _, item := range items {
+			enrollmentIDs = append(enrollmentIDs, item.EnrollmentID)
+		}
+		if err := tx.Where("session_id = ? AND enrollment_id IN ?", sessionID, enrollmentIDs).Order("enrollment_id").Find(&out).Error; err != nil {
+			return err
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
 }
 
 func (r *attendanceRepository) List(ctx context.Context, tenantID uuid.UUID, query domain.AttendanceQuery) ([]domain.Attendance, int64, error) {

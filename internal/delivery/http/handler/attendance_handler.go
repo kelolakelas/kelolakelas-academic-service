@@ -98,7 +98,9 @@ func (h *AttendanceHandler) List(c *gin.Context) {
 // @x-permission {"permission":"attendance:create","parent_tokens":"skipped"}
 // @Param request body domain.CreateAttendanceRequest true "Attendance payload"
 // @Success 201 {object} domain.HTTPResponse{data=domain.Attendance}
+// @Failure 400 {object} domain.ErrorResponse
 // @Failure 403 {object} domain.ErrorResponse
+// @Failure 409 {object} domain.ErrorResponse
 // @Failure 503 {object} domain.ErrorResponse
 // @Router /api/v1/attendance [post]
 func (h *AttendanceHandler) Create(c *gin.Context) {
@@ -118,6 +120,10 @@ func (h *AttendanceHandler) Create(c *gin.Context) {
 		return
 	}
 	r, e := h.usecase.Create(c.Request.Context(), tenant, uid, &req)
+	writeAttendanceCreateResult(c, e, r)
+}
+
+func writeAttendanceCreateResult(c *gin.Context, e error, r *domain.Attendance) {
 	if errors.Is(e, domain.ErrAttendanceForbidden) {
 		c.JSON(403, gin.H{"status": "error", "message": "Tutor is not assigned to this session", "data": nil})
 		return
@@ -126,11 +132,104 @@ func (h *AttendanceHandler) Create(c *gin.Context) {
 		c.JSON(409, gin.H{"status": "error", "message": "Attendance already exists", "data": nil})
 		return
 	}
+	if errors.Is(e, usecase.ErrAttendanceSessionNotFound) || errors.Is(e, gorm.ErrRecordNotFound) {
+		c.JSON(404, gin.H{"status": "error", "message": "Class session not found", "data": nil})
+		return
+	}
+	if errors.Is(e, usecase.ErrAttendanceSessionCancelled) || errors.Is(e, usecase.ErrAttendanceEnrollmentMismatch) {
+		c.JSON(400, gin.H{"status": "error", "message": e.Error(), "data": nil})
+		return
+	}
 	if e != nil {
 		c.JSON(400, gin.H{"status": "error", "message": "Invalid attendance", "data": nil})
 		return
 	}
 	c.JSON(201, gin.H{"status": "success", "message": "Attendance created successfully", "data": r})
+}
+
+// @Summary Create attendance by session
+// @Description Record attendance addressed directly at a session id, including reschedule replacements.
+// @Tags Attendance
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @x-permission {"permission":"attendance:create","parent_tokens":"skipped"}
+// @Param request body domain.CreateAttendanceBySessionRequest true "Attendance payload"
+// @Success 201 {object} domain.HTTPResponse{data=domain.Attendance}
+// @Failure 400 {object} domain.ErrorResponse
+// @Failure 403 {object} domain.ErrorResponse
+// @Failure 404 {object} domain.ErrorResponse
+// @Failure 409 {object} domain.ErrorResponse
+// @Failure 503 {object} domain.ErrorResponse
+// @Router /api/v1/attendance/by-session [post]
+func (h *AttendanceHandler) CreateBySession(c *gin.Context) {
+	tenant, e := attendanceTenant(c)
+	if e != nil {
+		c.JSON(401, gin.H{"status": "error", "message": "Invalid tenant context", "data": nil})
+		return
+	}
+	uid, e := uuid.Parse(c.GetString("member_id"))
+	if e != nil {
+		c.JSON(401, gin.H{"status": "error", "message": "Invalid user context", "data": nil})
+		return
+	}
+	var req domain.CreateAttendanceBySessionRequest
+	if e = c.ShouldBindJSON(&req); e != nil {
+		c.JSON(400, gin.H{"status": "error", "message": e.Error(), "data": nil})
+		return
+	}
+	r, e := h.usecase.CreateBySession(c.Request.Context(), tenant, uid, &req)
+	writeAttendanceCreateResult(c, e, r)
+}
+
+// @Summary Create bulk attendance
+// @Description Record the status of a whole session's students in one idempotent request.
+// @Tags Attendance
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @x-permission {"permission":"attendance:create","parent_tokens":"skipped"}
+// @Param request body domain.BulkAttendanceRequest true "Bulk attendance payload"
+// @Success 201 {object} domain.HTTPResponse{data=domain.BulkAttendanceResponse}
+// @Failure 400 {object} domain.ErrorResponse
+// @Failure 403 {object} domain.ErrorResponse
+// @Failure 404 {object} domain.ErrorResponse
+// @Failure 503 {object} domain.ErrorResponse
+// @Router /api/v1/attendance/bulk [post]
+func (h *AttendanceHandler) CreateBulk(c *gin.Context) {
+	tenant, e := attendanceTenant(c)
+	if e != nil {
+		c.JSON(401, gin.H{"status": "error", "message": "Invalid tenant context", "data": nil})
+		return
+	}
+	uid, e := uuid.Parse(c.GetString("member_id"))
+	if e != nil {
+		c.JSON(401, gin.H{"status": "error", "message": "Invalid user context", "data": nil})
+		return
+	}
+	var req domain.BulkAttendanceRequest
+	if e = c.ShouldBindJSON(&req); e != nil {
+		c.JSON(400, gin.H{"status": "error", "message": e.Error(), "data": nil})
+		return
+	}
+	r, e := h.usecase.CreateBulk(c.Request.Context(), tenant, uid, &req)
+	if errors.Is(e, domain.ErrAttendanceForbidden) {
+		c.JSON(403, gin.H{"status": "error", "message": "Tutor is not assigned to this session", "data": nil})
+		return
+	}
+	if errors.Is(e, usecase.ErrAttendanceSessionNotFound) || errors.Is(e, gorm.ErrRecordNotFound) {
+		c.JSON(404, gin.H{"status": "error", "message": "Class session not found", "data": nil})
+		return
+	}
+	if errors.Is(e, usecase.ErrAttendanceSessionCancelled) || errors.Is(e, usecase.ErrAttendanceEnrollmentMismatch) {
+		c.JSON(400, gin.H{"status": "error", "message": e.Error(), "data": nil})
+		return
+	}
+	if e != nil {
+		c.JSON(400, gin.H{"status": "error", "message": "Invalid attendance", "data": nil})
+		return
+	}
+	c.JSON(201, gin.H{"status": "success", "message": "Bulk attendance recorded successfully", "data": r})
 }
 
 // @Summary Get attendance
@@ -156,6 +255,48 @@ func (h *AttendanceHandler) Get(c *gin.Context) {
 	}
 	r, e := h.usecase.Get(c.Request.Context(), tenant, id)
 	if errors.Is(e, gorm.ErrRecordNotFound) {
+		c.JSON(404, gin.H{"status": "error", "message": "Attendance not found", "data": nil})
+		return
+	}
+	if e != nil {
+		c.JSON(500, gin.H{"status": "error", "message": "Failed to fetch attendance", "data": nil})
+		return
+	}
+	c.JSON(200, gin.H{"status": "success", "message": "Attendance fetched successfully", "data": r})
+}
+
+// @Summary Get attendance by session and enrollment
+// @Description Read one attendance row addressed at a session id, including reschedule replacements.
+// @Tags Attendance
+// @Produce json
+// @Security BearerAuth
+// @x-permission {"permission":"attendance:read","parent_tokens":"skipped"}
+// @Param session_id query string true "Session UUID"
+// @Param enrollment_id query string true "Enrollment UUID"
+// @Success 200 {object} domain.HTTPResponse{data=domain.Attendance}
+// @Failure 400 {object} domain.ErrorResponse
+// @Failure 403 {object} domain.ErrorResponse
+// @Failure 404 {object} domain.ErrorResponse
+// @Failure 503 {object} domain.ErrorResponse
+// @Router /api/v1/attendance/by-session [get]
+func (h *AttendanceHandler) GetBySession(c *gin.Context) {
+	tenant, e := attendanceTenant(c)
+	if e != nil {
+		c.JSON(401, gin.H{"status": "error", "message": "Invalid tenant context", "data": nil})
+		return
+	}
+	sessionID, e := uuid.Parse(c.Query("session_id"))
+	if e != nil {
+		c.JSON(400, gin.H{"status": "error", "message": "Invalid session ID", "data": nil})
+		return
+	}
+	enrollmentID, e := uuid.Parse(c.Query("enrollment_id"))
+	if e != nil {
+		c.JSON(400, gin.H{"status": "error", "message": "Invalid enrollment ID", "data": nil})
+		return
+	}
+	r, e := h.usecase.GetBySession(c.Request.Context(), tenant, sessionID, enrollmentID)
+	if errors.Is(e, usecase.ErrAttendanceSessionNotFound) || errors.Is(e, domain.ErrAttendanceNotFound) || errors.Is(e, gorm.ErrRecordNotFound) {
 		c.JSON(404, gin.H{"status": "error", "message": "Attendance not found", "data": nil})
 		return
 	}

@@ -77,6 +77,39 @@ func (r *sessionRepository) IsTutorForSession(ctx context.Context, tenantID, ses
 	return count > 0, err
 }
 
+// FindSessionForAttendance resolves a session directly by id for attendance
+// writes addressed at session_id (KEL-134). Unlike FindForAttendance it does
+// not need schedule_id + date, so it also resolves reschedule replacements
+// (schedule_id IS NULL, status 'scheduled', linked via
+// rescheduled_from_session_id). The ownership filter is part of the query, so
+// a session owned by another tenant reports gorm.ErrRecordNotFound. Cancelled
+// sessions resolve too: the use case rejects writes to them with a validation
+// error rather than "not found", so callers can tell "no such session" apart
+// from "session cannot take attendance".
+func (r *sessionRepository) FindSessionForAttendance(ctx context.Context, tenantID, sessionID uuid.UUID) (*domain.ClassSession, error) {
+	var session domain.ClassSession
+	err := r.getDB(ctx).Joins("JOIN classes c ON c.id = class_sessions.class_id").
+		Where("class_sessions.id = ? AND c.tenant_id = ?", sessionID, tenantID).
+		Preload("Class").Preload("Schedule").Preload("Enrollment").First(&session).Error
+	if err != nil {
+		return nil, err
+	}
+	return &session, nil
+}
+
+// ListSessionsForAttendanceCohort lists sessions of one class with the given
+// status for the reschedule fallback (KEL-134): origin sessions of group
+// reschedule replacements created before the migration carry no
+// rescheduled_from_session_id link, so the cohort schedule is recovered by
+// matching a 'rescheduled' session of the same class.
+func (r *sessionRepository) ListSessionsForAttendanceCohort(ctx context.Context, tenantID, classID uuid.UUID, status string) ([]domain.ClassSession, error) {
+	var sessions []domain.ClassSession
+	err := r.getDB(ctx).Joins("JOIN classes c ON c.id = class_sessions.class_id").
+		Where("c.tenant_id = ? AND class_sessions.class_id = ? AND class_sessions.status = ?", tenantID, classID, status).
+		Find(&sessions).Error
+	return sessions, err
+}
+
 func (r *sessionRepository) ListByTenant(ctx context.Context, tenantID uuid.UUID, query domain.SessionQuery) ([]domain.ClassSession, int64, error) {
 	db := r.getDB(ctx).Table("class_sessions cs").Joins("JOIN classes c ON c.id = cs.class_id").Where("c.tenant_id = ?", tenantID)
 	if query.ClassID != nil {

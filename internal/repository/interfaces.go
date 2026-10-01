@@ -54,7 +54,14 @@ type SessionRepository interface {
 	GetByIDForTenant(ctx context.Context, tenantID, id uuid.UUID) (*domain.ClassSession, error)
 	DeleteByTenant(ctx context.Context, tenantID, id uuid.UUID) error
 	FindForAttendance(ctx context.Context, tenantID, scheduleID, enrollmentID uuid.UUID, date time.Time) (*domain.ClassSession, error)
+	// FindSessionForAttendance resolves a session directly by id (KEL-134),
+	// including reschedule replacements whose schedule is nil. The session is
+	// returned only when it belongs to the calling tenant, and only together
+	// with the enrollment cohort it actually covers (see
+	// resolveSessionCohortScheduleID).
+	FindSessionForAttendance(ctx context.Context, tenantID, sessionID uuid.UUID) (*domain.ClassSession, error)
 	IsTutorForSession(ctx context.Context, tenantID, sessionID, memberID uuid.UUID) (bool, error)
+	ListSessionsForAttendanceCohort(ctx context.Context, tenantID, classID uuid.UUID, status string) ([]domain.ClassSession, error)
 	ListByTenant(ctx context.Context, tenantID uuid.UUID, query domain.SessionQuery) ([]domain.ClassSession, int64, error)
 	Update(ctx context.Context, session *domain.ClassSession) error
 	CancelFutureSessionsBySchedule(ctx context.Context, tenantID, scheduleID uuid.UUID, fromDate time.Time) error
@@ -133,6 +140,14 @@ type AttendanceRepository interface {
 	GetByIDForTenant(ctx context.Context, tenantID, id uuid.UUID) (*domain.Attendance, error)
 	List(ctx context.Context, tenantID uuid.UUID, query domain.AttendanceQuery) ([]domain.Attendance, int64, error)
 	GetByUnique(ctx context.Context, enrollmentID, sessionID uuid.UUID, date time.Time) (*domain.Attendance, error)
+	// GetBySessionEnrollment resolves a single (session, enrollment) row
+	// without the legacy date component (KEL-134).
+	GetBySessionEnrollment(ctx context.Context, sessionID, enrollmentID uuid.UUID) (*domain.Attendance, error)
+	// UpsertBulk writes every row of one session atomically and idempotently
+	// (KEL-134): existing (session_id, enrollment_id) rows are updated, new
+	// ones are inserted, all scoped to the session's tenant in SQL. Rows keep
+	// the session's own date.
+	UpsertBulk(ctx context.Context, tenantID, sessionID uuid.UUID, items []domain.BulkAttendanceItem) ([]domain.Attendance, error)
 	Update(ctx context.Context, attendance *domain.Attendance) error
 }
 

@@ -51,6 +51,24 @@ func (u *routeAttendanceUsecase) Create(_ context.Context, _, _ uuid.UUID, _ *do
 	}
 	return &domain.Attendance{}, nil
 }
+func (u *routeAttendanceUsecase) CreateBySession(_ context.Context, _, _ uuid.UUID, _ *domain.CreateAttendanceBySessionRequest) (*domain.Attendance, error) {
+	u.calls++
+	if u.createErr != nil {
+		return nil, u.createErr
+	}
+	return &domain.Attendance{}, nil
+}
+func (u *routeAttendanceUsecase) CreateBulk(_ context.Context, _, _ uuid.UUID, _ *domain.BulkAttendanceRequest) (*domain.BulkAttendanceResponse, error) {
+	u.calls++
+	if u.createErr != nil {
+		return nil, u.createErr
+	}
+	return &domain.BulkAttendanceResponse{}, nil
+}
+func (u *routeAttendanceUsecase) GetBySession(context.Context, uuid.UUID, uuid.UUID, uuid.UUID) (*domain.Attendance, error) {
+	u.calls++
+	return &domain.Attendance{}, nil
+}
 func (u *routeAttendanceUsecase) Get(context.Context, uuid.UUID, uuid.UUID) (*domain.Attendance, error) {
 	u.calls++
 	return &domain.Attendance{}, nil
@@ -123,7 +141,9 @@ func TestAttendanceReportRoutesPermissionMatrix(t *testing.T) {
 	id := uuid.NewString()
 	enrollment := uuid.NewString()
 	schedule := uuid.NewString()
-	attendanceBody := fmt.Sprintf(`{"enrollment_id":%q,"schedule_id":%q,"date":"2026-09-26","status":"present"}`, enrollment, schedule)
+	session := uuid.NewString()
+	bySessionBody := fmt.Sprintf(`{"enrollment_id":%q,"session_id":%q,"status":"present"}`, enrollment, session)
+	bulkBody := fmt.Sprintf(`{"session_id":%q,"items":[{"enrollment_id":%q,"status":"present"}]}`, session, enrollment)
 	reportBody := fmt.Sprintf(`{"enrollment_id":%q,"title":"Progress"}`, enrollment)
 	routes := []struct {
 		method, path, body, permission string
@@ -131,7 +151,10 @@ func TestAttendanceReportRoutesPermissionMatrix(t *testing.T) {
 		attendance                     bool
 	}{
 		{http.MethodGet, "/api/v1/attendance", "", "attendance:read", 200, true},
-		{http.MethodPost, "/api/v1/attendance", attendanceBody, "attendance:create", 201, true},
+		{http.MethodPost, "/api/v1/attendance", fmt.Sprintf(`{"enrollment_id":%q,"schedule_id":%q,"date":"2026-09-26","status":"present"}`, enrollment, schedule), "attendance:create", 201, true},
+		{http.MethodPost, "/api/v1/attendance/by-session", bySessionBody, "attendance:create", 201, true},
+		{http.MethodPost, "/api/v1/attendance/bulk", bulkBody, "attendance:create", 201, true},
+		{http.MethodGet, "/api/v1/attendance/by-session?session_id=" + session + "&enrollment_id=" + enrollment, "", "attendance:read", 200, true},
 		{http.MethodGet, "/api/v1/attendance/" + id, "", "attendance:read", 200, true},
 		{http.MethodPatch, "/api/v1/attendance/" + id, `{"status":"late"}`, "attendance:update", 200, true},
 		{http.MethodGet, "/api/v1/reports", "", "report:read", 200, false},

@@ -190,6 +190,14 @@ func (m *scopeSessionRepo) FindForAttendance(context.Context, uuid.UUID, uuid.UU
 	return nil, gorm.ErrRecordNotFound
 }
 
+func (m *scopeSessionRepo) FindSessionForAttendance(context.Context, uuid.UUID, uuid.UUID) (*domain.ClassSession, error) {
+	return nil, gorm.ErrRecordNotFound
+}
+
+func (m *scopeSessionRepo) ListSessionsForAttendanceCohort(context.Context, uuid.UUID, uuid.UUID, string) ([]domain.ClassSession, error) {
+	return nil, nil
+}
+
 func (m *scopeSessionRepo) IsTutorForSession(context.Context, uuid.UUID, uuid.UUID, uuid.UUID) (bool, error) {
 	return false, nil
 }
