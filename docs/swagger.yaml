@@ -838,6 +838,9 @@ definitions:
         type: string
       student_id:
         type: string
+      voucher_code:
+        maxLength: 255
+        type: string
     required:
     - billing_cycle
     - student_id
@@ -1195,6 +1198,21 @@ definitions:
     required:
     - date_of_birth
     - first_name
+    type: object
+  github_com_kelolakelas_kelolakelas-academic-service_internal_domain.VoucherPreviewRequest:
+    properties:
+      voucher_code:
+        maxLength: 255
+        type: string
+    required:
+    - voucher_code
+    type: object
+  github_com_kelolakelas_kelolakelas-academic-service_pkg_billing.VoucherPreviewResponse:
+    properties:
+      discount_amount:
+        type: integer
+      gross_amount:
+        type: integer
     type: object
   gorm.DeletedAt:
     properties:
@@ -1743,6 +1761,65 @@ paths:
       summary: Request a weekly schedule for a private class
       tags:
       - Private schedule requests
+  /api/v1/catalog/classes/{class_id}/voucher-preview:
+    post:
+      consumes:
+      - application/json
+      description: Uses the published group class tenant and price; never reserves
+        a voucher or seat.
+      parameters:
+      - description: Class ID (UUID)
+        in: path
+        name: class_id
+        required: true
+        type: string
+      - description: Voucher code
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.VoucherPreviewRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.HTTPResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_pkg_billing.VoucherPreviewResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+        "422":
+          description: Unprocessable Entity
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Preview a voucher for parent group checkout
+      tags:
+      - Enrollments
   /api/v1/catalog/classes/{id}:
     get:
       parameters:

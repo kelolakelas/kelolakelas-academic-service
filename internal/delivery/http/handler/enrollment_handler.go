@@ -287,7 +287,7 @@ func catalogEnrollmentErrorStatus(err error) int {
 		return http.StatusBadRequest
 	case errors.Is(err, domain.ErrIdempotencyConflict), errors.Is(err, domain.ErrScheduleFull), errors.Is(err, domain.ErrDuplicateEnrollment):
 		return http.StatusConflict
-	case errors.Is(err, domain.ErrPrivateCheckout), errors.Is(err, domain.ErrStudentOwnership), errors.Is(err, domain.ErrClassNotEnrollable), errors.Is(err, domain.ErrScheduleClassMismatch), errors.Is(err, domain.ErrScheduleRequired), errors.Is(err, domain.ErrScheduleEnded), errors.Is(err, domain.ErrPlatformFeeExceedsGross):
+	case errors.Is(err, domain.ErrPrivateCheckout), errors.Is(err, domain.ErrStudentOwnership), errors.Is(err, domain.ErrClassNotEnrollable), errors.Is(err, domain.ErrScheduleClassMismatch), errors.Is(err, domain.ErrScheduleRequired), errors.Is(err, domain.ErrScheduleEnded), errors.Is(err, domain.ErrPlatformFeeExceedsGross), errors.Is(err, domain.ErrVoucherRejected):
 		return http.StatusUnprocessableEntity
 	case errors.Is(err, domain.ErrClassNotFound), errors.Is(err, domain.ErrStudentNotFound):
 		return http.StatusNotFound
@@ -304,6 +304,8 @@ func catalogEnrollmentErrorStatus(err error) int {
 // schedule and an idempotency conflict keep their existing 409 body without a code.
 func enrollmentErrorCode(err error) string {
 	switch {
+	case errors.Is(err, domain.ErrVoucherRejected):
+		return domain.VoucherRejectedErrorCode
 	case errors.Is(err, domain.ErrPrivateCheckout):
 		return domain.PrivateCheckoutErrorCode
 	case errors.Is(err, domain.ErrDuplicateEnrollment):

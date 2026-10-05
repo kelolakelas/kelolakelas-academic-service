@@ -68,6 +68,7 @@ func registerRoutes(r *gin.Engine, h routeHandlers, jwtSecret, internalCredentia
 		registerAttendanceReportRoutes(apiV1, permissionClient, h.attendance, h.report)
 		apiV1.POST("/tenants/:tenant_id/enrollments", middleware.RequirePermissionUnlessParent(permissionClient, "enrollment:create"), h.enrollment.Create)
 		apiV1.POST("/catalog/classes/:class_id/enrollments", h.enrollment.CreateCatalogEnrollment)
+		apiV1.POST("/catalog/classes/:class_id/voucher-preview", h.enrollment.PreviewVoucher)
 		apiV1.POST("/enrollments/:id/cancel", h.enrollment.Cancel)
 		apiV1.PUT("/enrollments/:id/review", h.review.Upsert)
 		apiV1.GET("/enrollments", middleware.RequirePermissionUnlessParent(permissionClient, "enrollment:read"), h.enrollment.ListQuery)

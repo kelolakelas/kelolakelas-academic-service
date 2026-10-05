@@ -102,7 +102,17 @@ type EnrollStudentRequest struct {
 	IdempotencyKey string     `json:"-"`
 }
 
+var ErrVoucherRejected = errors.New("Voucher tidak dapat digunakan. Mulai checkout baru tanpa voucher.")
+
+const VoucherRejectedErrorCode = "voucher_rejected"
+const PaymentStatusVoucherRejected = "voucher_rejected"
+
+type VoucherPreviewRequest struct {
+	VoucherCode string `json:"voucher_code" binding:"required,max=255"`
+}
+
 type PublicEnrollmentRequest struct {
+	VoucherCode   string     `json:"voucher_code,omitempty" binding:"omitempty,max=255"`
 	StudentID     uuid.UUID  `json:"student_id" binding:"required"`
 	BillingCycle  string     `json:"billing_cycle" binding:"required,oneof=monthly quarterly yearly"`
 	ScheduleID    *uuid.UUID `json:"schedule_id,omitempty"`

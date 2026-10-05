@@ -22,7 +22,27 @@ type Client interface {
 	CancelEnrollmentPayment(ctx context.Context, enrollmentID uuid.UUID) (*CancelResponse, error)
 }
 
+const VoucherRejectedCode = "voucher_rejected"
+
+var ErrVoucherRejected = errors.New("billing rejected voucher")
+
+type VoucherPreviewClient interface {
+	PreviewVoucher(context.Context, VoucherPreviewRequest) (*VoucherPreviewResponse, error)
+}
+
+type VoucherPreviewRequest struct {
+	TenantID       uuid.UUID `json:"tenant_id"`
+	SubtotalAmount int64     `json:"subtotal_amount"`
+	VoucherCode    string    `json:"voucher_code" binding:"required,max=255"`
+}
+
+type VoucherPreviewResponse struct {
+	DiscountAmount int64 `json:"discount_amount"`
+	GrossAmount    int64 `json:"gross_amount"`
+}
+
 type InvoiceRequest struct {
+	VoucherCode    string    `json:"voucher_code,omitempty" binding:"omitempty,max=255"`
 	TenantID       uuid.UUID `json:"tenant_id"`
 	StudentID      uuid.UUID `json:"student_id"`
 	ClassID        uuid.UUID `json:"class_id"`
@@ -30,8 +50,8 @@ type InvoiceRequest struct {
 	ParentID       uuid.UUID `json:"parent_id"`
 	BillingCycle   string    `json:"billing_cycle"`
 	SubtotalAmount int64     `json:"subtotal_amount"`
-	DiscountAmount int64     `json:"discount_amount"`
-	PlatformFee    int64     `json:"platform_fee"`
+	DiscountAmount int64     `json:"-"`
+	PlatformFee    int64     `json:"-"`
 	IdempotencyKey string    `json:"idempotency_key,omitempty"`
 	PaymentMethod  string    `json:"payment_method,omitempty"`
 	Title          string    `json:"title"`
@@ -45,6 +65,8 @@ type InvoiceRequest struct {
 }
 
 type InvoiceResponse struct {
+	GrossAmount        int64     `json:"gross_amount"`
+	DiscountAmount     int64     `json:"discount_amount"`
 	TransactionID      uuid.UUID `json:"transaction_id"`
 	CheckoutSessionURL string    `json:"checkout_session_url"`
 	PaymentIntentID    string    `json:"payment_intent_id"`
@@ -106,6 +128,9 @@ func (c *client) GenerateInvoice(ctx context.Context, request InvoiceRequest) (*
 		// 422 (or the same code on another status) keeps the generic error path.
 		if decodeErr == nil && resp.StatusCode == http.StatusUnprocessableEntity && envelope.Code == PlatformFeeExceedsGrossCode {
 			return nil, ErrPlatformFeeExceedsGross
+		}
+		if decodeErr == nil && resp.StatusCode == http.StatusUnprocessableEntity && envelope.Code == VoucherRejectedCode {
+			return nil, ErrVoucherRejected
 		}
 		if decodeErr != nil || envelope.Message == "" {
 			return nil, fmt.Errorf("billing service returned status %d", resp.StatusCode)

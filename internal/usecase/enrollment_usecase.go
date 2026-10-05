@@ -196,6 +196,9 @@ func (u *enrollmentUsecase) EnrollPublic(ctx context.Context, parentID, classID 
 		if class.Type == "private" {
 			return nil, domain.ErrPrivateCheckout
 		}
+		if voucherRejected(existing) {
+			return nil, domain.ErrVoucherRejected
+		}
 		if platformFeeRejected(existing) {
 			return nil, domain.ErrPlatformFeeExceedsGross
 		}
@@ -205,13 +208,14 @@ func (u *enrollmentUsecase) EnrollPublic(ctx context.Context, parentID, classID 
 			if studentErr != nil || classErr != nil {
 				return nil, fmt.Errorf("recover enrollment dependencies")
 			}
-			invoice, invoiceErr := u.billingClient.GenerateInvoice(ctx, billing.InvoiceRequest{TenantID: existing.TenantID, StudentID: existing.StudentID, ClassID: existing.ClassID, EnrollmentID: existing.ID, ParentID: parentID, BillingCycle: existing.BillingCycle, SubtotalAmount: class.Price, IdempotencyKey: idempotencyKey, Title: class.Name, SenderEmail: req.SenderEmail, PaymentMethod: req.PaymentMethod})
+			invoice, invoiceErr := u.billingClient.GenerateInvoice(ctx, billing.InvoiceRequest{TenantID: existing.TenantID, StudentID: existing.StudentID, ClassID: existing.ClassID, EnrollmentID: existing.ID, ParentID: parentID, BillingCycle: existing.BillingCycle, SubtotalAmount: class.Price, IdempotencyKey: idempotencyKey, Title: class.Name, SenderEmail: req.SenderEmail, PaymentMethod: req.PaymentMethod, VoucherCode: req.VoucherCode})
 			if invoiceErr != nil {
 				return nil, u.invoiceFailure(ctx, existing.ID, invoiceErr)
 			}
 			existing.PaymentTransactionID = &invoice.TransactionID
 			existing.CheckoutSessionURL = &invoice.CheckoutSessionURL
 			existing.PaymentStatus = "pending"
+			existing.GrossAmount = invoice.GrossAmount
 			if updateErr := u.enrollmentRepo.Update(ctx, existing); updateErr != nil {
 				return nil, updateErr
 			}
@@ -256,6 +260,9 @@ func (u *enrollmentUsecase) EnrollPublic(ctx context.Context, parentID, classID 
 					if existing.StudentID != req.StudentID || existing.ClassID != classID || existing.BillingCycle != req.BillingCycle {
 						return nil, domain.ErrIdempotencyConflict
 					}
+					if voucherRejected(existing) {
+						return nil, domain.ErrVoucherRejected
+					}
 					if platformFeeRejected(existing) {
 						return nil, domain.ErrPlatformFeeExceedsGross
 					}
@@ -270,6 +277,9 @@ func (u *enrollmentUsecase) EnrollPublic(ctx context.Context, parentID, classID 
 				if existing.StudentID != req.StudentID || existing.ClassID != classID || existing.BillingCycle != req.BillingCycle {
 					return nil, domain.ErrIdempotencyConflict
 				}
+				if voucherRejected(existing) {
+					return nil, domain.ErrVoucherRejected
+				}
 				if platformFeeRejected(existing) {
 					return nil, domain.ErrPlatformFeeExceedsGross
 				}
@@ -278,13 +288,14 @@ func (u *enrollmentUsecase) EnrollPublic(ctx context.Context, parentID, classID 
 		}
 		return nil, err
 	}
-	invoice, err := u.billingClient.GenerateInvoice(ctx, billing.InvoiceRequest{TenantID: class.TenantID, StudentID: student.ID, ClassID: class.ID, EnrollmentID: enrollment.ID, ParentID: parentID, BillingCycle: req.BillingCycle, SubtotalAmount: class.Price, IdempotencyKey: idempotencyKey, Title: class.Name, SenderEmail: req.SenderEmail, PaymentMethod: req.PaymentMethod})
+	invoice, err := u.billingClient.GenerateInvoice(ctx, billing.InvoiceRequest{TenantID: class.TenantID, StudentID: student.ID, ClassID: class.ID, EnrollmentID: enrollment.ID, ParentID: parentID, BillingCycle: req.BillingCycle, SubtotalAmount: class.Price, IdempotencyKey: idempotencyKey, Title: class.Name, SenderEmail: req.SenderEmail, PaymentMethod: req.PaymentMethod, VoucherCode: req.VoucherCode})
 	if err != nil {
 		return nil, u.invoiceFailure(ctx, enrollment.ID, err)
 	}
 	enrollment.PaymentTransactionID = &invoice.TransactionID
 	enrollment.CheckoutSessionURL = &invoice.CheckoutSessionURL
 	enrollment.PaymentStatus = "pending"
+	enrollment.GrossAmount = invoice.GrossAmount
 	if err := u.enrollmentRepo.Update(ctx, enrollment); err != nil {
 		return nil, err
 	}
@@ -306,6 +317,12 @@ func platformFeeRejected(enrollment *domain.Enrollment) bool {
 // only pending and active rows), while its payment status keeps a same-key replay
 // answering the rejection instead of a success.
 func (u *enrollmentUsecase) invoiceFailure(ctx context.Context, enrollmentID uuid.UUID, invoiceErr error) error {
+	if errors.Is(invoiceErr, billing.ErrVoucherRejected) {
+		if err := u.dropInvoiceRejected(ctx, enrollmentID, domain.PaymentStatusVoucherRejected); err != nil {
+			return fmt.Errorf("release enrollment after voucher rejection: %w", err)
+		}
+		return domain.ErrVoucherRejected
+	}
 	if !errors.Is(invoiceErr, billing.ErrPlatformFeeExceedsGross) {
 		return fmt.Errorf("generate enrollment invoice: %w", invoiceErr)
 	}
@@ -320,7 +337,15 @@ func (u *enrollmentUsecase) invoiceFailure(ctx context.Context, enrollmentID uui
 
 // dropPlatformFeeRejected moves the enrollment from pending to dropped under a row
 // lock. An enrollment that already left pending is left as it is.
+func voucherRejected(e *domain.Enrollment) bool {
+	return e.Status == "dropped" && e.PaymentStatus == domain.PaymentStatusVoucherRejected
+}
+
 func (u *enrollmentUsecase) dropPlatformFeeRejected(ctx context.Context, enrollmentID uuid.UUID) error {
+	return u.dropInvoiceRejected(ctx, enrollmentID, domain.PaymentStatusPlatformFeeRejected)
+}
+
+func (u *enrollmentUsecase) dropInvoiceRejected(ctx context.Context, enrollmentID uuid.UUID, paymentStatus string) error {
 	load := u.enrollmentRepo.GetByID
 	if lockingRepo, ok := u.enrollmentRepo.(repository.EnrollmentLockingRepository); ok {
 		load = lockingRepo.GetByIDForUpdate
@@ -334,7 +359,7 @@ func (u *enrollmentUsecase) dropPlatformFeeRejected(ctx context.Context, enrollm
 			return nil
 		}
 		enrollment.Status = "dropped"
-		enrollment.PaymentStatus = domain.PaymentStatusPlatformFeeRejected
+		enrollment.PaymentStatus = paymentStatus
 		enrollment.UpdatedAt = time.Now()
 		return u.enrollmentRepo.Update(txCtx, enrollment)
 	}
@@ -375,6 +400,9 @@ func (u *enrollmentUsecase) EnrollStudent(ctx context.Context, tenantID uuid.UUI
 			}
 			if class.Type == "private" {
 				return nil, domain.ErrPrivateCheckout
+			}
+			if voucherRejected(existing) {
+				return nil, domain.ErrVoucherRejected
 			}
 			if platformFeeRejected(existing) {
 				return nil, domain.ErrPlatformFeeExceedsGross
