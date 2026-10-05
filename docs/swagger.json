@@ -847,6 +847,100 @@
                 }
             }
         },
+        "/api/v1/catalog/classes/{class_id}/voucher-preview": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Uses the published group class tenant and price; never reserves a voucher or seat.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Enrollments"
+                ],
+                "summary": "Preview a voucher for parent group checkout",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Class ID (UUID)",
+                        "name": "class_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Voucher code",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.VoucherPreviewRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.HTTPResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_pkg_billing.VoucherPreviewResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
+                        }
+                    },
+                    "422": {
+                        "description": "Unprocessable Entity",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/catalog/classes/{id}": {
             "get": {
                 "produces": [
@@ -6595,6 +6689,10 @@
                 },
                 "student_id": {
                     "type": "string"
+                },
+                "voucher_code": {
+                    "type": "string",
+                    "maxLength": 255
                 }
             }
         },
@@ -7118,6 +7216,29 @@
                     "items": {
                         "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.StudentNoteRequest"
                     }
+                }
+            }
+        },
+        "github_com_kelolakelas_kelolakelas-academic-service_internal_domain.VoucherPreviewRequest": {
+            "type": "object",
+            "required": [
+                "voucher_code"
+            ],
+            "properties": {
+                "voucher_code": {
+                    "type": "string",
+                    "maxLength": 255
+                }
+            }
+        },
+        "github_com_kelolakelas_kelolakelas-academic-service_pkg_billing.VoucherPreviewResponse": {
+            "type": "object",
+            "properties": {
+                "discount_amount": {
+                    "type": "integer"
+                },
+                "gross_amount": {
+                    "type": "integer"
                 }
             }
         },

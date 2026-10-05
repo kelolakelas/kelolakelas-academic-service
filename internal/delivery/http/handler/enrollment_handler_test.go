@@ -59,6 +59,7 @@ func TestCatalogEnrollmentConflictBodies(t *testing.T) {
 		{name: "schedule full", err: domain.ErrScheduleFull, wantStatus: http.StatusConflict, wantMessage: domain.ErrScheduleFull.Error()},
 		{name: "idempotency conflict", err: domain.ErrIdempotencyConflict, wantStatus: http.StatusConflict, wantMessage: domain.ErrIdempotencyConflict.Error()},
 		{name: "platform fee rejection", err: domain.ErrPlatformFeeExceedsGross, wantStatus: http.StatusUnprocessableEntity, wantCode: "platform_fee_exceeds_gross", wantMessage: "Biaya platform melebihi jumlah pembayaran"},
+		{name: "voucher rejection including replacement invoice", err: domain.ErrVoucherRejected, wantStatus: http.StatusUnprocessableEntity, wantCode: "voucher_rejected", wantMessage: domain.ErrVoucherRejected.Error()},
 		{name: "ownership keeps its 422 without code", err: domain.ErrStudentOwnership, wantStatus: http.StatusUnprocessableEntity, wantMessage: domain.ErrStudentOwnership.Error()},
 		{name: "unexpected failure", err: errors.New("database down"), wantStatus: http.StatusInternalServerError, wantMessage: "Failed to create enrollment"},
 	}

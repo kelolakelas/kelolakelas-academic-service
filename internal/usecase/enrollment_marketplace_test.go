@@ -132,7 +132,7 @@ func (m *marketplaceBilling) GenerateInvoice(context.Context, billing.InvoiceReq
 	if m.err != nil {
 		return nil, m.err
 	}
-	return &billing.InvoiceResponse{TransactionID: uuid.New(), CheckoutSessionURL: "https://checkout.test"}, nil
+	return &billing.InvoiceResponse{TransactionID: uuid.New(), CheckoutSessionURL: "https://checkout.test", GrossAmount: 250000}, nil
 }
 
 // cancelErr lets a test drive the withdrawal outcome independently of the invoice
