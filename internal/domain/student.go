@@ -13,6 +13,7 @@ var (
 	ErrStudentForbidden           = errors.New("student access forbidden")
 	ErrStudentActiveEnroll        = errors.New("student has active enrollments")
 	ErrStudentFirstNameRequired   = errors.New("first name is required")
+	ErrStudentDateOfBirthFuture   = errors.New("date of birth must not be in the future")
 	ErrStudentNoteInvalid         = errors.New("invalid student note")
 	ErrStudentNoteContentRequired = errors.New("student note content is required")
 )
