@@ -48,7 +48,7 @@ func (u *studentUsecase) Create(ctx context.Context, tenantID, userID *uuid.UUID
 	if tenantID == nil && (userID == nil || *userID != req.ParentID) {
 		return nil, domain.ErrStudentForbidden
 	}
-	dob, err := time.Parse("2006-01-02", req.DateOfBirth)
+	dob, err := parseStudentDateOfBirth(req.DateOfBirth, time.Now())
 	if err != nil {
 		return nil, err
 	}
@@ -86,7 +86,7 @@ func (u *studentUsecase) Update(ctx context.Context, tenantID, parentID, authorI
 	if err != nil {
 		return nil, err
 	}
-	dob, err := time.Parse("2006-01-02", req.DateOfBirth)
+	dob, err := parseStudentDateOfBirth(req.DateOfBirth, time.Now())
 	if err != nil {
 		return nil, err
 	}
@@ -149,6 +149,19 @@ func (u *studentUsecase) buildStudentNote(tenantID, authorID *uuid.UUID, student
 		return nil, domain.ErrStudentNoteInvalid
 	}
 	return &domain.StudentNote{ID: uuid.New(), TenantID: tenantID, StudentID: student.ID, AuthorID: *authorID, NoteType: req.NoteType, Content: content}, nil
+}
+
+// WIB has a fixed UTC+7 offset; comparing calendar dates keeps today's DOB valid
+// even when the UTC day differs, without depending on the host's tzdata.
+func parseStudentDateOfBirth(value string, now time.Time) (time.Time, error) {
+	dob, err := time.Parse("2006-01-02", value)
+	if err != nil {
+		return time.Time{}, err
+	}
+	if value > now.In(time.FixedZone("Asia/Jakarta", 7*60*60)).Format("2006-01-02") {
+		return time.Time{}, domain.ErrStudentDateOfBirthFuture
+	}
+	return dob, nil
 }
 
 func cleanOptional(value *string) *string {

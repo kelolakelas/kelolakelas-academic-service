@@ -43,6 +43,7 @@ func authenticatedUserID(c *gin.Context) (*uuid.UUID, error) {
 
 func isStudentInputError(err error) bool {
 	if errors.Is(err, domain.ErrStudentFirstNameRequired) ||
+		errors.Is(err, domain.ErrStudentDateOfBirthFuture) ||
 		errors.Is(err, domain.ErrStudentNoteInvalid) ||
 		errors.Is(err, domain.ErrStudentNoteContentRequired) {
 		return true
