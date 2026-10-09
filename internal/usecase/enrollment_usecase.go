@@ -99,34 +99,34 @@ func (u *enrollmentUsecase) CancelPendingEnrollment(ctx context.Context, parentI
 		load = lockingRepo.GetByIDForUpdate
 	}
 	var enrollment *domain.Enrollment
-	if u.txManager != nil {
-		err = u.txManager.WithTransaction(ctx, func(txCtx context.Context) error {
-			enrollment, err = load(txCtx, enrollmentID)
-			if err != nil || enrollment.Status != "pending" {
-				return err
+	drop := func(txCtx context.Context) error {
+		var err error
+		enrollment, err = load(txCtx, enrollmentID)
+		if err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return ErrEnrollmentNotFound
 			}
-			enrollment.Status = "dropped"
-			enrollment.UpdatedAt = time.Now()
-			return u.enrollmentRepo.Update(txCtx, enrollment)
-		})
-	} else {
-		enrollment, err = load(ctx, enrollmentID)
-	}
-	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, ErrEnrollmentNotFound
+			return fmt.Errorf("failed to fetch enrollment: %w", err)
 		}
-		return nil, fmt.Errorf("failed to fetch enrollment: %w", err)
-	}
-	if enrollment.Status != "pending" {
-		return nil, domain.ErrInvalidEnrollmentTransition
-	}
-	if u.txManager == nil {
+		// Validate the locked state before mutating it, not the dropped state
+		// after a successful transaction.
+		if enrollment.Status != "pending" {
+			return domain.ErrInvalidEnrollmentTransition
+		}
 		enrollment.Status = "dropped"
 		enrollment.UpdatedAt = time.Now()
-		if err := u.enrollmentRepo.Update(ctx, enrollment); err != nil {
-			return nil, fmt.Errorf("failed to update enrollment status: %w", err)
+		if err := u.enrollmentRepo.Update(txCtx, enrollment); err != nil {
+			return fmt.Errorf("failed to update enrollment status: %w", err)
 		}
+		return nil
+	}
+	if u.txManager != nil {
+		err = u.txManager.WithTransaction(ctx, drop)
+	} else {
+		err = drop(ctx)
+	}
+	if err != nil {
+		return nil, err
 	}
 	return enrollmentResponse(enrollment), nil
 }

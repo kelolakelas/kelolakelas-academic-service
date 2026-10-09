@@ -142,8 +142,52 @@ func (s *cancelBillingStub) CancelEnrollmentPayment(_ context.Context, enrollmen
 	return &billing.CancelResponse{TransactionID: uuid.New(), Status: "cancelled"}, nil
 }
 
+type cancelTransactionManagerStub struct {
+	err error
+}
+
+func (s cancelTransactionManagerStub) WithTransaction(ctx context.Context, fn func(context.Context) error) error {
+	if s.err != nil {
+		return s.err
+	}
+	return fn(ctx)
+}
+
 func newCancelTestUsecase(repo *cancelEnrollmentRepoStub, client billing.Client) EnrollmentUsecase {
-	return NewEnrollmentUsecase(repo, &marketplaceStudentRepo{}, &marketplaceClassRepo{}, client)
+	return NewEnrollmentUsecase(repo, &marketplaceStudentRepo{}, &marketplaceClassRepo{}, client, cancelTransactionManagerStub{})
+}
+
+func TestCancelPendingEnrollmentWithoutTransactionManager(t *testing.T) {
+	parentID := uuid.New()
+	repo := &cancelEnrollmentRepoStub{ownerID: parentID, enrollment: &domain.Enrollment{ID: uuid.New(), Status: "pending"}}
+	client := &cancelBillingStub{}
+	u := NewEnrollmentUsecase(repo, &marketplaceStudentRepo{}, &marketplaceClassRepo{}, client)
+	response, err := u.CancelPendingEnrollment(context.Background(), parentID, repo.enrollment.ID)
+	if err != nil || response.Status != "dropped" || repo.written == nil || client.calls != 1 {
+		t.Fatalf("response=%v error=%v written=%v billing calls=%d", response, err, repo.written, client.calls)
+	}
+}
+
+func TestCancelPendingEnrollmentPropagatesPersistenceFailure(t *testing.T) {
+	for _, stage := range []string{"update", "transaction"} {
+		t.Run(stage, func(t *testing.T) {
+			parentID := uuid.New()
+			failure := errors.New("database unavailable")
+			repo := &cancelEnrollmentRepoStub{ownerID: parentID, enrollment: &domain.Enrollment{ID: uuid.New(), Status: "pending"}}
+			tx := cancelTransactionManagerStub{}
+			if stage == "update" {
+				repo.updateErr = failure
+			} else {
+				tx.err = failure
+			}
+			client := &cancelBillingStub{}
+			u := NewEnrollmentUsecase(repo, &marketplaceStudentRepo{}, &marketplaceClassRepo{}, client, tx)
+			response, err := u.CancelPendingEnrollment(context.Background(), parentID, repo.enrollment.ID)
+			if !errors.Is(err, failure) || response != nil || repo.written != nil || client.calls != 1 {
+				t.Fatalf("response=%v error=%v written=%v billing calls=%d", response, err, repo.written, client.calls)
+			}
+		})
+	}
 }
 
 func TestCancelPendingEnrollmentDropsSeatAndWithdrawsInvoice(t *testing.T) {
