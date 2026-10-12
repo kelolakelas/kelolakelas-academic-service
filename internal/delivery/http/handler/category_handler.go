@@ -80,6 +80,59 @@ func (h *CategoryHandler) Create(c *gin.Context) {
 	})
 }
 
+// Update godoc
+// @Summary Update academic category
+// @Description Updates the name and/or description of a tenant-owned category. Classes keep pointing at the same category id.
+// @Tags Categories
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @x-permission {"permission":"category:update","parent_tokens":"denied"}
+// @Param id path string true "Category ID (UUID)"
+// @Param request body domain.UpdateCategoryRequest true "Category update payload"
+// @Success 200 {object} domain.HTTPResponse{data=domain.CategoryResponse}
+// @Failure 400 {object} domain.ErrorResponse
+// @Failure 401 {object} domain.ErrorResponse
+// @Failure 403 {object} domain.ErrorResponse
+// @Failure 404 {object} domain.ErrorResponse
+// @Failure 422 {object} domain.ErrorResponse
+// @Failure 500 {object} domain.ErrorResponse
+// @Failure 503 {object} domain.ErrorResponse
+// @Router /api/v1/categories/{id} [patch]
+func (h *CategoryHandler) Update(c *gin.Context) {
+	tenantID, err := tenantIDFromContext(c)
+	if err != nil {
+		writeTenantError(c, err)
+		return
+	}
+	id, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"status": "error", "message": "Invalid category ID format", "data": nil})
+		return
+	}
+	var req domain.UpdateCategoryRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"status": "error", "message": err.Error(), "data": nil})
+		return
+	}
+	res, err := h.categoryUsecase.UpdateCategory(c.Request.Context(), tenantID, id, &req)
+	if err != nil {
+		switch {
+		case errors.Is(err, domain.ErrCategoryNotFound):
+			c.JSON(http.StatusNotFound, gin.H{"status": "error", "message": err.Error(), "data": nil})
+		case errors.Is(err, domain.ErrCategoryForbidden):
+			c.JSON(http.StatusForbidden, gin.H{"status": "error", "message": err.Error(), "data": nil})
+		case errors.Is(err, domain.ErrCategoryNameRequired):
+			c.JSON(http.StatusUnprocessableEntity, gin.H{"status": "error", "message": err.Error(), "data": nil})
+		default:
+			logInternalError(c.Request.Context(), "update category", err)
+			c.JSON(http.StatusInternalServerError, gin.H{"status": "error", "message": "Failed to update category", "data": nil})
+		}
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"status": "success", "message": "Category updated successfully", "data": res})
+}
+
 // Delete godoc
 // @Summary Delete academic category
 // @Description Soft-delete a tenant-owned category when it has no active classes

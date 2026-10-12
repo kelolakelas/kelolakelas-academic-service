@@ -13,6 +13,10 @@ var (
 	ErrCategoryNotFound      = errors.New("category not found")
 	ErrCategoryForbidden     = errors.New("category access forbidden")
 	ErrCategoryActiveClasses = errors.New("category has active classes")
+	// ErrCategoryNameRequired rejects a blank category name on update. The
+	// create path relies on binding:"required"; a pointer field needs an
+	// explicit check.
+	ErrCategoryNameRequired = errors.New("category name is required")
 )
 
 type HTTPResponse struct {
@@ -42,6 +46,20 @@ type Category struct {
 
 type CreateCategoryRequest struct {
 	Name        string           `json:"name" binding:"required,max=255"`
+	Description *json.RawMessage `json:"description,omitempty"`
+}
+
+// UpdateCategoryRequest patches the mutable attributes of an existing category.
+//
+// Every field is a pointer so an omitted key means "leave unchanged": the
+// handler must never treat an absent field as a request to blank the column.
+// The validation rules mirror CreateCategoryRequest.
+//
+// Note that encoding/json cannot distinguish an omitted `description` from an
+// explicit `null`, so this DTO cannot clear a description. Clearing is out of
+// scope for the category update endpoint.
+type UpdateCategoryRequest struct {
+	Name        *string          `json:"name,omitempty" binding:"omitempty,min=1,max=255"`
 	Description *json.RawMessage `json:"description,omitempty"`
 }
 

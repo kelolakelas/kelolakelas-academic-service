@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"time"
 
 	"github.com/google/uuid"
 	"gorm.io/gorm"
@@ -51,6 +52,29 @@ func (r *categoryRepository) GetByID(ctx context.Context, id uuid.UUID) (*domain
 
 func (r *categoryRepository) Update(ctx context.Context, category *domain.Category) error {
 	return r.getDB(ctx).Save(category).Error
+}
+
+// UpdateByTenant persists the mutable columns of a category that the caller has
+// already loaded and authorized.
+//
+// The WHERE clause repeats the tenant scope so a concurrent tenant change (or a
+// mistake in the caller) cannot write across tenants, and a zero row count is
+// reported as gorm.ErrRecordNotFound instead of a silent no-op.
+func (r *categoryRepository) UpdateByTenant(ctx context.Context, category *domain.Category) error {
+	db := r.getDB(ctx).Model(&domain.Category{}).
+		Where("id = ? AND tenant_id = ?", category.ID, category.TenantID).
+		Updates(map[string]interface{}{
+			"name":        category.Name,
+			"description": category.Description,
+			"updated_at":  time.Now(),
+		})
+	if db.Error != nil {
+		return db.Error
+	}
+	if db.RowsAffected == 0 {
+		return gorm.ErrRecordNotFound
+	}
+	return nil
 }
 
 func (r *categoryRepository) CountActiveClasses(ctx context.Context, categoryID uuid.UUID) (int64, error) {

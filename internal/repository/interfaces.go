@@ -14,6 +14,7 @@ type CategoryRepository interface {
 	ListByTenant(ctx context.Context, tenantID uuid.UUID, query domain.ListQuery) ([]domain.Category, int64, error)
 	GetByID(ctx context.Context, id uuid.UUID) (*domain.Category, error)
 	Update(ctx context.Context, category *domain.Category) error
+	UpdateByTenant(ctx context.Context, category *domain.Category) error
 	CountActiveClasses(ctx context.Context, categoryID uuid.UUID) (int64, error)
 	DeleteByTenant(ctx context.Context, tenantID, id uuid.UUID) error
 }

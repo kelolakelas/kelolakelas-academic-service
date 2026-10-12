@@ -41,6 +41,9 @@ func (m *deleteCategoryRepoMock) GetByID(context.Context, uuid.UUID) (*domain.Ca
 	return m.category, m.getErr
 }
 func (m *deleteCategoryRepoMock) Update(context.Context, *domain.Category) error { return nil }
+func (m *deleteCategoryRepoMock) UpdateByTenant(context.Context, *domain.Category) error {
+	return nil
+}
 func (m *deleteCategoryRepoMock) CountActiveClasses(context.Context, uuid.UUID) (int64, error) {
 	return m.classCount, m.countErr
 }
