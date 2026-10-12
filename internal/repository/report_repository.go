@@ -23,14 +23,23 @@ func (r *reportRepository) Create(ctx context.Context, report *domain.Report) er
 
 func (r *reportRepository) GetByID(ctx context.Context, id uuid.UUID) (*domain.Report, error) {
 	var item domain.Report
-	err := r.db.WithContext(ctx).Preload("Enrollment").First(&item, "id = ?", id).Error
+	err := r.db.WithContext(ctx).Preload("Enrollment.Student", func(db *gorm.DB) *gorm.DB {
+		return db.Select("id", "first_name", "last_name")
+	}).Preload("Enrollment.Class", func(db *gorm.DB) *gorm.DB {
+		return db.Select("id", "name")
+	}).First(&item, "id = ?", id).Error
 	return &item, err
 }
 
 func (r *reportRepository) GetByIDForTenant(ctx context.Context, tenantID, id uuid.UUID) (*domain.Report, error) {
 	var item domain.Report
 	err := r.db.WithContext(ctx).
-		Preload("Enrollment").
+		Preload("Enrollment.Student", func(db *gorm.DB) *gorm.DB {
+			return db.Select("id", "first_name", "last_name")
+		}).
+		Preload("Enrollment.Class", func(db *gorm.DB) *gorm.DB {
+			return db.Select("id", "name")
+		}).
 		Where("tenant_id = ? AND id = ?", tenantID, id).
 		First(&item).Error
 	return &item, err
@@ -73,7 +82,12 @@ func (r *reportRepository) List(ctx context.Context, tenantID uuid.UUID, query d
 	}
 
 	var items []domain.Report
-	err := db.Preload("Enrollment").
+	err := db.Preload("Enrollment.Student", func(db *gorm.DB) *gorm.DB {
+		return db.Select("id", "first_name", "last_name")
+	}).
+		Preload("Enrollment.Class", func(db *gorm.DB) *gorm.DB {
+			return db.Select("id", "name")
+		}).
 		Order("reports.created_at DESC").
 		Limit(query.PageSize).
 		Offset((query.Page - 1) * query.PageSize).
@@ -128,7 +142,12 @@ func (r *reportRepository) ListForParent(ctx context.Context, parentID uuid.UUID
 	}
 
 	var items []domain.Report
-	err := db.Preload("Enrollment").
+	err := db.Preload("Enrollment.Student", func(db *gorm.DB) *gorm.DB {
+		return db.Select("id", "first_name", "last_name")
+	}).
+		Preload("Enrollment.Class", func(db *gorm.DB) *gorm.DB {
+			return db.Select("id", "name")
+		}).
 		Order("reports.created_at DESC").
 		Limit(query.PageSize).
 		Offset((query.Page - 1) * query.PageSize).
@@ -143,7 +162,12 @@ func (r *reportRepository) ListForParent(ctx context.Context, parentID uuid.UUID
 func (r *reportRepository) GetForParent(ctx context.Context, parentID, id uuid.UUID) (*domain.Report, error) {
 	var item domain.Report
 	err := r.db.WithContext(ctx).
-		Preload("Enrollment").
+		Preload("Enrollment.Student", func(db *gorm.DB) *gorm.DB {
+			return db.Select("id", "first_name", "last_name")
+		}).
+		Preload("Enrollment.Class", func(db *gorm.DB) *gorm.DB {
+			return db.Select("id", "name")
+		}).
 		Joins("JOIN enrollments e ON e.id = reports.enrollment_id").
 		Joins("JOIN students s ON s.id = e.student_id").
 		Where("reports.id = ? AND s.parent_id = ?", id, parentID).
@@ -152,7 +176,8 @@ func (r *reportRepository) GetForParent(ctx context.Context, parentID, id uuid.U
 }
 
 func (r *reportRepository) Update(ctx context.Context, report *domain.Report) error {
-	return r.db.WithContext(ctx).Save(report).Error
+	// Read-side identity projections must never be persisted as associations.
+	return r.db.WithContext(ctx).Omit("Enrollment").Save(report).Error
 }
 
 func (r *reportRepository) Delete(ctx context.Context, id uuid.UUID) error {
