@@ -48,6 +48,7 @@ func registerRoutes(r *gin.Engine, h routeHandlers, jwtSecret, internalCredentia
 	{
 		apiV1.GET("/categories", h.list.ListCategories)
 		apiV1.POST("/categories", middleware.RequirePermission(permissionClient, "category:create"), h.category.Create)
+		apiV1.PATCH("/categories/:id", middleware.RequirePermission(permissionClient, "category:update"), h.category.Update)
 		apiV1.DELETE("/categories/:id", middleware.RequirePermission(permissionClient, "category:delete"), h.category.Delete)
 		apiV1.GET("/classes", h.list.ListClasses)
 		apiV1.POST("/classes", middleware.RequirePermission(permissionClient, "class:create"), h.class.Create)

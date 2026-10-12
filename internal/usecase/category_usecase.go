@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"math"
+	"strings"
 
 	"github.com/google/uuid"
 
@@ -20,6 +21,7 @@ var (
 type CategoryUsecase interface {
 	CreateCategory(ctx context.Context, tenantID uuid.UUID, req *domain.CreateCategoryRequest) (*domain.CategoryResponse, error)
 	ListCategories(ctx context.Context, tenantID uuid.UUID, query domain.ListQuery) (*domain.CategoryListResponse, error)
+	UpdateCategory(ctx context.Context, tenantID, id uuid.UUID, req *domain.UpdateCategoryRequest) (*domain.CategoryResponse, error)
 	DeleteCategory(ctx context.Context, tenantID, id uuid.UUID) error
 }
 
@@ -70,6 +72,67 @@ func (u *categoryUsecase) DeleteCategory(ctx context.Context, tenantID, id uuid.
 		}
 		return u.categoryRepo.DeleteByTenant(txCtx, tenantID, id)
 	})
+}
+
+// UpdateCategory patches the name/description of a tenant-owned category.
+//
+// Only the fields the caller actually sent are applied, so an update can never
+// blank an attribute by omission. Classes reference categories by id, so a
+// rename never touches any class row: existing classes keep pointing at the
+// same category id. The write goes through UpdateByTenant, which repeats the
+// tenant predicate at the database layer.
+func (u *categoryUsecase) UpdateCategory(ctx context.Context, tenantID, id uuid.UUID, req *domain.UpdateCategoryRequest) (*domain.CategoryResponse, error) {
+	if req == nil {
+		return nil, domain.ErrCategoryNameRequired
+	}
+	var response *domain.CategoryResponse
+	err := u.txManager.WithTransaction(ctx, func(txCtx context.Context) error {
+		category, err := u.categoryRepo.GetByID(txCtx, id)
+		if errors.Is(err, gorm.ErrRecordNotFound) || category == nil {
+			return domain.ErrCategoryNotFound
+		}
+		if err != nil {
+			return err
+		}
+		if category.TenantID != tenantID {
+			return domain.ErrCategoryForbidden
+		}
+
+		if req.Name != nil {
+			if strings.TrimSpace(*req.Name) == "" {
+				return domain.ErrCategoryNameRequired
+			}
+			category.Name = *req.Name
+		}
+		if req.Description != nil {
+			description := *req.Description
+			category.Description = &description
+		}
+
+		if err := u.categoryRepo.UpdateByTenant(txCtx, category); err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return domain.ErrCategoryNotFound
+			}
+			return err
+		}
+
+		response = categoryResponseFrom(category)
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return response, nil
+}
+
+func categoryResponseFrom(category *domain.Category) *domain.CategoryResponse {
+	return &domain.CategoryResponse{
+		ID:          category.ID,
+		TenantID:    category.TenantID,
+		Name:        category.Name,
+		Description: category.Description,
+		CreatedAt:   category.CreatedAt,
+	}
 }
 
 func (u *categoryUsecase) CreateCategory(ctx context.Context, tenantID uuid.UUID, req *domain.CreateCategoryRequest) (*domain.CategoryResponse, error) {

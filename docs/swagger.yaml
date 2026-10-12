@@ -1131,6 +1131,17 @@ definitions:
     required:
     - status
     type: object
+  github_com_kelolakelas_kelolakelas-academic-service_internal_domain.UpdateCategoryRequest:
+    properties:
+      description:
+        items:
+          type: integer
+        type: array
+      name:
+        maxLength: 255
+        minLength: 1
+        type: string
+    type: object
   github_com_kelolakelas_kelolakelas-academic-service_internal_domain.UpdateClassPublicationRequest:
     properties:
       is_published:
@@ -2055,6 +2066,71 @@ paths:
       x-permission:
         parent_tokens: denied
         permission: category:delete
+    patch:
+      consumes:
+      - application/json
+      description: Updates the name and/or description of a tenant-owned category.
+        Classes keep pointing at the same category id.
+      parameters:
+      - description: Category ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Category update payload
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.UpdateCategoryRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.HTTPResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.CategoryResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+        "422":
+          description: Unprocessable Entity
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Update academic category
+      tags:
+      - Categories
+      x-permission:
+        parent_tokens: denied
+        permission: category:update
   /api/v1/classes:
     get:
       parameters:

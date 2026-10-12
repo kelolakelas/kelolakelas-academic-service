@@ -59,6 +59,10 @@ func (m *recordingCategoryUsecase) DeleteCategory(context.Context, uuid.UUID, uu
 	return nil
 }
 
+func (m *recordingCategoryUsecase) UpdateCategory(context.Context, uuid.UUID, uuid.UUID, *domain.UpdateCategoryRequest) (*domain.CategoryResponse, error) {
+	return nil, nil
+}
+
 type recordingClassUsecase struct {
 	calls  int
 	tenant uuid.UUID
