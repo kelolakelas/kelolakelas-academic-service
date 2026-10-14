@@ -14,7 +14,8 @@ import (
 )
 
 type PrivateScheduleRequestHandler struct {
-	usecase usecase.PrivateScheduleRequestUsecase
+	usecase     usecase.PrivateScheduleRequestUsecase
+	paymentLink usecase.PrivatePaymentLinkUsecase
 }
 
 func NewPrivateScheduleRequestHandler(u usecase.PrivateScheduleRequestUsecase) *PrivateScheduleRequestHandler {

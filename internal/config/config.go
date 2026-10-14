@@ -25,6 +25,7 @@ type Config struct {
 	DBName                    string `mapstructure:"DB_NAME"`
 	IdentityGRPCHost          string `mapstructure:"IDENTITY_GRPC_HOST"`
 	BillingServiceURL         string `mapstructure:"BILLING_SERVICE_URL"`
+	ChatServiceURL            string `mapstructure:"CHAT_SERVICE_URL"`
 	InternalServiceCredential string `mapstructure:"INTERNAL_SERVICE_CREDENTIAL"`
 	Port                      string `mapstructure:"PORT"`
 	JWTSecret                 string `mapstructure:"JWT_SECRET"`
@@ -109,7 +110,7 @@ func LoadConfig() (Config, error) {
 	viper.AutomaticEnv()
 	for _, key := range []string{
 		"DATABASE_URL", "DB_HOST", "DB_PORT", "DB_SSLMODE", "DB_CHANNEL_BINDING", "DB_USER", "DB_PASSWORD", "DB_NAME",
-		"IDENTITY_GRPC_HOST", "BILLING_SERVICE_URL", "INTERNAL_SERVICE_CREDENTIAL", "PORT", "JWT_SECRET",
+		"IDENTITY_GRPC_HOST", "CHAT_SERVICE_URL", "BILLING_SERVICE_URL", "INTERNAL_SERVICE_CREDENTIAL", "PORT", "JWT_SECRET",
 		"CATALOG_TENANT_INFO_TTL_MINUTES", "CATALOG_TENANT_INFO_TIMEOUT_MS",
 		"CATALOG_POLICY_CACHE_TTL_SECONDS", "CATALOG_POLICY_TIMEOUT_MS",
 		"IDENTITY_PERMISSION_TIMEOUT_MS",
@@ -131,6 +132,9 @@ func LoadConfig() (Config, error) {
 	}
 
 	// Default fallback values
+	if config.ChatServiceURL == "" {
+		config.ChatServiceURL = "http://localhost:8083"
+	}
 	if config.DBHost == "" {
 		config.DBHost = "localhost"
 	}

@@ -20,6 +20,7 @@ import (
 	"github.com/kelolakelas/kelolakelas-academic-service/pkg/billing"
 	"github.com/kelolakelas/kelolakelas-academic-service/pkg/database"
 	"github.com/kelolakelas/kelolakelas-academic-service/pkg/grpcclient"
+	"github.com/kelolakelas/kelolakelas-academic-service/pkg/paymentlink"
 )
 
 // @title KelolaKelas Academic Service API
@@ -107,7 +108,7 @@ func main() {
 	scheduleHandler := handler.NewScheduleHandler(scheduleUsecase)
 	listHandler := handler.NewListHandler(categoryUsecase, classUsecase, scheduleUsecase)
 	enrollmentHandler := handler.NewEnrollmentHandler(enrollmentUsecase)
-	privateRequestHandler := handler.NewPrivateScheduleRequestHandler(usecase.NewPrivateScheduleRequestUsecase(repository.NewPrivateScheduleRequestRepository(db), studentRepo, classRepo, txManager, enrollmentRepo, scheduleRepo, sessionRepo, billingClient))
+	privateRequestHandler := handler.NewPrivateScheduleRequestHandler(usecase.NewPrivateScheduleRequestUsecase(repository.NewPrivateScheduleRequestRepository(db), studentRepo, classRepo, txManager, enrollmentRepo, scheduleRepo, sessionRepo, billingClient)).WithPaymentLink(usecase.NewPrivatePaymentLinkUsecase(repository.NewPrivateScheduleRequestRepository(db), enrollmentRepo, paymentlink.NewClient(cfg.BillingServiceURL, cfg.ChatServiceURL, cfg.InternalServiceCredential)))
 	chatContextHandler := handler.NewChatContextHandler(repository.NewChatContextRepository(db))
 	sessionHandler := handler.NewSessionHandler(scheduleUsecase)
 	studentHandler := handler.NewStudentHandler(usecase.NewStudentUsecase(studentRepo, studentNoteRepo, txManager))
