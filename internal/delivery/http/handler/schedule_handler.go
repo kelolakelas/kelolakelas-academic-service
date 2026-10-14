@@ -421,6 +421,14 @@ func (h *ScheduleHandler) ChangeTutorPermanent(c *gin.Context) {
 			c.JSON(http.StatusBadRequest, gin.H{"status": "error", "message": err.Error(), "data": nil})
 			return
 		}
+		if errors.Is(err, usecase.ErrSubstituteTutorNotEligible) {
+			c.JSON(http.StatusBadRequest, gin.H{"status": "error", "message": "Teacher must be an active member of this tenant", "data": nil})
+			return
+		}
+		if errors.Is(err, usecase.ErrSubstituteTutorUnavailable) {
+			c.JSON(http.StatusServiceUnavailable, gin.H{"status": "error", "message": "Teacher membership could not be verified", "data": nil})
+			return
+		}
 		logInternalError(c.Request.Context(), "permanently change tutor", err)
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"status":  "error",

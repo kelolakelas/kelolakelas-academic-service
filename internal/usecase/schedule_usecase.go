@@ -589,10 +589,30 @@ func (u *scheduleUsecase) ChangeTutorPermanent(
 	var oldSchedule *domain.ClassSchedule
 	var newSchedule *domain.ClassSchedule
 
+	// Resolve ownership before probing identity, without holding a write lock
+	// across the network call. Re-read under the lock before applying changes.
+	check, err := u.scheduleRepo.GetByIDForTenant(ctx, tenantID, req.ScheduleID)
+	if errors.Is(err, gorm.ErrRecordNotFound) || err == nil && check == nil {
+		return nil, ErrScheduleNotFound
+	}
+	if err != nil {
+		return nil, err
+	}
+	if u.membership == nil {
+		return nil, ErrSubstituteTutorUnavailable
+	}
+	active, err := u.membership.CheckActiveMember(ctx, tenantID.String(), req.NewTutorID.String())
+	if err != nil {
+		return nil, ErrSubstituteTutorUnavailable
+	}
+	if !active {
+		return nil, ErrSubstituteTutorNotEligible
+	}
+
 	effectiveDate := normalizeDate(req.EffectiveDate)
 	prevDay := effectiveDate.AddDate(0, 0, -1)
 
-	err := u.txManager.WithTransaction(ctx, func(txCtx context.Context) error {
+	err = u.txManager.WithTransaction(ctx, func(txCtx context.Context) error {
 		var err error
 		oldSchedule, err = u.scheduleRepo.GetByIDForTenantForUpdate(txCtx, tenantID, req.ScheduleID)
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -607,6 +627,25 @@ func (u *scheduleUsecase) ChangeTutorPermanent(
 
 		if err := validateReplacementDate(oldSchedule, effectiveDate); err != nil {
 			return err
+		}
+		// Initial assignment (and its retries) retains the approval-created
+		// schedule and enrollment. Only existing future sessions are reassigned;
+		// the generation worker inherits TutorID for later months.
+		if oldSchedule.EnrollmentID != nil && oldSchedule.TutorID != nil && *oldSchedule.TutorID == req.NewTutorID {
+			newSchedule = oldSchedule
+			return nil
+		}
+		if oldSchedule.EnrollmentID != nil && oldSchedule.TutorID == nil {
+			updated := *oldSchedule
+			updated.TutorID = &req.NewTutorID
+			if err := u.scheduleRepo.Update(txCtx, &updated); err != nil {
+				return err
+			}
+			if err := u.sessionRepo.UpdateFutureSessionsTutor(txCtx, tenantID, oldSchedule.ID, req.NewTutorID, oldSchedule.ID, effectiveDate); err != nil {
+				return err
+			}
+			newSchedule = &updated
+			return nil
 		}
 		originalValidUntil := oldSchedule.ValidUntil
 
