@@ -494,6 +494,14 @@ definitions:
       note:
         maxLength: 2000
         type: string
+      payment_method:
+        enum:
+        - VC
+        - VA
+        - BC
+        - SP
+        - NQ
+        type: string
       slots:
         items:
           $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.PrivateScheduleSlot'
@@ -785,6 +793,8 @@ definitions:
       parent_email:
         type: string
       parent_id:
+        type: string
+      payment_method:
         type: string
       recommended_slots:
         items:

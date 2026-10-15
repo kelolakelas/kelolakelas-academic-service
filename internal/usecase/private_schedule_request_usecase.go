@@ -43,6 +43,18 @@ func NewPrivateScheduleRequestUsecase(repo repository.PrivateScheduleRequestRepo
 	return &privateScheduleRequestUsecase{repo: repo, students: students, classes: classes, tx: tx, enrollments: enrollments, schedules: schedules, sessions: sessions, billing: billingClient}
 }
 
+// Empty methods originate from older clients or rows and retain hosted-card behavior.
+func privateRequestPaymentMethod(method string) (string, error) {
+	switch method {
+	case "":
+		return "VC", nil
+	case "VC", "VA", "BC", "SP", "NQ":
+		return method, nil
+	default:
+		return "", domain.ErrInvalidPaymentMethod
+	}
+}
+
 func validatePrivateSlots(slots []domain.PrivateScheduleSlot) error {
 	if len(slots) == 0 || len(slots) > 50 {
 		return domain.ErrPrivateRequestSlots
@@ -99,6 +111,10 @@ func (u *privateScheduleRequestUsecase) purchase(ctx context.Context, actorID, i
 		} else {
 			request, err = u.repo.LockForTenant(txCtx, id, actorID)
 		}
+		if err != nil {
+			return err
+		}
+		request.PaymentMethod, err = privateRequestPaymentMethod(request.PaymentMethod)
 		if err != nil {
 			return err
 		}
@@ -206,7 +222,7 @@ func (u *privateScheduleRequestUsecase) purchase(ctx context.Context, actorID, i
 	if err != nil {
 		return nil, err
 	}
-	invoice, err := u.billing.GenerateInvoice(ctx, billing.InvoiceRequest{TenantID: tenantID, StudentID: request.StudentID, ClassID: request.ClassID, EnrollmentID: enrollment.ID, ParentID: request.ParentID, BillingCycle: request.BillingCycle, SubtotalAmount: enrollment.GrossAmount, IdempotencyKey: key, Title: class.Name, SenderEmail: request.ParentEmail, PrivateScheduleRequest: true})
+	invoice, err := u.billing.GenerateInvoice(ctx, billing.InvoiceRequest{TenantID: tenantID, StudentID: request.StudentID, ClassID: request.ClassID, EnrollmentID: enrollment.ID, ParentID: request.ParentID, BillingCycle: request.BillingCycle, SubtotalAmount: enrollment.GrossAmount, IdempotencyKey: key, Title: class.Name, SenderEmail: request.ParentEmail, PaymentMethod: request.PaymentMethod, PrivateScheduleRequest: true})
 	if err != nil {
 		failure := (&enrollmentUsecase{enrollmentRepo: u.enrollments, txManager: u.tx}).invoiceFailure(ctx, enrollment.ID, err)
 		if errors.Is(failure, domain.ErrPlatformFeeExceedsGross) {
@@ -278,6 +294,10 @@ func (u *privateScheduleRequestUsecase) Create(ctx context.Context, parentID, cl
 	if req == nil || req.StudentID == uuid.Nil || classID == uuid.Nil {
 		return nil, domain.ErrPrivateRequestSlots
 	}
+	method, err := privateRequestPaymentMethod(req.PaymentMethod)
+	if err != nil {
+		return nil, err
+	}
 	if req.BillingCycle != "monthly" && req.BillingCycle != "quarterly" && req.BillingCycle != "yearly" {
 		return nil, errors.New("invalid billing cycle")
 	}
@@ -310,7 +330,7 @@ func (u *privateScheduleRequestUsecase) Create(ctx context.Context, parentID, cl
 	if !class.IsPublished || class.EnrollmentStatus != "open" {
 		return nil, domain.ErrClassNotEnrollable
 	}
-	request := &domain.PrivateScheduleRequest{ID: uuid.New(), TenantID: class.TenantID, ClassID: classID, StudentID: req.StudentID, ParentID: parentID, ParentEmail: strings.TrimSpace(req.ParentEmail), BillingCycle: req.BillingCycle, Slots: req.Slots, Note: req.Note, Status: "pending", CreatedAt: time.Now().UTC()}
+	request := &domain.PrivateScheduleRequest{ID: uuid.New(), TenantID: class.TenantID, ClassID: classID, StudentID: req.StudentID, ParentID: parentID, ParentEmail: strings.TrimSpace(req.ParentEmail), BillingCycle: req.BillingCycle, PaymentMethod: method, Slots: req.Slots, Note: req.Note, Status: "pending", CreatedAt: time.Now().UTC()}
 	create := func(txCtx context.Context) error { return u.repo.Create(txCtx, request) }
 	if u.tx != nil {
 		err = u.tx.WithTransaction(ctx, create)

@@ -33,6 +33,8 @@ func privateRequestError(c *gin.Context, err error) {
 		status, message = http.StatusConflict, err.Error()
 	case errors.Is(err, domain.ErrPrivateClassRequired), errors.Is(err, domain.ErrClassNotEnrollable), errors.Is(err, domain.ErrPrivateRequestSlots):
 		status, message = http.StatusUnprocessableEntity, err.Error()
+	case errors.Is(err, domain.ErrInvalidPaymentMethod):
+		status, message = http.StatusBadRequest, err.Error()
 	case errors.Is(err, domain.ErrParentRequired):
 		status, message = http.StatusForbidden, err.Error()
 	default:

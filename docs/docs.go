@@ -6402,6 +6402,16 @@ const docTemplate = `{
                     "type": "string",
                     "maxLength": 2000
                 },
+                "payment_method": {
+                    "type": "string",
+                    "enum": [
+                        "VC",
+                        "VA",
+                        "BC",
+                        "SP",
+                        "NQ"
+                    ]
+                },
                 "slots": {
                     "type": "array",
                     "minItems": 1,
@@ -6811,6 +6821,9 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "parent_id": {
+                    "type": "string"
+                },
+                "payment_method": {
                     "type": "string"
                 },
                 "recommended_slots": {
