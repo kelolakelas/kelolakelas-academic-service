@@ -95,15 +95,22 @@ type CreateClassWithCategoryResponse struct {
 	Class *Class `json:"class"`
 }
 
+// ClassCategorySummary is the category identity needed by tenant class lists.
+type ClassCategorySummary struct {
+	ID   uuid.UUID `json:"id"`
+	Name string    `json:"name"`
+}
+
 type ClassResponse struct {
-	ID               uuid.UUID        `json:"id"`
-	TenantID         uuid.UUID        `json:"tenant_id"`
-	CategoryID       uuid.UUID        `json:"category_id"`
-	Name             string           `json:"name"`
-	Description      *json.RawMessage `json:"description,omitempty"`
-	Type             string           `json:"type"`
-	Price            int64            `json:"price"`
-	CreatedAt        time.Time        `json:"created_at"`
-	IsPublished      bool             `json:"is_published"`
-	EnrollmentStatus string           `json:"enrollment_status"`
+	ID               uuid.UUID             `json:"id"`
+	TenantID         uuid.UUID             `json:"tenant_id"`
+	CategoryID       uuid.UUID             `json:"category_id"`
+	Category         *ClassCategorySummary `json:"category,omitempty"`
+	Name             string                `json:"name"`
+	Description      *json.RawMessage      `json:"description,omitempty"`
+	Type             string                `json:"type"`
+	Price            int64                 `json:"price"`
+	CreatedAt        time.Time             `json:"created_at"`
+	IsPublished      bool                  `json:"is_published"`
+	EnrollmentStatus string                `json:"enrollment_status"`
 }

@@ -33,6 +33,9 @@ func (u *classUsecase) ListClasses(ctx context.Context, tenantID uuid.UUID, quer
 		responses = append(responses, domain.ClassResponse{ID: item.ID, TenantID: item.TenantID, CategoryID: item.CategoryID, Name: item.Name, Description: item.Description, Type: item.Type, Price: item.Price, CreatedAt: item.CreatedAt})
 		responses[len(responses)-1].IsPublished = item.IsPublished
 		responses[len(responses)-1].EnrollmentStatus = item.EnrollmentStatus
+		if item.Category != nil && item.Category.TenantID == tenantID && item.Category.ID == item.CategoryID {
+			responses[len(responses)-1].Category = &domain.ClassCategorySummary{ID: item.Category.ID, Name: item.Category.Name}
+		}
 	}
 	return &domain.ClassListResponse{Items: responses, Pagination: domain.Pagination{Page: query.Page, PageSize: query.PageSize, TotalItems: total, TotalPages: int(math.Ceil(float64(total) / float64(query.PageSize)))}}, nil
 }

@@ -24,7 +24,7 @@ func (r *classRepository) ListByTenant(ctx context.Context, tenantID uuid.UUID, 
 		return nil, 0, err
 	}
 	var items []domain.Class
-	if err := db.Preload("Category").Order("created_at DESC").Limit(query.PageSize).Offset((query.Page - 1) * query.PageSize).Find(&items).Error; err != nil {
+	if err := db.Preload("Category", "tenant_id = ?", tenantID).Order("created_at DESC").Limit(query.PageSize).Offset((query.Page - 1) * query.PageSize).Find(&items).Error; err != nil {
 		return nil, 0, err
 	}
 	return items, total, nil
