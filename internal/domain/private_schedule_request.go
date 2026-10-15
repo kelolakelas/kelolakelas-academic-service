@@ -25,10 +25,11 @@ type PrivateScheduleSlot struct {
 }
 
 type CreatePrivateScheduleRequest struct {
-	StudentID    uuid.UUID             `json:"student_id" binding:"required"`
-	BillingCycle string                `json:"billing_cycle" binding:"required,oneof=monthly quarterly yearly"`
-	Slots        []PrivateScheduleSlot `json:"slots" binding:"required,min=1,dive"`
-	Note         *string               `json:"note,omitempty" binding:"omitempty,max=2000"`
+	StudentID     uuid.UUID             `json:"student_id" binding:"required"`
+	BillingCycle  string                `json:"billing_cycle" binding:"required,oneof=monthly quarterly yearly"`
+	PaymentMethod string                `json:"payment_method" binding:"omitempty,oneof=VC VA BC SP NQ"`
+	Slots         []PrivateScheduleSlot `json:"slots" binding:"required,min=1,dive"`
+	Note          *string               `json:"note,omitempty" binding:"omitempty,max=2000"`
 	// ParentEmail is populated solely from the verified token.
 	ParentEmail string `json:"-"`
 }
@@ -46,6 +47,7 @@ type PrivateScheduleRequest struct {
 	ParentID         uuid.UUID             `gorm:"type:uuid;not null" json:"parent_id"`
 	ParentEmail      string                `gorm:"type:text;not null" json:"parent_email"`
 	BillingCycle     string                `gorm:"type:varchar(20);not null" json:"billing_cycle"`
+	PaymentMethod    string                `gorm:"type:varchar(2);not null;default:VC" json:"payment_method"`
 	Slots            []PrivateScheduleSlot `gorm:"serializer:json;type:jsonb;not null" json:"slots"`
 	RecommendedSlots []PrivateScheduleSlot `gorm:"serializer:json;type:jsonb" json:"recommended_slots,omitempty"`
 	Note             *string               `gorm:"type:text" json:"note,omitempty"`

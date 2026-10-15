@@ -22,7 +22,7 @@ func TestPrivateScheduleRequestPostgresIsolationAndTransitions(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, name := range []string{"00000000000000_init_schema.up.sql", "00001790600000_private_schedule_requests.up.sql"} {
+	for _, name := range []string{"00000000000000_init_schema.up.sql", "00001790600000_private_schedule_requests.up.sql", "00001790900000_private_request_payment_method.up.sql"} {
 		sql, err := os.ReadFile("../../migrations/" + name)
 		if err != nil {
 			t.Fatal(err)
