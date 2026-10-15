@@ -5993,6 +5993,17 @@ const docTemplate = `{
                 }
             }
         },
+        "github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ClassCategorySummary": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
         "github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ClassListResponse": {
             "type": "object",
             "properties": {
@@ -6010,6 +6021,9 @@ const docTemplate = `{
         "github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ClassResponse": {
             "type": "object",
             "properties": {
+                "category": {
+                    "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ClassCategorySummary"
+                },
                 "category_id": {
                     "type": "string"
                 },
