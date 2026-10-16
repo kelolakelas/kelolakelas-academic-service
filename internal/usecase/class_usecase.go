@@ -30,7 +30,7 @@ func (u *classUsecase) ListClasses(ctx context.Context, tenantID uuid.UUID, quer
 	}
 	responses := make([]domain.ClassResponse, 0, len(items))
 	for _, item := range items {
-		responses = append(responses, domain.ClassResponse{ID: item.ID, TenantID: item.TenantID, CategoryID: item.CategoryID, Name: item.Name, Description: item.Description, Type: item.Type, Price: item.Price, CreatedAt: item.CreatedAt})
+		responses = append(responses, *classResponseFrom(&item))
 		responses[len(responses)-1].IsPublished = item.IsPublished
 		responses[len(responses)-1].EnrollmentStatus = item.EnrollmentStatus
 		if item.Category != nil && item.Category.TenantID == tenantID && item.Category.ID == item.CategoryID {
@@ -47,6 +47,7 @@ type classUsecase struct {
 	sessionRepo    repository.SessionRepository
 	enrollmentRepo repository.EnrollmentRepository
 	tenantClient   grpcclient.TenantClient
+	membership     grpcclient.MembershipClient
 	txManager      repository.TransactionManager
 }
 
@@ -126,7 +127,14 @@ func (u *classUsecase) UpdateClass(ctx context.Context, tenantID, id uuid.UUID, 
 
 	var response *domain.ClassResponse
 	err := u.txManager.WithTransaction(ctx, func(txCtx context.Context) error {
-		class, err := u.classRepo.GetByID(txCtx, id)
+		var class *domain.Class
+		var err error
+		store, stored := u.classRepo.(repository.ClassUpdateStore)
+		if stored {
+			class, err = store.GetByIDForUpdate(txCtx, id)
+		} else {
+			class, err = u.classRepo.GetByID(txCtx, id)
+		}
 		if errors.Is(err, gorm.ErrRecordNotFound) || class == nil {
 			return domain.ErrClassNotFound
 		}
@@ -139,6 +147,30 @@ func (u *classUsecase) UpdateClass(ctx context.Context, tenantID, id uuid.UUID, 
 			return domain.ErrClassNotFound
 		}
 
+		if req.Category != nil && req.CategoryID != nil {
+			return domain.ErrCategoryNameRequired
+		}
+		if req.Category != nil {
+			if strings.TrimSpace(req.Category.Name) == "" || len([]rune(req.Category.Name)) > 255 {
+				return domain.ErrCategoryNameRequired
+			}
+			category := &domain.Category{ID: uuid.New(), TenantID: tenantID, Name: req.Category.Name, Description: req.Category.Description}
+			if err := u.categoryRepo.Create(txCtx, category); err != nil {
+				return err
+			}
+			class.CategoryID = category.ID
+		}
+		if req.IsPublished != nil {
+			class.IsPublished = *req.IsPublished
+		}
+		if req.EnrollmentStatus != nil {
+			switch *req.EnrollmentStatus {
+			case "open", "closed", "full", "archived":
+				class.EnrollmentStatus = *req.EnrollmentStatus
+			default:
+				return domain.ErrClassNotEnrollable
+			}
+		}
 		if req.CategoryID != nil && *req.CategoryID != class.CategoryID {
 			category, err := u.categoryRepo.GetByID(txCtx, *req.CategoryID)
 			if errors.Is(err, gorm.ErrRecordNotFound) || category == nil {
@@ -176,6 +208,35 @@ func (u *classUsecase) UpdateClass(ctx context.Context, tenantID, id uuid.UUID, 
 			class.Price = *req.Price
 		}
 
+		if req.TeacherIDs != nil {
+			if !stored || u.membership == nil {
+				return ErrSubstituteTutorUnavailable
+			}
+			seen := map[uuid.UUID]bool{}
+			if len(*req.TeacherIDs) == 0 {
+				return ErrSubstituteTutorNotEligible
+			}
+			for _, teacher := range *req.TeacherIDs {
+				if teacher == uuid.Nil || seen[teacher] {
+					return ErrSubstituteTutorNotEligible
+				}
+				seen[teacher] = true
+				active, err := u.membership.CheckActiveMember(txCtx, tenantID.String(), teacher.String())
+				if err != nil {
+					return ErrSubstituteTutorUnavailable
+				}
+				if !active {
+					return ErrSubstituteTutorNotEligible
+				}
+			}
+			if err := store.ReplaceTeachers(txCtx, tenantID, id, *req.TeacherIDs); err != nil {
+				return err
+			}
+			class.TeacherAssignments = nil
+			for _, teacher := range *req.TeacherIDs {
+				class.TeacherAssignments = append(class.TeacherAssignments, domain.ClassTeacher{ClassID: id, TeacherID: teacher})
+			}
+		}
 		if err := u.classRepo.UpdateByTenant(txCtx, class); err != nil {
 			if errors.Is(err, gorm.ErrRecordNotFound) {
 				return domain.ErrClassNotFound
@@ -193,7 +254,12 @@ func (u *classUsecase) UpdateClass(ctx context.Context, tenantID, id uuid.UUID, 
 }
 
 func classResponseFrom(class *domain.Class) *domain.ClassResponse {
+	teachers := make([]uuid.UUID, 0, len(class.TeacherAssignments))
+	for _, assignment := range class.TeacherAssignments {
+		teachers = append(teachers, assignment.TeacherID)
+	}
 	return &domain.ClassResponse{
+		TeacherIDs:       teachers,
 		ID:               class.ID,
 		TenantID:         class.TenantID,
 		CategoryID:       class.CategoryID,
@@ -258,4 +324,9 @@ func (u *classUsecase) CreateClass(ctx context.Context, tenantID uuid.UUID, req 
 		EnrollmentStatus: class.EnrollmentStatus,
 		CreatedAt:        class.CreatedAt,
 	}, nil
+}
+
+func WithClassMembership(u ClassUsecase, client grpcclient.MembershipClient) ClassUsecase {
+	u.(*classUsecase).membership = client
+	return u
 }

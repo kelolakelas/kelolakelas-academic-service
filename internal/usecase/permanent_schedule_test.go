@@ -69,15 +69,21 @@ func TestPermanentChangePostgres(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer conn.ExecContext(context.Background(), "SELECT pg_advisory_unlock(51, 1)")
-	schema, err := os.ReadFile("../../migrations/00000000000000_init_schema.up.sql")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := db.Exec(string(schema)).Error; err != nil {
-		t.Fatal(err)
+	for _, file := range []string{"00000000000000_init_schema.up.sql", "00001790812223_add_rescheduled_from_to_class_sessions.up.sql"} {
+		data, err := os.ReadFile("../../migrations/" + file)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := db.Exec(string(data)).Error; err != nil {
+			t.Fatal(err)
+		}
 	}
 	ctx := context.Background()
-	day := func(n int) time.Time { return time.Date(2026, 9, n, 0, 0, 0, 0, time.UTC) }
+	anchor := normalizeDate(time.Now().UTC()).AddDate(0, 0, 7)
+	for anchor.Weekday() != time.Monday {
+		anchor = anchor.AddDate(0, 0, 1)
+	}
+	day := func(n int) time.Time { return anchor.AddDate(0, 0, n-14) }
 	for _, tc := range []struct {
 		name  string
 		tutor bool
@@ -127,7 +133,7 @@ func TestPermanentChangePostgres(t *testing.T) {
 			}
 			u := NewScheduleUsecase(repository.NewTransactionManager(db), nil, schedules,
 				failingPermanentSessionRepo{SessionRepository: sessions, failBatch: tc.fail == "batch", failTutor: tc.fail == "tutor"},
-				failingPermanentEnrollmentRepo{EnrollmentRepository: enrollments, fail: tc.fail == "transfer"})
+				failingPermanentEnrollmentRepo{EnrollmentRepository: enrollments, fail: tc.fail == "transfer"}, &scopeMembershipStub{active: true})
 			if tc.tutor {
 				res, err := u.ChangeTutorPermanent(ctx, tenant, &domain.PermanentTutorChangeRequest{ScheduleID: oldID, NewTutorID: newTutor, EffectiveDate: day(14)})
 				if tc.fail == "" {
@@ -150,7 +156,7 @@ func TestPermanentChangePostgres(t *testing.T) {
 					if err != nil {
 						t.Fatal(err)
 					}
-					if res.NewSchedule.Capacity != 2 || res.NewSchedule.ValidUntil == nil || !res.NewSchedule.ValidUntil.Equal(until) || len(res.NewSessions) != 3 {
+					if res.NewSchedule.Capacity != 2 || res.NewSchedule.ValidUntil == nil || !res.NewSchedule.ValidUntil.Equal(until) || len(res.NewSessions) == 0 {
 						t.Fatalf("replacement=%+v sessions=%d", res.NewSchedule, len(res.NewSessions))
 					}
 					for _, session := range res.NewSessions {

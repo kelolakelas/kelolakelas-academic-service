@@ -45,11 +45,14 @@ type RescheduleSessionResponse struct {
 
 // Scenario 3: Permanent Schedule Change
 type PermanentScheduleChangeRequest struct {
-	OldScheduleID uuid.UUID `json:"old_schedule_id" binding:"required"`
-	NewDayOfWeek  int       `json:"new_day_of_week" binding:"required,min=1,max=7"`
-	NewStartTime  string    `json:"new_start_time" binding:"required"`
-	NewEndTime    string    `json:"new_end_time" binding:"required"`
-	EffectiveDate time.Time `json:"effective_date" binding:"required"`
+	NewCapacity   *int       `json:"new_capacity,omitempty" binding:"omitempty,min=1,max=2147483647"`
+	NewLocation   *string    `json:"new_location,omitempty" binding:"omitempty,max=255"`
+	NewTutorID    *uuid.UUID `json:"new_tutor_id,omitempty"`
+	OldScheduleID uuid.UUID  `json:"old_schedule_id" binding:"required"`
+	NewDayOfWeek  int        `json:"new_day_of_week" binding:"required,min=1,max=7"`
+	NewStartTime  string     `json:"new_start_time" binding:"required"`
+	NewEndTime    string     `json:"new_end_time" binding:"required"`
+	EffectiveDate time.Time  `json:"effective_date" binding:"required"`
 }
 
 type PermanentScheduleChangeResponse struct {

@@ -98,6 +98,7 @@ func main() {
 	// Initialize Usecases
 	categoryUsecase := usecase.NewCategoryUsecase(categoryRepo, tenantClient, txManager)
 	classUsecase := usecase.NewClassUsecase(classRepo, scheduleRepo, sessionRepo, enrollmentRepo, tenantClient, txManager, categoryRepo)
+	classUsecase = usecase.WithClassMembership(classUsecase, membershipClient)
 	classCreationUsecase := usecase.NewClassCreationUsecase(txManager, categoryRepo, classRepo, classTeacherRepo, scheduleRepo, sessionRepo, tenantClient, usecase.ClassCreationOptions{Membership: membershipClient, Store: repository.NewClassCreationStore(db)})
 	scheduleUsecase := usecase.NewScheduleUsecase(txManager, classRepo, scheduleRepo, sessionRepo, enrollmentRepo, membershipClient)
 	enrollmentUsecase := usecase.NewEnrollmentUsecase(enrollmentRepo, studentRepo, classRepo, billingClient, txManager)

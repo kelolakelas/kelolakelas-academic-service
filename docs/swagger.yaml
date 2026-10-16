@@ -245,6 +245,10 @@ definitions:
         type: string
       price:
         type: integer
+      teacher_ids:
+        items:
+          type: string
+        type: array
       tenant_id:
         type: string
       type:
@@ -753,13 +757,22 @@ definitions:
     properties:
       effective_date:
         type: string
+      new_capacity:
+        maximum: 2147483647
+        minimum: 1
+        type: integer
       new_day_of_week:
         maximum: 7
         minimum: 1
         type: integer
       new_end_time:
         type: string
+      new_location:
+        maxLength: 255
+        type: string
       new_start_time:
+        type: string
+      new_tutor_id:
         type: string
       old_schedule_id:
         type: string
@@ -1186,12 +1199,23 @@ definitions:
     type: object
   github_com_kelolakelas_kelolakelas-academic-service_internal_domain.UpdateClassRequest:
     properties:
+      category:
+        $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.CreateCategoryRequest'
       category_id:
         type: string
       description:
         items:
           type: integer
         type: array
+      enrollment_status:
+        enum:
+        - open
+        - closed
+        - full
+        - archived
+        type: string
+      is_published:
+        type: boolean
       name:
         maxLength: 255
         minLength: 1
@@ -1199,6 +1223,10 @@ definitions:
       price:
         minimum: 0
         type: integer
+      teacher_ids:
+        items:
+          type: string
+        type: array
       type:
         enum:
         - private
@@ -2338,8 +2366,10 @@ paths:
     patch:
       consumes:
       - application/json
-      description: Updates the sellable attributes (name, description, price, category)
-        of a tenant-owned class. Existing enrollments keep their stored gross_amount.
+      description: Updates name, description, price, category, publication and enrollment
+        status of a tenant-owned class. An inline category requires category:create
+        and is created in the same transaction. Existing enrollments keep their stored
+        gross_amount.
       parameters:
       - description: Class ID (UUID)
         in: path
@@ -3412,10 +3442,13 @@ paths:
     put:
       consumes:
       - application/json
-      description: Apply permanent day/time schedule change and regenerate upcoming
-        sessions. `old_schedule_id` in the body is required and is the schedule that
-        changes; the `{id}` path segment is accepted for compatibility and never overrides
-        it. `/api/v1/schedules/permanent` is the same operation without the path segment.
+      description: Apply permanent day/time/capacity/location/tutor changes and regenerate
+        upcoming sessions. Optional new fields preserve stored values when omitted.
+        Changes before today or across attendance/completed sessions, capacity below
+        reserved seats, and ineligible tutors are rejected. `old_schedule_id` in the
+        body is required and is the schedule that changes; the `{id}` path segment
+        is accepted for compatibility and never overrides it. `/api/v1/schedules/permanent`
+        is the same operation without the path segment.
       parameters:
       - description: Schedule ID (UUID)
         in: path
@@ -3454,6 +3487,10 @@ paths:
             $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
         "404":
           description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+        "409":
+          description: Conflict
           schema:
             $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
         "500":
@@ -3603,10 +3640,13 @@ paths:
     put:
       consumes:
       - application/json
-      description: Apply permanent day/time schedule change and regenerate upcoming
-        sessions. `old_schedule_id` in the body is required and is the schedule that
-        changes; the `{id}` path segment is accepted for compatibility and never overrides
-        it. `/api/v1/schedules/permanent` is the same operation without the path segment.
+      description: Apply permanent day/time/capacity/location/tutor changes and regenerate
+        upcoming sessions. Optional new fields preserve stored values when omitted.
+        Changes before today or across attendance/completed sessions, capacity below
+        reserved seats, and ineligible tutors are rejected. `old_schedule_id` in the
+        body is required and is the schedule that changes; the `{id}` path segment
+        is accepted for compatibility and never overrides it. `/api/v1/schedules/permanent`
+        is the same operation without the path segment.
       parameters:
       - description: Permanent schedule change payload
         in: body
@@ -3640,6 +3680,10 @@ paths:
             $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
         "404":
           description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+        "409":
+          description: Conflict
           schema:
             $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
         "500":

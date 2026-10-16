@@ -33,6 +33,7 @@ func TestClassListPreloadsTenantCategory(t *testing.T) {
 				categories.AddRow(categoryID, tenant, "Matematika")
 			}
 			mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "categories" WHERE "categories"."id" = $1 AND tenant_id = $2 AND "categories"."deleted_at" IS NULL`)).WithArgs(categoryID, tenant).WillReturnRows(categories)
+			mock.ExpectQuery(`SELECT \* FROM "class_teachers" WHERE "class_teachers"."class_id" IN`).WillReturnRows(sqlmock.NewRows([]string{"class_id", "teacher_id"}))
 			rows, total, err := NewClassRepository(db).ListByTenant(context.Background(), tenant, domain.ListQuery{Page: 1, PageSize: 20})
 			if err != nil {
 				t.Fatal(err)
