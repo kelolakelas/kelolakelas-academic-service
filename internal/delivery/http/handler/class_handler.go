@@ -7,13 +7,17 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 
+	"github.com/kelolakelas/kelolakelas-academic-service/internal/delivery/http/middleware"
 	"github.com/kelolakelas/kelolakelas-academic-service/internal/domain"
+	"github.com/kelolakelas/kelolakelas-academic-service/internal/repository"
 	"github.com/kelolakelas/kelolakelas-academic-service/internal/usecase"
+	"github.com/kelolakelas/kelolakelas-academic-service/pkg/grpcclient"
 )
 
 type ClassHandler struct {
-	classUsecase    usecase.ClassUsecase
-	creationUsecase usecase.ClassCreationUsecase
+	classUsecase        usecase.ClassUsecase
+	creationUsecase     usecase.ClassCreationUsecase
+	creationPermissions grpcclient.PermissionClient
 }
 
 func NewClassHandler(classUsecase usecase.ClassUsecase, creationUsecase usecase.ClassCreationUsecase) *ClassHandler {
@@ -23,15 +27,22 @@ func NewClassHandler(classUsecase usecase.ClassUsecase, creationUsecase usecase.
 	}
 }
 
+func (h *ClassHandler) WithCreationPermissions(client grpcclient.PermissionClient) *ClassHandler {
+	h.creationPermissions = client
+	return h
+}
+
 // CreateWithCategory godoc
-// @Summary Create class using an existing category
-// @Description Creates a class using an existing category owned by the requester and assigns teachers. Schedules and sessions are created separately.
+// @Summary Atomically create class configuration
+// @Description Atomically creates a new or existing category, class, active teacher assignments and optional initial group schedules/sessions. New category or schedules require Idempotency-Key. Additional category:create and schedule:create permissions apply when used.
 // @Tags Classes
 // @Accept json
 // @Produce json
 // @Security BearerAuth
 // @x-permission {"permission":"class:create","parent_tokens":"denied"}
-// @Param request body domain.CreateClassWithCategoryRequest true "Create class with existing category payload"
+// @Param Idempotency-Key header string false "Retry key (required for new category or initial schedules, max 128 characters)"
+// @Param request body domain.CreateClassWithCategoryRequest true "Atomic class configuration payload"
+// @Failure 409 {object} domain.ErrorResponse
 // @Success 201 {object} domain.HTTPResponse{data=domain.CreateClassWithCategoryResponse}
 // @Failure 400 {object} domain.ErrorResponse
 // @Failure 401 {object} domain.ErrorResponse
@@ -50,8 +61,26 @@ func (h *ClassHandler) CreateWithCategory(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"status": "error", "message": err.Error(), "data": nil})
 		return
 	}
+	req.IdempotencyKey = c.GetHeader("Idempotency-Key")
+	if req.Category != nil && !middleware.AuthorizePermission(c, h.creationPermissions, "category:create") {
+		return
+	}
+	if len(req.Schedules) > 0 && !middleware.AuthorizePermission(c, h.creationPermissions, "schedule:create") {
+		return
+	}
 	res, err := h.creationUsecase.CreateClassWithCategory(c.Request.Context(), tenantID, &req)
 	if err != nil {
+		switch {
+		case errors.Is(err, repository.ErrClassCreationKeyConflict):
+			c.JSON(http.StatusConflict, gin.H{"status": "error", "message": err.Error(), "data": nil})
+			return
+		case errors.Is(err, usecase.ErrInvalidClassCreation), errors.Is(err, usecase.ErrPrivateSchedulesNotAllowed), errors.Is(err, usecase.ErrSubstituteTutorNotEligible):
+			c.JSON(http.StatusBadRequest, gin.H{"status": "error", "message": err.Error(), "data": nil})
+			return
+		case errors.Is(err, usecase.ErrSubstituteTutorUnavailable):
+			c.JSON(http.StatusServiceUnavailable, gin.H{"status": "error", "message": err.Error(), "data": nil})
+			return
+		}
 		if errors.Is(err, usecase.ErrTenantInactiveOrNotFound) {
 			c.JSON(http.StatusForbidden, gin.H{"status": "error", "message": err.Error(), "data": nil})
 			return

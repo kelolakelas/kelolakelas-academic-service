@@ -1594,7 +1594,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Creates a class using an existing category owned by the requester and assigns teachers. Schedules and sessions are created separately.",
+                "description": "Atomically creates a new or existing category, class, active teacher assignments and optional initial group schedules/sessions. New category or schedules require Idempotency-Key. Additional category:create and schedule:create permissions apply when used.",
                 "consumes": [
                     "application/json"
                 ],
@@ -1604,10 +1604,16 @@ const docTemplate = `{
                 "tags": [
                     "Classes"
                 ],
-                "summary": "Create class using an existing category",
+                "summary": "Atomically create class configuration",
                 "parameters": [
                     {
-                        "description": "Create class with existing category payload",
+                        "type": "string",
+                        "description": "Retry key (required for new category or initial schedules, max 128 characters)",
+                        "name": "Idempotency-Key",
+                        "in": "header"
+                    },
+                    {
+                        "description": "Atomic class configuration payload",
                         "name": "request",
                         "in": "body",
                         "required": true,
@@ -1649,6 +1655,12 @@ const docTemplate = `{
                     },
                     "403": {
                         "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
                         }
@@ -6332,16 +6344,25 @@ const docTemplate = `{
         "github_com_kelolakelas_kelolakelas-academic-service_internal_domain.CreateClassWithCategoryRequest": {
             "type": "object",
             "required": [
-                "category_id",
                 "class",
                 "teacher_ids"
             ],
             "properties": {
+                "category": {
+                    "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.CreateCategoryRequest"
+                },
                 "category_id": {
                     "type": "string"
                 },
                 "class": {
                     "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.CreateClassPayload"
+                },
+                "schedules": {
+                    "type": "array",
+                    "maxItems": 366,
+                    "items": {
+                        "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ScheduleItemRequest"
+                    }
                 },
                 "teacher_ids": {
                     "type": "array",
@@ -6355,8 +6376,23 @@ const docTemplate = `{
         "github_com_kelolakelas_kelolakelas-academic-service_internal_domain.CreateClassWithCategoryResponse": {
             "type": "object",
             "properties": {
+                "category": {
+                    "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.Category"
+                },
                 "class": {
                     "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.Class"
+                },
+                "schedules": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ClassSchedule"
+                    }
+                },
+                "sessions": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ClassSession"
+                    }
                 }
             }
         },

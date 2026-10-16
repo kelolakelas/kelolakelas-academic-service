@@ -21,6 +21,22 @@ jobs:
   gate:
     name: gate
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: keltest
+          POSTGRES_PASSWORD: keltest
+          POSTGRES_DB: kel196_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U keltest -d kel196_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      KEL196_TEST_DSN: host=127.0.0.1 port=5432 user=keltest password=keltest dbname=kel196_test sslmode=disable
     steps:
       - name: Check out source
         uses: actions/checkout@v4
