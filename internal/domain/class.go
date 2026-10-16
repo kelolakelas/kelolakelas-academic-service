@@ -41,7 +41,8 @@ type Class struct {
 	UpdatedAt        time.Time        `gorm:"type:timestamp;not null;default:now()" json:"updated_at"`
 	DeletedAt        gorm.DeletedAt   `gorm:"index" json:"deleted_at,omitempty"`
 
-	Category *Category `gorm:"foreignKey:CategoryID" json:"category,omitempty"`
+	TeacherAssignments []ClassTeacher `gorm:"foreignKey:ClassID" json:"-"`
+	Category           *Category      `gorm:"foreignKey:CategoryID" json:"category,omitempty"`
 }
 
 type CreateClassRequest struct {
@@ -69,11 +70,15 @@ type UpdateClassPublicationRequest struct {
 // explicit `null`, so this DTO cannot clear a description. Clearing is out of
 // scope for the class update endpoint.
 type UpdateClassRequest struct {
-	CategoryID  *uuid.UUID       `json:"category_id,omitempty"`
-	Name        *string          `json:"name,omitempty" binding:"omitempty,min=1,max=255"`
-	Description *json.RawMessage `json:"description,omitempty"`
-	Type        *string          `json:"type,omitempty" binding:"omitempty,oneof=private group"`
-	Price       *int64           `json:"price,omitempty" binding:"omitempty,min=0"`
+	TeacherIDs       *[]uuid.UUID           `json:"teacher_ids,omitempty"`
+	Category         *CreateCategoryRequest `json:"category,omitempty"`
+	IsPublished      *bool                  `json:"is_published,omitempty"`
+	EnrollmentStatus *string                `json:"enrollment_status,omitempty" binding:"omitempty,oneof=open closed full archived"`
+	CategoryID       *uuid.UUID             `json:"category_id,omitempty"`
+	Name             *string                `json:"name,omitempty" binding:"omitempty,min=1,max=255"`
+	Description      *json.RawMessage       `json:"description,omitempty"`
+	Type             *string                `json:"type,omitempty" binding:"omitempty,oneof=private group"`
+	Price            *int64                 `json:"price,omitempty" binding:"omitempty,min=0"`
 }
 
 type CreateClassWithCategoryRequest struct {
@@ -108,6 +113,7 @@ type ClassCategorySummary struct {
 }
 
 type ClassResponse struct {
+	TeacherIDs       []uuid.UUID           `json:"teacher_ids,omitempty"`
 	ID               uuid.UUID             `json:"id"`
 	TenantID         uuid.UUID             `json:"tenant_id"`
 	CategoryID       uuid.UUID             `json:"category_id"`

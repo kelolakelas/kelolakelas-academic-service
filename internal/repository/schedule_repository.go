@@ -76,6 +76,7 @@ func (r *scheduleRepository) GetByIDForTenantForUpdate(ctx context.Context, tena
 	err := r.getDB(ctx).Clauses(clause.Locking{Strength: "UPDATE"}).
 		Joins("JOIN classes c ON c.id = class_schedules.class_id").
 		Where("class_schedules.id = ? AND c.tenant_id = ?", id, tenantID).
+		Preload("Class").
 		First(&schedule).Error
 	if err != nil {
 		return nil, err

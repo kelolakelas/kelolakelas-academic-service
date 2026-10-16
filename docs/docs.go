@@ -1772,7 +1772,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Updates the sellable attributes (name, description, price, category) of a tenant-owned class. Existing enrollments keep their stored gross_amount.",
+                "description": "Updates name, description, price, category, publication and enrollment status of a tenant-owned class. An inline category requires category:create and is created in the same transaction. Existing enrollments keep their stored gross_amount.",
                 "consumes": [
                     "application/json"
                 ],
@@ -3336,7 +3336,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Apply permanent day/time schedule change and regenerate upcoming sessions. ` + "`" + `old_schedule_id` + "`" + ` in the body is required and is the schedule that changes; the ` + "`" + `{id}` + "`" + ` path segment is accepted for compatibility and never overrides it. ` + "`" + `/api/v1/schedules/permanent` + "`" + ` is the same operation without the path segment.",
+                "description": "Apply permanent day/time/capacity/location/tutor changes and regenerate upcoming sessions. Optional new fields preserve stored values when omitted. Changes before today or across attendance/completed sessions, capacity below reserved seats, and ineligible tutors are rejected. ` + "`" + `old_schedule_id` + "`" + ` in the body is required and is the schedule that changes; the ` + "`" + `{id}` + "`" + ` path segment is accepted for compatibility and never overrides it. ` + "`" + `/api/v1/schedules/permanent` + "`" + ` is the same operation without the path segment.",
                 "consumes": [
                     "application/json"
                 ],
@@ -3397,6 +3397,12 @@ const docTemplate = `{
                     },
                     "404": {
                         "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
                         }
@@ -3684,7 +3690,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Apply permanent day/time schedule change and regenerate upcoming sessions. ` + "`" + `old_schedule_id` + "`" + ` in the body is required and is the schedule that changes; the ` + "`" + `{id}` + "`" + ` path segment is accepted for compatibility and never overrides it. ` + "`" + `/api/v1/schedules/permanent` + "`" + ` is the same operation without the path segment.",
+                "description": "Apply permanent day/time/capacity/location/tutor changes and regenerate upcoming sessions. Optional new fields preserve stored values when omitted. Changes before today or across attendance/completed sessions, capacity below reserved seats, and ineligible tutors are rejected. ` + "`" + `old_schedule_id` + "`" + ` in the body is required and is the schedule that changes; the ` + "`" + `{id}` + "`" + ` path segment is accepted for compatibility and never overrides it. ` + "`" + `/api/v1/schedules/permanent` + "`" + ` is the same operation without the path segment.",
                 "consumes": [
                     "application/json"
                 ],
@@ -3752,6 +3758,12 @@ const docTemplate = `{
                     },
                     "404": {
                         "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
                         "schema": {
                             "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse"
                         }
@@ -6063,6 +6075,12 @@ const docTemplate = `{
                 "price": {
                     "type": "integer"
                 },
+                "teacher_ids": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
                 "tenant_id": {
                     "type": "string"
                 },
@@ -6783,6 +6801,11 @@ const docTemplate = `{
                 "effective_date": {
                     "type": "string"
                 },
+                "new_capacity": {
+                    "type": "integer",
+                    "maximum": 2147483647,
+                    "minimum": 1
+                },
                 "new_day_of_week": {
                     "type": "integer",
                     "maximum": 7,
@@ -6791,7 +6814,14 @@ const docTemplate = `{
                 "new_end_time": {
                     "type": "string"
                 },
+                "new_location": {
+                    "type": "string",
+                    "maxLength": 255
+                },
                 "new_start_time": {
+                    "type": "string"
+                },
+                "new_tutor_id": {
                     "type": "string"
                 },
                 "old_schedule_id": {
@@ -7415,6 +7445,9 @@ const docTemplate = `{
         "github_com_kelolakelas_kelolakelas-academic-service_internal_domain.UpdateClassRequest": {
             "type": "object",
             "properties": {
+                "category": {
+                    "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.CreateCategoryRequest"
+                },
                 "category_id": {
                     "type": "string"
                 },
@@ -7424,6 +7457,18 @@ const docTemplate = `{
                         "type": "integer"
                     }
                 },
+                "enrollment_status": {
+                    "type": "string",
+                    "enum": [
+                        "open",
+                        "closed",
+                        "full",
+                        "archived"
+                    ]
+                },
+                "is_published": {
+                    "type": "boolean"
+                },
                 "name": {
                     "type": "string",
                     "maxLength": 255,
@@ -7432,6 +7477,12 @@ const docTemplate = `{
                 "price": {
                     "type": "integer",
                     "minimum": 0
+                },
+                "teacher_ids": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
                 },
                 "type": {
                     "type": "string",

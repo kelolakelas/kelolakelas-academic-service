@@ -8,6 +8,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/kelolakelas/kelolakelas-academic-service/internal/domain"
+	"github.com/kelolakelas/kelolakelas-academic-service/internal/repository"
 	"github.com/kelolakelas/kelolakelas-academic-service/internal/usecase"
 )
 
@@ -51,6 +52,8 @@ func (h *ScheduleHandler) Delete(c *gin.Context) {
 	}
 	if err := h.scheduleUsecase.DeleteSchedule(c.Request.Context(), tenantID, id); err != nil {
 		switch {
+		case errors.Is(err, repository.ErrScheduleHistoryConflict), errors.Is(err, repository.ErrScheduleSeatsConflict):
+			c.JSON(http.StatusConflict, gin.H{"status": "error", "message": err.Error(), "data": nil})
 		case errors.Is(err, domain.ErrScheduleForbidden):
 			c.JSON(http.StatusForbidden, gin.H{"status": "error", "message": err.Error(), "data": nil})
 		case errors.Is(err, usecase.ErrScheduleNotFound):
@@ -112,7 +115,11 @@ func (h *ScheduleHandler) CreateInitialSchedules(c *gin.Context) {
 			c.JSON(http.StatusForbidden, gin.H{"status": "error", "message": err.Error(), "data": nil})
 			return
 		}
-		if errors.Is(err, usecase.ErrEnrollmentRequired) || errors.Is(err, usecase.ErrInvalidEnrollmentClass) || errors.Is(err, usecase.ErrInvalidEnrollmentTenant) || errors.Is(err, usecase.ErrPrivateScheduleCapacity) {
+		if errors.Is(err, usecase.ErrSubstituteTutorUnavailable) {
+			c.JSON(http.StatusServiceUnavailable, gin.H{"status": "error", "message": err.Error(), "data": nil})
+			return
+		}
+		if errors.Is(err, usecase.ErrInvalidScheduleChange) || errors.Is(err, usecase.ErrSubstituteTutorNotEligible) || errors.Is(err, usecase.ErrEnrollmentRequired) || errors.Is(err, usecase.ErrInvalidEnrollmentClass) || errors.Is(err, usecase.ErrInvalidEnrollmentTenant) || errors.Is(err, usecase.ErrPrivateScheduleCapacity) {
 			c.JSON(http.StatusBadRequest, gin.H{
 				"status":  "error",
 				"message": err.Error(),
@@ -207,7 +214,7 @@ func (h *ScheduleHandler) RescheduleSession(c *gin.Context) {
 // 3. Permanent Schedule Change
 // ChangeSchedulePermanent godoc
 // @Summary Permanently change schedule
-// @Description Apply permanent day/time schedule change and regenerate upcoming sessions. `old_schedule_id` in the body is required and is the schedule that changes; the `{id}` path segment is accepted for compatibility and never overrides it. `/api/v1/schedules/permanent` is the same operation without the path segment.
+// @Description Apply permanent day/time/capacity/location/tutor changes and regenerate upcoming sessions. Optional new fields preserve stored values when omitted. Changes before today or across attendance/completed sessions, capacity below reserved seats, and ineligible tutors are rejected. `old_schedule_id` in the body is required and is the schedule that changes; the `{id}` path segment is accepted for compatibility and never overrides it. `/api/v1/schedules/permanent` is the same operation without the path segment.
 // @Tags Schedules
 // @Accept json
 // @Produce json
@@ -216,6 +223,7 @@ func (h *ScheduleHandler) RescheduleSession(c *gin.Context) {
 // @Param id path string true "Schedule ID (UUID)"
 // @Param request body domain.PermanentScheduleChangeRequest true "Permanent schedule change payload"
 // @Success 200 {object} domain.HTTPResponse{data=domain.PermanentScheduleChangeResponse}
+// @Failure 409 {object} domain.ErrorResponse
 // @Failure 400 {object} domain.ErrorResponse
 // @Failure 401 {object} domain.ErrorResponse
 // @Failure 404 {object} domain.ErrorResponse
@@ -256,7 +264,15 @@ func (h *ScheduleHandler) ChangeSchedulePermanent(c *gin.Context) {
 			})
 			return
 		}
-		if errors.Is(err, usecase.ErrInvalidEffectiveDate) {
+		if errors.Is(err, repository.ErrScheduleHistoryConflict) || errors.Is(err, repository.ErrScheduleSeatsConflict) {
+			c.JSON(http.StatusConflict, gin.H{"status": "error", "message": err.Error(), "data": nil})
+			return
+		}
+		if errors.Is(err, usecase.ErrSubstituteTutorUnavailable) {
+			c.JSON(http.StatusServiceUnavailable, gin.H{"status": "error", "message": err.Error(), "data": nil})
+			return
+		}
+		if errors.Is(err, usecase.ErrInvalidScheduleChange) || errors.Is(err, usecase.ErrSubstituteTutorNotEligible) || errors.Is(err, usecase.ErrPrivateScheduleCapacity) || errors.Is(err, usecase.ErrInvalidEffectiveDate) {
 			c.JSON(http.StatusBadRequest, gin.H{"status": "error", "message": err.Error(), "data": nil})
 			return
 		}

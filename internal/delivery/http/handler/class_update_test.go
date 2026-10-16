@@ -11,6 +11,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 
+	"github.com/kelolakelas/kelolakelas-academic-service/internal/delivery/http/middleware"
 	"github.com/kelolakelas/kelolakelas-academic-service/internal/domain"
 )
 
@@ -140,5 +141,42 @@ func TestUpdateClassHandlerIgnoresTenantHeader(t *testing.T) {
 	}
 	if usecase.tenantID != tenantID {
 		t.Fatalf("tenant=%s want=%s", usecase.tenantID, tenantID)
+	}
+}
+
+type editorPermission struct{ denied string }
+
+func (p editorPermission) CheckPermission(_ context.Context, _, _, _, permission string) (bool, error) {
+	return permission != p.denied, nil
+}
+func (editorPermission) Close() error { return nil }
+
+func TestUpdateClassInlineCategoryPermission(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	for _, denied := range []string{"category:create", "class:update", ""} {
+		t.Run(denied, func(t *testing.T) {
+			tenant, class := uuid.New(), uuid.New()
+			uc := &updateUsecaseMock{response: &domain.ClassResponse{ID: class}}
+			permission := editorPermission{denied: denied}
+			h := NewClassHandler(uc, updateCreationUsecaseMock{}).WithCreationPermissions(permission)
+			router := gin.New()
+			router.Use(func(c *gin.Context) {
+				c.Set("tenant_id", tenant.String())
+				c.Set("role_id", uuid.NewString())
+				c.Set("member_id", uuid.NewString())
+			})
+			router.PATCH("/classes/:id", middleware.RequirePermission(permission, "class:update"), h.Update)
+			req := httptest.NewRequest(http.MethodPatch, "/classes/"+class.String(), strings.NewReader(`{"category":{"name":"New"}}`))
+			req.Header.Set("Content-Type", "application/json")
+			res := httptest.NewRecorder()
+			router.ServeHTTP(res, req)
+			if denied != "" {
+				if res.Code != http.StatusForbidden || uc.request != nil {
+					t.Fatalf("denied operation reached usecase: %d", res.Code)
+				}
+			} else if res.Code != http.StatusOK || uc.request == nil || uc.request.Category.Name != "New" {
+				t.Fatalf("authorized operation: %d", res.Code)
+			}
+		})
 	}
 }

@@ -203,7 +203,7 @@ func (h *ClassHandler) Delete(c *gin.Context) {
 
 // Update godoc
 // @Summary Update an academic class
-// @Description Updates the sellable attributes (name, description, price, category) of a tenant-owned class. Existing enrollments keep their stored gross_amount.
+// @Description Updates name, description, price, category, publication and enrollment status of a tenant-owned class. An inline category requires category:create and is created in the same transaction. Existing enrollments keep their stored gross_amount.
 // @Tags Classes
 // @Accept json
 // @Produce json
@@ -236,8 +236,20 @@ func (h *ClassHandler) Update(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"status": "error", "message": err.Error(), "data": nil})
 		return
 	}
+	if req.Category != nil && !middleware.AuthorizePermission(c, h.creationPermissions, "category:create") {
+		return
+	}
 	res, err := h.classUsecase.UpdateClass(c.Request.Context(), tenantID, id, &req)
 	if err != nil {
+		if errors.Is(err, usecase.ErrSubstituteTutorUnavailable) {
+			c.JSON(http.StatusServiceUnavailable, gin.H{"status": "error", "message": err.Error(), "data": nil})
+			return
+		}
+		if errors.Is(err, usecase.ErrSubstituteTutorNotEligible) {
+			c.JSON(http.StatusBadRequest, gin.H{"status": "error", "message": err.Error(), "data": nil})
+			return
+		}
+
 		switch {
 		case errors.Is(err, domain.ErrClassNotFound):
 			c.JSON(http.StatusNotFound, gin.H{"status": "error", "message": err.Error(), "data": nil})
@@ -247,7 +259,7 @@ func (h *ClassHandler) Update(c *gin.Context) {
 			errors.Is(err, domain.ErrCategoryForbidden),
 			errors.Is(err, domain.ErrClassTypeImmutable),
 			errors.Is(err, domain.ErrClassNameRequired),
-			errors.Is(err, domain.ErrInvalidClassPrice):
+			errors.Is(err, domain.ErrCategoryNameRequired), errors.Is(err, domain.ErrClassNotEnrollable), errors.Is(err, domain.ErrInvalidClassPrice):
 			c.JSON(http.StatusUnprocessableEntity, gin.H{"status": "error", "message": err.Error(), "data": nil})
 		default:
 			logInternalError(c.Request.Context(), "update class", err)

@@ -6,6 +6,7 @@ import (
 
 	"github.com/google/uuid"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 
 	"github.com/kelolakelas/kelolakelas-academic-service/internal/domain"
 )
@@ -24,7 +25,7 @@ func (r *classRepository) ListByTenant(ctx context.Context, tenantID uuid.UUID, 
 		return nil, 0, err
 	}
 	var items []domain.Class
-	if err := db.Preload("Category", "tenant_id = ?", tenantID).Order("created_at DESC").Limit(query.PageSize).Offset((query.Page - 1) * query.PageSize).Find(&items).Error; err != nil {
+	if err := db.Preload("TeacherAssignments").Preload("Category", "tenant_id = ?", tenantID).Order("created_at DESC").Limit(query.PageSize).Offset((query.Page - 1) * query.PageSize).Find(&items).Error; err != nil {
 		return nil, 0, err
 	}
 	return items, total, nil
@@ -44,7 +45,7 @@ func (r *classRepository) getDB(ctx context.Context) *gorm.DB {
 
 func (r *classRepository) GetByID(ctx context.Context, id uuid.UUID) (*domain.Class, error) {
 	var class domain.Class
-	if err := r.getDB(ctx).Preload("Category").First(&class, "id = ?", id).Error; err != nil {
+	if err := r.getDB(ctx).Preload("TeacherAssignments").Preload("Category").First(&class, "id = ?", id).Error; err != nil {
 		return nil, err
 	}
 	return &class, nil
@@ -77,12 +78,14 @@ func (r *classRepository) UpdateByTenant(ctx context.Context, class *domain.Clas
 	db := r.getDB(ctx).Model(&domain.Class{}).
 		Where("id = ? AND tenant_id = ?", class.ID, class.TenantID).
 		Updates(map[string]interface{}{
-			"category_id": class.CategoryID,
-			"name":        class.Name,
-			"description": class.Description,
-			"type":        class.Type,
-			"price":       class.Price,
-			"updated_at":  time.Now(),
+			"category_id":       class.CategoryID,
+			"name":              class.Name,
+			"description":       class.Description,
+			"type":              class.Type,
+			"price":             class.Price,
+			"is_published":      class.IsPublished,
+			"enrollment_status": class.EnrollmentStatus,
+			"updated_at":        time.Now(),
 		})
 	if db.Error != nil {
 		return db.Error
@@ -95,4 +98,28 @@ func (r *classRepository) UpdateByTenant(ctx context.Context, class *domain.Clas
 
 func (r *classRepository) DeleteByTenant(ctx context.Context, tenantID, id uuid.UUID) error {
 	return r.getDB(ctx).Where("id = ? AND tenant_id = ?", id, tenantID).Delete(&domain.Class{}).Error
+}
+
+// ClassUpdateStore keeps class mutation and teacher assignments under one row lock.
+type ClassUpdateStore interface {
+	GetByIDForUpdate(context.Context, uuid.UUID) (*domain.Class, error)
+	ReplaceTeachers(context.Context, uuid.UUID, uuid.UUID, []uuid.UUID) error
+}
+
+func (r *classRepository) GetByIDForUpdate(ctx context.Context, id uuid.UUID) (*domain.Class, error) {
+	var class domain.Class
+	err := r.getDB(ctx).Clauses(clause.Locking{Strength: "UPDATE"}).Preload("Category").Preload("TeacherAssignments").First(&class, "id = ?", id).Error
+	return &class, err
+}
+func (r *classRepository) ReplaceTeachers(ctx context.Context, tenant, id uuid.UUID, teachers []uuid.UUID) error {
+	db := r.getDB(ctx)
+	if err := db.Exec("DELETE FROM class_teachers WHERE class_id = ? AND EXISTS (SELECT 1 FROM classes WHERE id = ? AND tenant_id = ? AND deleted_at IS NULL)", id, id, tenant).Error; err != nil {
+		return err
+	}
+	for _, teacher := range teachers {
+		if err := db.Create(&domain.ClassTeacher{ClassID: id, TeacherID: teacher}).Error; err != nil {
+			return err
+		}
+	}
+	return nil
 }

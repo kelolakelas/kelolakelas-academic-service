@@ -22,6 +22,7 @@ var (
 	ErrEnrollmentNotFound      = errors.New("enrollment not found")
 	ErrInvalidEnrollmentClass  = errors.New("enrollment does not belong to the specified class")
 	ErrInvalidEnrollmentTenant = errors.New("enrollment does not belong to the specified tenant")
+	ErrInvalidScheduleChange   = errors.New("invalid schedule capacity, weekday, time or location")
 	ErrInvalidEffectiveDate    = errors.New("effective_date outside schedule validity")
 	// ErrPrivateScheduleCapacity rejects a private-class schedule whose capacity
 	// is not exactly one student. A private schedule serves a single enrollment,
@@ -63,8 +64,17 @@ func (u *scheduleUsecase) ListSchedules(ctx context.Context, tenantID uuid.UUID,
 }
 
 func (u *scheduleUsecase) DeleteSchedule(ctx context.Context, tenantID, id uuid.UUID) error {
+	loc, _ := time.LoadLocation("Asia/Jakarta")
+	today := normalizeDate(time.Now().In(loc))
 	return u.txManager.WithTransaction(ctx, func(txCtx context.Context) error {
-		schedule, err := u.scheduleRepo.GetByID(txCtx, id)
+		var schedule *domain.ClassSchedule
+		var err error
+		guard, guarded := u.scheduleRepo.(repository.ScheduleChangeGuard)
+		if guarded {
+			schedule, err = u.scheduleRepo.GetByIDForTenantForUpdate(txCtx, tenantID, id)
+		} else {
+			schedule, err = u.scheduleRepo.GetByID(txCtx, id)
+		}
 		if errors.Is(err, gorm.ErrRecordNotFound) || schedule == nil {
 			return ErrScheduleNotFound
 		}
@@ -74,10 +84,15 @@ func (u *scheduleUsecase) DeleteSchedule(ctx context.Context, tenantID, id uuid.
 		if schedule.Class == nil || schedule.Class.TenantID != tenantID {
 			return domain.ErrScheduleForbidden
 		}
+		if guarded {
+			if err := guard.ValidateChange(txCtx, tenantID, id, today, schedule.Capacity, true); err != nil {
+				return err
+			}
+		}
 		if err := u.scheduleRepo.DeleteByTenant(txCtx, tenantID, id); err != nil {
 			return err
 		}
-		return u.sessionRepo.CancelFutureSessionsBySchedule(txCtx, tenantID, id, normalizeDate(time.Now()))
+		return u.sessionRepo.CancelFutureSessionsBySchedule(txCtx, tenantID, id, today)
 	})
 }
 
@@ -255,6 +270,24 @@ func (u *scheduleUsecase) CreateInitialSchedules(
 		now := normalizeDate(time.Now())
 
 		for _, item := range req.Schedules {
+			if class.Type == "private" && item.Capacity != 1 {
+				return ErrPrivateScheduleCapacity
+			}
+			if item.DayOfWeek < 1 || item.DayOfWeek > 7 || item.Capacity < 1 || int64(item.Capacity) > 2147483647 {
+				return ErrInvalidScheduleChange
+			}
+			if item.TutorID != nil {
+				if u.membership == nil {
+					return ErrSubstituteTutorUnavailable
+				}
+				active, err := u.membership.CheckActiveMember(txCtx, tenantID.String(), item.TutorID.String())
+				if err != nil {
+					return ErrSubstituteTutorUnavailable
+				}
+				if !active {
+					return ErrSubstituteTutorNotEligible
+				}
+			}
 			start, startErr := parseScheduleTime(item.StartTime)
 			end, endErr := parseScheduleTime(item.EndTime)
 			if startErr != nil || endErr != nil || !start.Before(end) {
@@ -440,6 +473,11 @@ func (u *scheduleUsecase) ChangeSchedulePermanent(
 	var newSchedule *domain.ClassSchedule
 	var newSessions []*domain.ClassSession
 
+	start, se := parseScheduleTime(req.NewStartTime)
+	end, ee := parseScheduleTime(req.NewEndTime)
+	if se != nil || ee != nil || !start.Before(end) || req.NewDayOfWeek < 1 || req.NewDayOfWeek > 7 || req.EffectiveDate.IsZero() || (req.NewCapacity != nil && (*req.NewCapacity < 1 || int64(*req.NewCapacity) > 2147483647)) || (req.NewLocation != nil && len([]rune(*req.NewLocation)) > 255) {
+		return nil, ErrInvalidScheduleChange
+	}
 	effectiveDate := normalizeDate(req.EffectiveDate)
 	prevDay := effectiveDate.AddDate(0, 0, -1)
 
@@ -459,6 +497,43 @@ func (u *scheduleUsecase) ChangeSchedulePermanent(
 		if err := validateReplacementDate(oldSchedule, effectiveDate); err != nil {
 			return err
 		}
+		capacity := oldSchedule.Capacity
+		if req.NewCapacity != nil {
+			capacity = *req.NewCapacity
+		}
+		if oldSchedule.Class != nil && oldSchedule.Class.Type == "private" && capacity != 1 {
+			return ErrPrivateScheduleCapacity
+		}
+		guard, guarded := u.scheduleRepo.(repository.ScheduleChangeGuard)
+		if guarded {
+			if err := guard.ValidateChange(txCtx, tenantID, oldSchedule.ID, effectiveDate, capacity, false); err != nil {
+				return err
+			}
+		} else if req.NewCapacity != nil || req.NewLocation != nil || req.NewTutorID != nil {
+			return ErrInvalidScheduleChange
+		}
+		tutor := oldSchedule.TutorID
+		if req.NewTutorID != nil {
+			if *req.NewTutorID == uuid.Nil {
+				tutor = nil
+			} else {
+				if u.membership == nil {
+					return ErrSubstituteTutorUnavailable
+				}
+				active, err := u.membership.CheckActiveMember(txCtx, tenantID.String(), req.NewTutorID.String())
+				if err != nil {
+					return ErrSubstituteTutorUnavailable
+				}
+				if !active {
+					return ErrSubstituteTutorNotEligible
+				}
+				tutor = req.NewTutorID
+			}
+		}
+		location := oldSchedule.Location
+		if req.NewLocation != nil {
+			location = req.NewLocation
+		}
 		originalValidUntil := oldSchedule.ValidUntil
 
 		// 1. Update old Class_Schedules setting valid_until = effective_date - 1 day
@@ -474,12 +549,12 @@ func (u *scheduleUsecase) ChangeSchedulePermanent(
 			ID:           uuid.New(),
 			ClassID:      oldSchedule.ClassID,
 			EnrollmentID: oldSchedule.EnrollmentID,
-			TutorID:      oldSchedule.TutorID,
-			Capacity:     oldSchedule.Capacity,
-			Location:     oldSchedule.Location,
+			TutorID:      tutor,
+			Capacity:     capacity,
+			Location:     location,
 			DayOfWeek:    req.NewDayOfWeek,
-			StartTime:    req.NewStartTime,
-			EndTime:      req.NewEndTime,
+			StartTime:    start.Format("15:04:05"),
+			EndTime:      end.Format("15:04:05"),
 			ValidFrom:    &effectiveDate,
 			ValidUntil:   originalValidUntil,
 
