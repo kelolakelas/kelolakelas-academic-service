@@ -77,9 +77,12 @@ type UpdateClassRequest struct {
 }
 
 type CreateClassWithCategoryRequest struct {
-	CategoryID uuid.UUID          `json:"category_id" binding:"required"`
-	Class      CreateClassPayload `json:"class" binding:"required"`
-	TeacherIDs []uuid.UUID        `json:"teacher_ids" binding:"required,min=1"`
+	CategoryID     uuid.UUID              `json:"category_id,omitempty"`
+	Category       *CreateCategoryRequest `json:"category,omitempty"`
+	Schedules      []ScheduleItemRequest  `json:"schedules,omitempty" binding:"max=366,dive"`
+	IdempotencyKey string                 `json:"-"`
+	Class          CreateClassPayload     `json:"class" binding:"required"`
+	TeacherIDs     []uuid.UUID            `json:"teacher_ids" binding:"required,min=1"`
 }
 
 type CreateClassPayload struct {
@@ -92,7 +95,10 @@ type CreateClassPayload struct {
 }
 
 type CreateClassWithCategoryResponse struct {
-	Class *Class `json:"class"`
+	Class     *Class           `json:"class"`
+	Category  *Category        `json:"category,omitempty"`
+	Schedules []*ClassSchedule `json:"schedules,omitempty"`
+	Sessions  []*ClassSession  `json:"sessions,omitempty"`
 }
 
 // ClassCategorySummary is the category identity needed by tenant class lists.

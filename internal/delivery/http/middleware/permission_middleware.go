@@ -155,3 +155,12 @@ func permissionAllowed(c *gin.Context, client grpcclient.PermissionClient, permi
 	}
 	return true
 }
+
+// AuthorizePermission checks an additional operation inside an already-bound aggregate.
+func AuthorizePermission(c *gin.Context, client grpcclient.PermissionClient, permission string) bool {
+	if c.GetBool("is_parent") {
+		permissionFailure(c, http.StatusForbidden)
+		return false
+	}
+	return permissionAllowed(c, client, permission)
+}

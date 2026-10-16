@@ -449,24 +449,40 @@ definitions:
     type: object
   github_com_kelolakelas_kelolakelas-academic-service_internal_domain.CreateClassWithCategoryRequest:
     properties:
+      category:
+        $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.CreateCategoryRequest'
       category_id:
         type: string
       class:
         $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.CreateClassPayload'
+      schedules:
+        items:
+          $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ScheduleItemRequest'
+        maxItems: 366
+        type: array
       teacher_ids:
         items:
           type: string
         minItems: 1
         type: array
     required:
-    - category_id
     - class
     - teacher_ids
     type: object
   github_com_kelolakelas_kelolakelas-academic-service_internal_domain.CreateClassWithCategoryResponse:
     properties:
+      category:
+        $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.Category'
       class:
         $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.Class'
+      schedules:
+        items:
+          $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ClassSchedule'
+        type: array
+      sessions:
+        items:
+          $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ClassSession'
+        type: array
     type: object
   github_com_kelolakelas_kelolakelas-academic-service_internal_domain.CreateInitialSchedulesRequest:
     properties:
@@ -2449,10 +2465,17 @@ paths:
     post:
       consumes:
       - application/json
-      description: Creates a class using an existing category owned by the requester
-        and assigns teachers. Schedules and sessions are created separately.
+      description: Atomically creates a new or existing category, class, active teacher
+        assignments and optional initial group schedules/sessions. New category or
+        schedules require Idempotency-Key. Additional category:create and schedule:create
+        permissions apply when used.
       parameters:
-      - description: Create class with existing category payload
+      - description: Retry key (required for new category or initial schedules, max
+          128 characters)
+        in: header
+        name: Idempotency-Key
+        type: string
+      - description: Atomic class configuration payload
         in: body
         name: request
         required: true
@@ -2482,6 +2505,10 @@ paths:
           description: Forbidden
           schema:
             $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
@@ -2492,7 +2519,7 @@ paths:
             $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
       security:
       - BearerAuth: []
-      summary: Create class using an existing category
+      summary: Atomically create class configuration
       tags:
       - Classes
       x-permission:
