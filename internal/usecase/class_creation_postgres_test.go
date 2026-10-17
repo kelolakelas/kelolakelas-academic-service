@@ -77,7 +77,7 @@ func TestClassCreationPostgres(t *testing.T) {
 	}
 	sqlDB, _ := db.DB()
 	defer sqlDB.Close()
-	for _, file := range []string{"00000000000000_init_schema.up.sql", "00001790812223_add_rescheduled_from_to_class_sessions.up.sql", "00001790900000_class_creation_requests.up.sql"} {
+	for _, file := range []string{"00000000000000_init_schema.up.sql", "00001790812223_add_rescheduled_from_to_class_sessions.up.sql", "00001790900001_class_creation_requests.up.sql"} {
 		sql, err := os.ReadFile("../../migrations/" + file)
 		if err != nil {
 			t.Fatal(err)

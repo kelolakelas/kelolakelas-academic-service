@@ -4,6 +4,8 @@ import (
 	"net/url"
 	"testing"
 
+	"github.com/golang-migrate/migrate/v4/source/file"
+
 	"github.com/kelolakelas/kelolakelas-academic-service/internal/config"
 )
 
@@ -64,4 +66,14 @@ func TestBuildDatabaseURLWithDatabaseURL(t *testing.T) {
 			}
 		})
 	}
+}
+
+// Read the same complete directory as cmd/migrate, rather than hand-picking SQL
+// files: duplicate numeric versions otherwise escape the endpoint tests.
+func TestRepositoryMigrationSourceHasUniqueVersions(t *testing.T) {
+	source, err := new(file.File).Open("file://../../migrations")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer source.Close()
 }
