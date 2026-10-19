@@ -184,7 +184,7 @@ func (u *privateScheduleRequestUsecase) purchase(ctx context.Context, actorID, i
 		if err = validatePrivateSlots(slots); err != nil {
 			return err
 		}
-		enrollment = &domain.Enrollment{ID: uuid.New(), TenantID: tenantID, StudentID: request.StudentID, ClassID: request.ClassID, Status: "pending", BillingCycle: request.BillingCycle, IdempotencyKey: &key, PaymentStatus: "pending", GrossAmount: class.Price}
+		enrollment = &domain.Enrollment{ID: uuid.New(), ParentEmail: request.ParentEmail, TenantID: tenantID, StudentID: request.StudentID, ClassID: request.ClassID, Status: "pending", BillingCycle: request.BillingCycle, IdempotencyKey: &key, PaymentStatus: "pending", GrossAmount: class.Price}
 		if err = u.enrollments.CreateIfCapacityAvailable(txCtx, enrollment); err != nil {
 			return err
 		}

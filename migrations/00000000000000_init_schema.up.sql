@@ -29,6 +29,9 @@ CREATE TABLE IF NOT EXISTS enrollments (
     gross_amount bigint NOT NULL DEFAULT 0, joined_at timestamp NOT NULL DEFAULT now(), updated_at timestamp NOT NULL DEFAULT now(), deleted_at timestamp,
     FOREIGN KEY (student_id) REFERENCES students(id), FOREIGN KEY (class_id) REFERENCES classes(id)
 );
+-- Keep the idempotent current-schema initializer usable by local fixtures.
+-- Existing deployments acquire this nullable column through migration 1790900002.
+ALTER TABLE enrollments ADD COLUMN IF NOT EXISTS parent_email text;
 CREATE INDEX IF NOT EXISTS idx_enrollments_tenant_status ON enrollments (tenant_id, status);
 CREATE INDEX IF NOT EXISTS idx_enrollments_student_class ON enrollments (student_id, class_id);
 CREATE INDEX IF NOT EXISTS idx_enrollments_deleted_at ON enrollments (deleted_at);

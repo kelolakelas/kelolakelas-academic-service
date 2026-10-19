@@ -3,6 +3,7 @@ package config
 import (
 	"fmt"
 	"log/slog"
+	"net/mail"
 	"net/url"
 	"os"
 	"strings"
@@ -33,6 +34,11 @@ type Config struct {
 	CatalogTenantInfoTimeout  int    `mapstructure:"CATALOG_TENANT_INFO_TIMEOUT_MS"`
 	CatalogPolicyCacheTTL     int    `mapstructure:"CATALOG_POLICY_CACHE_TTL_SECONDS"`
 	CatalogPolicyTimeout      int    `mapstructure:"CATALOG_POLICY_TIMEOUT_MS"`
+
+	ParentNotificationWorkerEnabled   bool   `mapstructure:"PARENT_NOTIFICATION_WORKER_ENABLED"`
+	ParentNotificationIntervalSeconds int    `mapstructure:"PARENT_NOTIFICATION_INTERVAL_SECONDS"`
+	ResendAPIKey                      string `mapstructure:"RESEND_API_KEY"`
+	ResendFromEmail                   string `mapstructure:"RESEND_FROM_EMAIL"`
 
 	// IdentityPermissionTimeoutMs bounds one permission check against identity. When it
 	// elapses the check fails and the permission middleware answers 503.
@@ -107,8 +113,11 @@ func LoadConfig() (Config, error) {
 		slog.Warn("No .env file found by Viper, using system environment variables")
 	}
 
+	viper.SetDefault("PARENT_NOTIFICATION_WORKER_ENABLED", true)
+	viper.SetDefault("PARENT_NOTIFICATION_INTERVAL_SECONDS", 15)
 	viper.AutomaticEnv()
 	for _, key := range []string{
+		"RESEND_API_KEY", "RESEND_FROM_EMAIL", "PARENT_NOTIFICATION_WORKER_ENABLED", "PARENT_NOTIFICATION_INTERVAL_SECONDS",
 		"DATABASE_URL", "DB_HOST", "DB_PORT", "DB_SSLMODE", "DB_CHANNEL_BINDING", "DB_USER", "DB_PASSWORD", "DB_NAME",
 		"IDENTITY_GRPC_HOST", "CHAT_SERVICE_URL", "BILLING_SERVICE_URL", "INTERNAL_SERVICE_CREDENTIAL", "PORT", "JWT_SECRET",
 		"CATALOG_TENANT_INFO_TTL_MINUTES", "CATALOG_TENANT_INFO_TIMEOUT_MS",
@@ -197,6 +206,14 @@ func LoadConfig() (Config, error) {
 		return Config{}, err
 	}
 
+	if config.ParentNotificationIntervalSeconds < 1 || config.ParentNotificationIntervalSeconds > 3600 {
+		return Config{}, fmt.Errorf("PARENT_NOTIFICATION_INTERVAL_SECONDS must be between 1 and 3600")
+	}
+	if config.ResendFromEmail != "" {
+		if _, err := mail.ParseAddress(config.ResendFromEmail); err != nil {
+			return Config{}, fmt.Errorf("RESEND_FROM_EMAIL is invalid")
+		}
+	}
 	return config, nil
 }
 

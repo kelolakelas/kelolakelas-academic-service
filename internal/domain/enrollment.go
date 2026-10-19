@@ -68,6 +68,8 @@ const PlatformFeeExceedsGrossErrorCode = "platform_fee_exceeds_gross"
 const PaymentStatusPlatformFeeRejected = "platform_fee_rejected"
 
 type Enrollment struct {
+	// ParentEmail is captured only from a verified JWT (or its private-request snapshot). Never exposed in API JSON.
+	ParentEmail          string         `gorm:"type:text;default:null" json:"-"`
 	ID                   uuid.UUID      `gorm:"type:uuid;primaryKey;default:gen_random_uuid()" json:"id"`
 	TenantID             uuid.UUID      `gorm:"type:uuid;not null;index:idx_tenant_status" json:"tenant_id"` // Cross-service, ordinary UUID
 	StudentID            uuid.UUID      `gorm:"type:uuid;not null;index:idx_student_class,unique" json:"student_id"`
