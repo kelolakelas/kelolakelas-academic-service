@@ -35,6 +35,11 @@ type Config struct {
 	CatalogPolicyCacheTTL     int    `mapstructure:"CATALOG_POLICY_CACHE_TTL_SECONDS"`
 	CatalogPolicyTimeout      int    `mapstructure:"CATALOG_POLICY_TIMEOUT_MS"`
 
+	SessionReminderWorkerEnabled   bool `mapstructure:"SESSION_REMINDER_WORKER_ENABLED"`
+	SessionReminderIntervalSeconds int  `mapstructure:"SESSION_REMINDER_INTERVAL_SECONDS"`
+	SessionReminderDaysAhead       int  `mapstructure:"SESSION_REMINDER_DAYS_AHEAD"`
+	SessionReminderWindowDays      int  `mapstructure:"SESSION_REMINDER_WINDOW_DAYS"`
+
 	ParentNotificationWorkerEnabled   bool   `mapstructure:"PARENT_NOTIFICATION_WORKER_ENABLED"`
 	ParentNotificationIntervalSeconds int    `mapstructure:"PARENT_NOTIFICATION_INTERVAL_SECONDS"`
 	ResendAPIKey                      string `mapstructure:"RESEND_API_KEY"`
@@ -113,10 +118,15 @@ func LoadConfig() (Config, error) {
 		slog.Warn("No .env file found by Viper, using system environment variables")
 	}
 
+	viper.SetDefault("SESSION_REMINDER_WORKER_ENABLED", true)
+	viper.SetDefault("SESSION_REMINDER_INTERVAL_SECONDS", 900)
+	viper.SetDefault("SESSION_REMINDER_DAYS_AHEAD", 1)
+	viper.SetDefault("SESSION_REMINDER_WINDOW_DAYS", 1)
 	viper.SetDefault("PARENT_NOTIFICATION_WORKER_ENABLED", true)
 	viper.SetDefault("PARENT_NOTIFICATION_INTERVAL_SECONDS", 15)
 	viper.AutomaticEnv()
 	for _, key := range []string{
+		"SESSION_REMINDER_WORKER_ENABLED", "SESSION_REMINDER_INTERVAL_SECONDS", "SESSION_REMINDER_DAYS_AHEAD", "SESSION_REMINDER_WINDOW_DAYS",
 		"RESEND_API_KEY", "RESEND_FROM_EMAIL", "PARENT_NOTIFICATION_WORKER_ENABLED", "PARENT_NOTIFICATION_INTERVAL_SECONDS",
 		"DATABASE_URL", "DB_HOST", "DB_PORT", "DB_SSLMODE", "DB_CHANNEL_BINDING", "DB_USER", "DB_PASSWORD", "DB_NAME",
 		"IDENTITY_GRPC_HOST", "CHAT_SERVICE_URL", "BILLING_SERVICE_URL", "INTERNAL_SERVICE_CREDENTIAL", "PORT", "JWT_SECRET",
@@ -206,6 +216,15 @@ func LoadConfig() (Config, error) {
 		return Config{}, err
 	}
 
+	if config.SessionReminderIntervalSeconds < 1 || config.SessionReminderIntervalSeconds > 3600 {
+		return Config{}, fmt.Errorf("SESSION_REMINDER_INTERVAL_SECONDS must be between 1 and 3600")
+	}
+	if config.SessionReminderDaysAhead < 1 || config.SessionReminderDaysAhead > 30 {
+		return Config{}, fmt.Errorf("SESSION_REMINDER_DAYS_AHEAD must be between 1 and 30")
+	}
+	if config.SessionReminderWindowDays < 1 || config.SessionReminderWindowDays > 7 {
+		return Config{}, fmt.Errorf("SESSION_REMINDER_WINDOW_DAYS must be between 1 and 7")
+	}
 	if config.ParentNotificationIntervalSeconds < 1 || config.ParentNotificationIntervalSeconds > 3600 {
 		return Config{}, fmt.Errorf("PARENT_NOTIFICATION_INTERVAL_SECONDS must be between 1 and 3600")
 	}
