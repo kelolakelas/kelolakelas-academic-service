@@ -249,7 +249,7 @@ func (u *enrollmentUsecase) EnrollPublic(ctx context.Context, parentID, classID 
 		return nil, domain.ErrScheduleRequired
 	}
 	key := idempotencyKey
-	enrollment := &domain.Enrollment{ID: uuid.New(), TenantID: class.TenantID, StudentID: student.ID, ClassID: class.ID, ScheduleID: req.ScheduleID, Status: "pending", BillingCycle: req.BillingCycle, IdempotencyKey: &key, PaymentStatus: "pending", GrossAmount: class.Price}
+	enrollment := &domain.Enrollment{ID: uuid.New(), ParentEmail: req.SenderEmail, TenantID: class.TenantID, StudentID: student.ID, ClassID: class.ID, ScheduleID: req.ScheduleID, Status: "pending", BillingCycle: req.BillingCycle, IdempotencyKey: &key, PaymentStatus: "pending", GrossAmount: class.Price}
 	create := func(txCtx context.Context) error {
 		return u.enrollmentRepo.CreateIfCapacityAvailable(txCtx, enrollment)
 	}

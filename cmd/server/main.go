@@ -20,6 +20,7 @@ import (
 	"github.com/kelolakelas/kelolakelas-academic-service/pkg/billing"
 	"github.com/kelolakelas/kelolakelas-academic-service/pkg/database"
 	"github.com/kelolakelas/kelolakelas-academic-service/pkg/grpcclient"
+	"github.com/kelolakelas/kelolakelas-academic-service/pkg/notification"
 	"github.com/kelolakelas/kelolakelas-academic-service/pkg/paymentlink"
 )
 
@@ -169,6 +170,11 @@ func main() {
 		go sessionGenerationWorker.Run(ctx)
 	} else {
 		slog.Warn("Session generation worker disabled; sessions after the current month are not generated on this replica")
+	}
+
+	if cfg.ParentNotificationWorkerEnabled {
+		worker := usecase.NewParentNotificationWorker(repository.NewParentNotificationRepository(db), notification.NewClient(cfg.ChatServiceURL, cfg.InternalServiceCredential, cfg.ResendAPIKey), cfg.ResendFromEmail, time.Duration(cfg.ParentNotificationIntervalSeconds)*time.Second)
+		go worker.Run(ctx)
 	}
 
 	slog.Info("Starting academic service",

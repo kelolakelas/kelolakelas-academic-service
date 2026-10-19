@@ -26,8 +26,9 @@ func (m *emailInvoiceBilling) GenerateInvoice(ctx context.Context, request billi
 func TestEnrollPublicForwardsSenderEmailOnFreshEnrollment(t *testing.T) {
 	parentID, studentID, classID, tenantID := uuid.New(), uuid.New(), uuid.New(), uuid.New()
 	billingMock := &emailInvoiceBilling{}
+	repo := &marketplaceEnrollmentRepo{}
 	uc := NewEnrollmentUsecase(
-		&marketplaceEnrollmentRepo{},
+		repo,
 		&marketplaceStudentRepo{student: &domain.Student{ID: studentID, ParentID: parentID}},
 		&marketplaceClassRepo{class: &domain.Class{ID: classID, TenantID: tenantID, Price: 250000, IsPublished: true, EnrollmentStatus: "open"}},
 		billingMock, marketplaceTx{},
@@ -35,6 +36,9 @@ func TestEnrollPublicForwardsSenderEmailOnFreshEnrollment(t *testing.T) {
 
 	if _, err := uc.EnrollPublic(context.Background(), parentID, classID, &domain.PublicEnrollmentRequest{StudentID: studentID, BillingCycle: "monthly", SenderEmail: "parent@example.com", PaymentMethod: "SP"}, "kel75-fresh"); err != nil {
 		t.Fatalf("EnrollPublic() error = %v", err)
+	}
+	if repo.created == nil || repo.created.ParentEmail != "parent@example.com" {
+		t.Fatal("verified email not captured")
 	}
 	if len(billingMock.requests) != 1 {
 		t.Fatalf("invoice requests = %d, want 1", len(billingMock.requests))
