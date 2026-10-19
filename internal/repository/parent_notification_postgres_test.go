@@ -47,7 +47,7 @@ func newNotificationFixture(t *testing.T) *notificationFixture {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, name := range []string{"00000000000000_init_schema", "00001790812223_add_rescheduled_from_to_class_sessions", "00001790900002_parent_notifications"} {
+	for _, name := range []string{"00000000000000_init_schema", "00001790812223_add_rescheduled_from_to_class_sessions", "00001790900002_parent_notifications", "00001790900003_session_reminders"} {
 		sql, err := os.ReadFile("../../migrations/" + name + ".up.sql")
 		if err != nil {
 			t.Fatal(err)

@@ -172,6 +172,11 @@ func main() {
 		slog.Warn("Session generation worker disabled; sessions after the current month are not generated on this replica")
 	}
 
+	if cfg.SessionReminderWorkerEnabled {
+		reminder := usecase.NewSessionReminderWorker(repository.NewSessionReminderRepository(db), cfg.SessionReminderDaysAhead, cfg.SessionReminderWindowDays, time.Duration(cfg.SessionReminderIntervalSeconds)*time.Second)
+		go reminder.Run(ctx)
+	}
+
 	if cfg.ParentNotificationWorkerEnabled {
 		worker := usecase.NewParentNotificationWorker(repository.NewParentNotificationRepository(db), notification.NewClient(cfg.ChatServiceURL, cfg.InternalServiceCredential, cfg.ResendAPIKey), cfg.ResendFromEmail, time.Duration(cfg.ParentNotificationIntervalSeconds)*time.Second)
 		go worker.Run(ctx)

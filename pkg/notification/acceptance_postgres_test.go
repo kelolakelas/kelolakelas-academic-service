@@ -54,7 +54,7 @@ func TestParentNotificationHTTPAcceptancePostgres(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	for _, name := range []string{"00000000000000_init_schema", "00001790812223_add_rescheduled_from_to_class_sessions", "00001790900002_parent_notifications"} {
+	for _, name := range []string{"00000000000000_init_schema", "00001790812223_add_rescheduled_from_to_class_sessions", "00001790900002_parent_notifications", "00001790900003_session_reminders"} {
 		data, err := os.ReadFile("../../migrations/" + name + ".up.sql")
 		if err != nil {
 			t.Fatal(err)
@@ -142,6 +142,31 @@ func TestParentNotificationHTTPAcceptancePostgres(t *testing.T) {
 	for _, n := range calls {
 		if n != 2 {
 			t.Fatal("retry path not exercised")
+		}
+	}
+	// KEL-156 uses the same transport/dispatcher, including uncertain replies.
+	from := time.Date(2026, 10, 21, 0, 0, 0, 0, time.UTC)
+	reminders := repository.NewSessionReminderRepository(db)
+	batch, err := reminders.EnqueueBatch(context.Background(), from, from.AddDate(0, 0, 1), 100)
+	if err != nil || batch.EnrollmentsMarked != 1 || batch.NotificationsQueued != 2 {
+		t.Fatalf("reminders=%+v err=%v", batch, err)
+	}
+	for range 2 {
+		if err := usecase.NewParentNotificationWorker(store, client, "sender@example.test", time.Second).RunOnce(context.Background()); err != nil {
+			t.Fatal(err)
+		}
+		exec("UPDATE parent_notification_outbox SET available_at=now() WHERE status='pending'")
+	}
+	if batch, err = reminders.EnqueueBatch(context.Background(), from, from.AddDate(0, 0, 1), 100); err != nil || batch.NotificationsQueued != 0 {
+		t.Fatal("reminder replay queued twice", err)
+	}
+	db.Table("parent_notification_outbox").Where("status='sent'").Count(&sent)
+	if sent != 4 || len(seen) != 4 {
+		t.Fatalf("sent=%d unique provider messages=%d", sent, len(seen))
+	}
+	for _, n := range calls {
+		if n != 2 {
+			t.Fatal("reminder transport retry changed")
 		}
 	}
 }
