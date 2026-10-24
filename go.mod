@@ -1,6 +1,8 @@
 module github.com/kelolakelas/kelolakelas-academic-service
 
-go 1.26.9
+go 1.26.10
+
+toolchain go1.27.3
 
 require (
 	github.com/DATA-DOG/go-sqlmock v1.5.2

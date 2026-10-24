@@ -20,12 +20,13 @@ func TestServerTimeoutConfig(t *testing.T) {
 		wantErr string
 	}{
 		{name: "unset uses safe defaults", want: defaults},
-		{name: "configured values are used", values: [5]string{"2", "20", "45", "90", "25"}, want: [5]int{2, 20, 45, 90, 25}},
-		{name: "write timeout just above the billing client timeout is accepted", values: [5]string{"", "", "11"}, want: [5]int{5, 30, 11, 120, 15}},
+		{name: "configured values are used", values: [5]string{"2", "20", "55", "90", "50"}, want: [5]int{2, 20, 55, 90, 50}},
+		{name: "write timeout just above the billing client timeout is accepted", values: [5]string{"", "", "41"}, want: [5]int{5, 30, 41, 120, 45}},
 		{name: "zero never disables a bound", values: [5]string{"0", "0", "0", "0", "0"}, want: defaults},
 		{name: "negative falls back to default", values: [5]string{"-1", "-5", "-10", "-1", "-3"}, want: defaults},
-		{name: "write timeout equal to the billing client timeout is rejected", values: [5]string{"", "", "10"}, wantErr: "must be greater than the billing client timeout"},
+		{name: "write timeout equal to the billing client timeout is rejected", values: [5]string{"", "", "40"}, wantErr: "must be greater than the billing client timeout"},
 		{name: "write timeout below the billing client timeout is rejected", values: [5]string{"", "", "5"}, wantErr: "must be greater than the billing client timeout"},
+		{name: "shutdown equal to billing timeout is rejected", values: [5]string{"", "", "", "", "40"}, wantErr: "SERVER_SHUTDOWN_TIMEOUT_SECONDS"},
 		{name: "non-numeric header timeout is rejected", values: [5]string{"soon"}, wantErr: "SERVER_READ_HEADER_TIMEOUT_SECONDS"},
 		{name: "duration overflow is rejected", values: [5]string{"", "", "", "", "9223372036854775807"}, wantErr: "too large for a duration"},
 	} {

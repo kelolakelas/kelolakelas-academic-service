@@ -93,7 +93,9 @@ type client struct {
 // RequestTimeout bounds one call to billing, connection and response body included.
 // The academic HTTP server's WriteTimeout is validated to exceed it, so a request waiting
 // on a slow billing answer is never cut by the server first.
-const RequestTimeout = 10 * time.Second
+// Keep margin above the recommended 30-second provider timeout. The configured
+// 50-second gateway upstream bound and academic's write timeout remain outside this call.
+const RequestTimeout = 40 * time.Second
 
 func NewClient(baseURL, credential string) Client {
 	return &client{baseURL: strings.TrimRight(baseURL, "/"), credential: credential, httpClient: &http.Client{Timeout: RequestTimeout}}
