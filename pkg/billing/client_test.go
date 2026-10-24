@@ -1,11 +1,15 @@
 package billing
 
 import (
+	"context"
 	"encoding/json"
+	"errors"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 )
@@ -58,5 +62,44 @@ func TestGenerateInvoiceRedactsCredentialFromError(t *testing.T) {
 	_, err := NewClient(server.URL, credential).GenerateInvoice(t.Context(), InvoiceRequest{})
 	if err == nil || strings.Contains(err.Error(), credential) || !strings.Contains(err.Error(), "status 401") {
 		t.Fatalf("unexpected error=%v", err)
+	}
+}
+
+// The old ten-second client cancelled a valid provider result before billing
+// could persist/return it. This delay intentionally crosses that old boundary.
+func TestGenerateInvoiceAcceptsResponseAfterFormerDeadline(t *testing.T) {
+	id := uuid.New()
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		select {
+		case <-time.After(11 * time.Second):
+		case <-r.Context().Done():
+			return
+		}
+		_ = json.NewEncoder(w).Encode(map[string]any{"data": map[string]any{
+			"transaction_id":       id,
+			"checkout_session_url": "https://checkout.test/slow-qris",
+		}})
+	}))
+	defer server.Close()
+	response, err := NewClient(server.URL, "test-credential").GenerateInvoice(t.Context(), InvoiceRequest{EnrollmentID: id, IdempotencyKey: "same-order", PaymentMethod: "NQ"})
+	if err != nil || response.TransactionID != id {
+		t.Fatalf("slow invoice response=%+v error=%v", response, err)
+	}
+}
+
+func TestGenerateInvoiceHonorsShorterCallerDeadline(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = io.Copy(io.Discard, r.Body)
+		select {
+		case <-r.Context().Done():
+		case <-time.After(time.Second):
+		}
+	}))
+	defer server.Close()
+	ctx, cancel := context.WithTimeout(t.Context(), 50*time.Millisecond)
+	defer cancel()
+	_, err := NewClient(server.URL, "test-credential").GenerateInvoice(ctx, InvoiceRequest{})
+	if !errors.Is(err, context.DeadlineExceeded) {
+		t.Fatalf("error=%v, want caller deadline", err)
 	}
 }
