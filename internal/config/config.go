@@ -92,9 +92,9 @@ const (
 	// DefaultServerIdleTimeout bounds how long a kept-alive connection may sit idle.
 	DefaultServerIdleTimeout = 120
 	// DefaultServerShutdownTimeout exceeds billing.RequestTimeout, so a checkout that has
-	// just called billing can still finish, and stays inside a typical 30-second
-	// termination grace period.
-	DefaultServerShutdownTimeout = 15
+	// just called billing can still finish. Deployment termination grace must
+	// exceed this drain bound.
+	DefaultServerShutdownTimeout = 45
 )
 
 // maxDurationSeconds is the largest number of seconds a time.Duration can hold.
@@ -284,6 +284,10 @@ func applyServerTimeouts(config *Config) error {
 	if time.Duration(config.ServerWriteTimeout)*time.Second <= billing.RequestTimeout {
 		return fmt.Errorf("SERVER_WRITE_TIMEOUT_SECONDS (%d) must be greater than the billing client timeout (%s)",
 			config.ServerWriteTimeout, billing.RequestTimeout)
+	}
+	if time.Duration(config.ServerShutdownTimeout)*time.Second <= billing.RequestTimeout {
+		return fmt.Errorf("SERVER_SHUTDOWN_TIMEOUT_SECONDS (%d) must be greater than the billing client timeout (%s)",
+			config.ServerShutdownTimeout, billing.RequestTimeout)
 	}
 	return nil
 }
