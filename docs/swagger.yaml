@@ -2408,6 +2408,53 @@ paths:
       x-permission:
         parent_tokens: denied
         permission: class:delete
+    get:
+      parameters:
+      - description: Class UUID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.HTTPResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ClassResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Read one tenant-owned class, including unpublished configuration
+      tags:
+      - Classes
+      x-permission:
+        parent_tokens: denied
+        permission: class:read
     patch:
       consumes:
       - application/json
@@ -2536,6 +2583,67 @@ paths:
       x-permission:
         parent_tokens: denied
         permission: class:update
+  /api/v1/classes/{id}/schedules:
+    get:
+      description: Requires both class:read and schedule:read. Includes nondeleted
+        current, future and historical versions, without enrollment/parent/payment
+        preloads.
+      parameters:
+      - description: Class UUID
+        in: path
+        name: id
+        required: true
+        type: string
+      - default: 1
+        description: Page
+        in: query
+        name: page
+        type: integer
+      - default: 20
+        description: Items per page (max100)
+        in: query
+        name: page_size
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.HTTPResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ScheduleListResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Page saved schedules of one tenant-owned class
+      tags:
+      - Schedules
+      x-permission:
+        parent_tokens: denied
+        permission: class:read
   /api/v1/classes/with-category:
     post:
       consumes:

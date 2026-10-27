@@ -12,6 +12,7 @@ import (
 
 // routeHandlers carries every handler the HTTP surface serves.
 type routeHandlers struct {
+	classRead      *handler.ClassConfigurationReadHandler
 	privateChat    *handler.PrivateChatHandler
 	health         gin.HandlerFunc
 	ready          gin.HandlerFunc
@@ -52,6 +53,8 @@ func registerRoutes(r *gin.Engine, h routeHandlers, jwtSecret, internalCredentia
 		apiV1.PATCH("/categories/:id", middleware.RequirePermission(permissionClient, "category:update"), h.category.Update)
 		apiV1.DELETE("/categories/:id", middleware.RequirePermission(permissionClient, "category:delete"), h.category.Delete)
 		apiV1.GET("/classes", h.list.ListClasses)
+		apiV1.GET("/classes/:id", middleware.RequirePermission(permissionClient, "class:read"), h.classRead.Class)
+		apiV1.GET("/classes/:id/schedules", middleware.RequirePermission(permissionClient, "class:read"), middleware.RequirePermission(permissionClient, "schedule:read"), h.classRead.Schedules)
 		apiV1.POST("/classes", middleware.RequirePermission(permissionClient, "class:create"), h.class.Create)
 		apiV1.POST("/classes/with-category", middleware.RequirePermission(permissionClient, "class:create"), h.class.CreateWithCategory)
 		apiV1.DELETE("/classes/:id", middleware.RequirePermission(permissionClient, "class:delete"), h.class.Delete)
