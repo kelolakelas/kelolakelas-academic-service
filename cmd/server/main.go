@@ -133,6 +133,7 @@ func main() {
 	r := gin.New()
 	r.Use(middleware.RequestLog(), gin.Recovery())
 	registerRoutes(r, routeHandlers{
+		classRead:      &handler.ClassConfigurationReadHandler{Read: &usecase.ClassConfigurationRead{Store: repository.NewClassConfigurationReader(db)}},
 		privateChat:    privateChatHandler,
 		health:         healthHandler("academic-service"),
 		ready:          readinessHandler(sqlDB, cfg.IdentityGRPCHost),
