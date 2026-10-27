@@ -16,24 +16,26 @@ import (
 )
 
 type Config struct {
-	DatabaseURL               string `mapstructure:"DATABASE_URL"`
-	DBHost                    string `mapstructure:"DB_HOST"`
-	DBPort                    string `mapstructure:"DB_PORT"`
-	DBSSLMode                 string `mapstructure:"DB_SSLMODE"`
-	DBChannelBinding          string `mapstructure:"DB_CHANNEL_BINDING"`
-	DBUser                    string `mapstructure:"DB_USER"`
-	DBPassword                string `mapstructure:"DB_PASSWORD"`
-	DBName                    string `mapstructure:"DB_NAME"`
-	IdentityGRPCHost          string `mapstructure:"IDENTITY_GRPC_HOST"`
-	BillingServiceURL         string `mapstructure:"BILLING_SERVICE_URL"`
-	ChatServiceURL            string `mapstructure:"CHAT_SERVICE_URL"`
-	InternalServiceCredential string `mapstructure:"INTERNAL_SERVICE_CREDENTIAL"`
-	Port                      string `mapstructure:"PORT"`
-	JWTSecret                 string `mapstructure:"JWT_SECRET"`
-	CatalogTenantInfoTTL      int    `mapstructure:"CATALOG_TENANT_INFO_TTL_MINUTES"`
-	CatalogTenantInfoTimeout  int    `mapstructure:"CATALOG_TENANT_INFO_TIMEOUT_MS"`
-	CatalogPolicyCacheTTL     int    `mapstructure:"CATALOG_POLICY_CACHE_TTL_SECONDS"`
-	CatalogPolicyTimeout      int    `mapstructure:"CATALOG_POLICY_TIMEOUT_MS"`
+	PrivateRequestChatWorkerEnabled   bool   `mapstructure:"PRIVATE_REQUEST_CHAT_WORKER_ENABLED"`
+	PrivateRequestChatIntervalSeconds int    `mapstructure:"PRIVATE_REQUEST_CHAT_INTERVAL_SECONDS"`
+	DatabaseURL                       string `mapstructure:"DATABASE_URL"`
+	DBHost                            string `mapstructure:"DB_HOST"`
+	DBPort                            string `mapstructure:"DB_PORT"`
+	DBSSLMode                         string `mapstructure:"DB_SSLMODE"`
+	DBChannelBinding                  string `mapstructure:"DB_CHANNEL_BINDING"`
+	DBUser                            string `mapstructure:"DB_USER"`
+	DBPassword                        string `mapstructure:"DB_PASSWORD"`
+	DBName                            string `mapstructure:"DB_NAME"`
+	IdentityGRPCHost                  string `mapstructure:"IDENTITY_GRPC_HOST"`
+	BillingServiceURL                 string `mapstructure:"BILLING_SERVICE_URL"`
+	ChatServiceURL                    string `mapstructure:"CHAT_SERVICE_URL"`
+	InternalServiceCredential         string `mapstructure:"INTERNAL_SERVICE_CREDENTIAL"`
+	Port                              string `mapstructure:"PORT"`
+	JWTSecret                         string `mapstructure:"JWT_SECRET"`
+	CatalogTenantInfoTTL              int    `mapstructure:"CATALOG_TENANT_INFO_TTL_MINUTES"`
+	CatalogTenantInfoTimeout          int    `mapstructure:"CATALOG_TENANT_INFO_TIMEOUT_MS"`
+	CatalogPolicyCacheTTL             int    `mapstructure:"CATALOG_POLICY_CACHE_TTL_SECONDS"`
+	CatalogPolicyTimeout              int    `mapstructure:"CATALOG_POLICY_TIMEOUT_MS"`
 
 	SessionReminderWorkerEnabled   bool `mapstructure:"SESSION_REMINDER_WORKER_ENABLED"`
 	SessionReminderIntervalSeconds int  `mapstructure:"SESSION_REMINDER_INTERVAL_SECONDS"`
@@ -118,6 +120,8 @@ func LoadConfig() (Config, error) {
 		slog.Warn("No .env file found by Viper, using system environment variables")
 	}
 
+	viper.SetDefault("PRIVATE_REQUEST_CHAT_WORKER_ENABLED", true)
+	viper.SetDefault("PRIVATE_REQUEST_CHAT_INTERVAL_SECONDS", 5)
 	viper.SetDefault("SESSION_REMINDER_WORKER_ENABLED", true)
 	viper.SetDefault("SESSION_REMINDER_INTERVAL_SECONDS", 900)
 	viper.SetDefault("SESSION_REMINDER_DAYS_AHEAD", 1)
@@ -126,6 +130,7 @@ func LoadConfig() (Config, error) {
 	viper.SetDefault("PARENT_NOTIFICATION_INTERVAL_SECONDS", 15)
 	viper.AutomaticEnv()
 	for _, key := range []string{
+		"PRIVATE_REQUEST_CHAT_WORKER_ENABLED", "PRIVATE_REQUEST_CHAT_INTERVAL_SECONDS",
 		"SESSION_REMINDER_WORKER_ENABLED", "SESSION_REMINDER_INTERVAL_SECONDS", "SESSION_REMINDER_DAYS_AHEAD", "SESSION_REMINDER_WINDOW_DAYS",
 		"RESEND_API_KEY", "RESEND_FROM_EMAIL", "PARENT_NOTIFICATION_WORKER_ENABLED", "PARENT_NOTIFICATION_INTERVAL_SECONDS",
 		"DATABASE_URL", "DB_HOST", "DB_PORT", "DB_SSLMODE", "DB_CHANNEL_BINDING", "DB_USER", "DB_PASSWORD", "DB_NAME",
@@ -224,6 +229,9 @@ func LoadConfig() (Config, error) {
 	}
 	if config.SessionReminderWindowDays < 1 || config.SessionReminderWindowDays > 7 {
 		return Config{}, fmt.Errorf("SESSION_REMINDER_WINDOW_DAYS must be between 1 and 7")
+	}
+	if config.PrivateRequestChatIntervalSeconds < 1 || config.PrivateRequestChatIntervalSeconds > 3600 {
+		return Config{}, fmt.Errorf("PRIVATE_REQUEST_CHAT_INTERVAL_SECONDS must be between 1 and 3600")
 	}
 	if config.ParentNotificationIntervalSeconds < 1 || config.ParentNotificationIntervalSeconds > 3600 {
 		return Config{}, fmt.Errorf("PARENT_NOTIFICATION_INTERVAL_SECONDS must be between 1 and 3600")

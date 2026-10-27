@@ -35,7 +35,7 @@ func privateRequestError(c *gin.Context, err error) {
 		status, message = http.StatusUnprocessableEntity, err.Error()
 	case errors.Is(err, domain.ErrInvalidPaymentMethod):
 		status, message = http.StatusBadRequest, err.Error()
-	case errors.Is(err, domain.ErrParentRequired):
+	case errors.Is(err, domain.ErrParentRequired), errors.Is(err, domain.ErrPrivateChatActor):
 		status, message = http.StatusForbidden, err.Error()
 	default:
 		if err != nil && (err.Error() == "invalid request status" || err.Error() == "reason is too long" || err.Error() == "note is too long" || err.Error() == "invalid billing cycle") {

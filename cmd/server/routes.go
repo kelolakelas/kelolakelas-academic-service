@@ -12,6 +12,7 @@ import (
 
 // routeHandlers carries every handler the HTTP surface serves.
 type routeHandlers struct {
+	privateChat    *handler.PrivateChatHandler
 	health         gin.HandlerFunc
 	ready          gin.HandlerFunc
 	catalog        *handler.CatalogHandler
@@ -111,6 +112,9 @@ func registerRoutes(r *gin.Engine, h routeHandlers, jwtSecret, internalCredentia
 	}
 	internal := r.Group("/internal")
 	internal.Use(middleware.InternalServiceAuth(internalCredential))
+	internal.GET("/private-request-chat/events/:id", h.privateChat.Event)
+	internal.GET("/private-request-chat/deliveries", h.privateChat.Diagnostics)
+	internal.POST("/private-request-chat/deliveries/:id/requeue", h.privateChat.Requeue)
 	internal.PUT("/enrollments/:id/activate", h.enrollment.ActivateInternal)
 	internal.PUT("/enrollments/:id/release", h.enrollment.ReleaseInternal)
 	internal.PUT("/enrollments/:id/suspend", h.enrollment.SuspendInternal)
