@@ -40,6 +40,7 @@ type RejectPrivateScheduleRequest struct {
 }
 
 type PrivateScheduleRequest struct {
+	ChatVersion      int64                 `json:"-"`
 	ID               uuid.UUID             `gorm:"type:uuid;primaryKey" json:"id"`
 	TenantID         uuid.UUID             `gorm:"type:uuid;not null" json:"tenant_id"`
 	ClassID          uuid.UUID             `gorm:"type:uuid;not null" json:"class_id"`

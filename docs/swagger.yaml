@@ -814,6 +814,51 @@ definitions:
       old_schedule:
         $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ClassSchedule'
     type: object
+  github_com_kelolakelas_kelolakelas-academic-service_internal_domain.PrivateChatProjection:
+    properties:
+      actor_kind:
+        type: string
+      actor_user_id:
+        type: string
+      body:
+        type: string
+      class_id:
+        type: string
+      class_name:
+        type: string
+      created_at:
+        type: string
+      id:
+        type: string
+      invoice_expires_at:
+        type: string
+      kind:
+        type: string
+      parent_id:
+        type: string
+      reason:
+        type: string
+      recommended_slots:
+        items:
+          $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.PrivateScheduleSlot'
+        type: array
+      request_id:
+        type: string
+      slots:
+        items:
+          $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.PrivateScheduleSlot'
+        type: array
+      student_first_name:
+        type: string
+      student_id:
+        type: string
+      tenant_id:
+        type: string
+      transaction_id:
+        type: string
+      version:
+        type: integer
+    type: object
   github_com_kelolakelas_kelolakelas-academic-service_internal_domain.PrivateScheduleRequest:
     properties:
       billing_cycle:
@@ -4905,6 +4950,114 @@ paths:
       summary: Suspend an active enrollment and free its seat
       tags:
       - Enrollments
+  /internal/private-request-chat/deliveries:
+    get:
+      parameters:
+      - description: Delivery status; default pending/sending/failed
+        in: query
+        name: status
+        type: string
+      - description: Page of 100 rows, default 1
+        in: query
+        name: page
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.HTTPResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+      security:
+      - InternalServiceCredential: []
+      summary: List private chat deliveries by status
+      tags:
+      - Internal private request chat
+  /internal/private-request-chat/deliveries/{id}/requeue:
+    post:
+      parameters:
+      - description: Event UUID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.HTTPResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+      security:
+      - InternalServiceCredential: []
+      summary: Re-drive one failed private chat delivery
+      tags:
+      - Internal private request chat
+  /internal/private-request-chat/events/{id}:
+    get:
+      parameters:
+      - description: Event UUID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.HTTPResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.PrivateChatProjection'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ErrorResponse'
+      security:
+      - InternalServiceCredential: []
+      summary: Read a persisted private request chat event
+      tags:
+      - Internal private request chat
   /ready:
     get:
       description: Pings the database and the identity gRPC health service within

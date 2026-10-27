@@ -8,6 +8,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/google/uuid"
+	"github.com/kelolakelas/kelolakelas-academic-service/internal/domain"
 )
 
 func InternalServiceAuth(credential string) gin.HandlerFunc {
@@ -63,6 +65,9 @@ func AuthMiddleware(secret string) gin.HandlerFunc {
 		c.Set("role_id", claims.RoleID)
 		c.Set("member_id", claims.MemberID)
 		c.Set("is_parent", claims.IsParent)
+		c.Request = c.Request.WithContext(domain.WithPrivateChatActor(c.Request.Context(), domain.PrivateChatActor{UserID: parseActorUUID(claims.UserID), TenantID: parseActorUUID(claims.TenantID), RoleID: parseActorUUID(claims.RoleID), MemberID: parseActorUUID(claims.MemberID), IsParent: claims.IsParent}))
 		c.Next()
 	}
 }
+
+func parseActorUUID(value string) uuid.UUID { id, _ := uuid.Parse(value); return id }

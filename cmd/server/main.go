@@ -22,6 +22,7 @@ import (
 	"github.com/kelolakelas/kelolakelas-academic-service/pkg/grpcclient"
 	"github.com/kelolakelas/kelolakelas-academic-service/pkg/notification"
 	"github.com/kelolakelas/kelolakelas-academic-service/pkg/paymentlink"
+	"github.com/kelolakelas/kelolakelas-academic-service/pkg/privatechat"
 )
 
 // @title KelolaKelas Academic Service API
@@ -110,7 +111,10 @@ func main() {
 	scheduleHandler := handler.NewScheduleHandler(scheduleUsecase)
 	listHandler := handler.NewListHandler(categoryUsecase, classUsecase, scheduleUsecase)
 	enrollmentHandler := handler.NewEnrollmentHandler(enrollmentUsecase)
-	privateRequestHandler := handler.NewPrivateScheduleRequestHandler(usecase.NewPrivateScheduleRequestUsecase(repository.NewPrivateScheduleRequestRepository(db), studentRepo, classRepo, txManager, enrollmentRepo, scheduleRepo, sessionRepo, billingClient)).WithPaymentLink(usecase.NewPrivatePaymentLinkUsecase(repository.NewPrivateScheduleRequestRepository(db), enrollmentRepo, paymentlink.NewClient(cfg.BillingServiceURL, cfg.ChatServiceURL, cfg.InternalServiceCredential)))
+	privateChatStore := repository.NewPrivateChatStore(db)
+	privateChatClient := privatechat.New(cfg.BillingServiceURL, cfg.ChatServiceURL, cfg.InternalServiceCredential)
+	privateChatHandler := &handler.PrivateChatHandler{Events: &usecase.PrivateChatEvents{Store: privateChatStore, Invoices: privateChatClient}}
+	privateRequestHandler := handler.NewPrivateScheduleRequestHandler(usecase.NewPrivateScheduleRequestUsecase(repository.NewPrivateScheduleRequestRepositoryWithChat(db), studentRepo, classRepo, txManager, enrollmentRepo, scheduleRepo, sessionRepo, billingClient)).WithPaymentLink(usecase.NewPrivatePaymentLinkUsecase(repository.NewPrivateScheduleRequestRepository(db), enrollmentRepo, paymentlink.NewClient(cfg.BillingServiceURL, cfg.ChatServiceURL, cfg.InternalServiceCredential)))
 	chatContextHandler := handler.NewChatContextHandler(repository.NewChatContextRepository(db))
 	sessionHandler := handler.NewSessionHandler(scheduleUsecase)
 	studentHandler := handler.NewStudentHandler(usecase.NewStudentUsecase(studentRepo, studentNoteRepo, txManager))
@@ -129,6 +133,7 @@ func main() {
 	r := gin.New()
 	r.Use(middleware.RequestLog(), gin.Recovery())
 	registerRoutes(r, routeHandlers{
+		privateChat:    privateChatHandler,
 		health:         healthHandler("academic-service"),
 		ready:          readinessHandler(sqlDB, cfg.IdentityGRPCHost),
 		catalog:        catalogHandler,
@@ -177,6 +182,10 @@ func main() {
 		go reminder.Run(ctx)
 	}
 
+	if cfg.PrivateRequestChatWorkerEnabled {
+		worker := &usecase.PrivateChatWorker{Store: privateChatStore, Sender: privateChatClient, Interval: time.Duration(cfg.PrivateRequestChatIntervalSeconds) * time.Second}
+		go worker.Run(ctx)
+	}
 	if cfg.ParentNotificationWorkerEnabled {
 		worker := usecase.NewParentNotificationWorker(repository.NewParentNotificationRepository(db), notification.NewClient(cfg.ChatServiceURL, cfg.InternalServiceCredential, cfg.ResendAPIKey), cfg.ResendFromEmail, time.Duration(cfg.ParentNotificationIntervalSeconds)*time.Second)
 		go worker.Run(ctx)
