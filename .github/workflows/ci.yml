@@ -36,6 +36,7 @@ jobs:
           --health-timeout 5s
           --health-retries 10
     env:
+      KEL222_TEST_DSN: host=127.0.0.1 port=5432 user=keltest password=keltest dbname=kel196_test sslmode=disable
       KEL227_TEST_DSN: host=127.0.0.1 port=5432 user=keltest password=keltest dbname=kel196_test sslmode=disable
       KEL226_TEST_DSN: host=127.0.0.1 port=5432 user=keltest password=keltest dbname=kel196_test sslmode=disable
       KEL155_TEST_DSN: host=127.0.0.1 port=5432 user=keltest password=keltest dbname=kel196_test sslmode=disable

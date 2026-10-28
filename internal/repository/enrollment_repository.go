@@ -225,6 +225,9 @@ func (r *enrollmentRepository) GetByIDForAccess(ctx context.Context, tenantID, p
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, gorm.ErrRecordNotFound
 	}
+	if err == nil {
+		err = r.loadPrivateSchedules(ctx, []*domain.Enrollment{&enrollment})
+	}
 	return &enrollment, err
 }
 
@@ -266,7 +269,48 @@ func (r *enrollmentRepository) List(ctx context.Context, tenantID, parentID *uui
 		Limit(query.PageSize).
 		Offset((query.Page - 1) * query.PageSize).
 		Find(&items).Error
+	if err == nil {
+		err = r.loadPrivateSchedules(ctx, items)
+	}
 	return items, total, err
+}
+
+// One bounded-to-page batch, independent of tenant schedule pagination and payment
+// state. Retained historical and future versions carry their effective dates;
+// soft-deleted schedules/classes are excluded, as on the singular read path.
+func (r *enrollmentRepository) loadPrivateSchedules(ctx context.Context, items []*domain.Enrollment) error {
+	owners := make(map[uuid.UUID]*domain.Enrollment)
+	ids := make([]uuid.UUID, 0, len(items))
+	for _, item := range items {
+		if item.Class != nil && item.Class.Type == "private" && item.Class.TenantID == item.TenantID {
+			item.PrivateSchedulesLoaded = true
+			item.PrivateSchedules = []domain.ClassSchedule{}
+			owners[item.ID] = item
+			ids = append(ids, item.ID)
+		}
+	}
+	if len(ids) == 0 {
+		return nil
+	}
+	var slots []domain.ClassSchedule
+	err := r.getDB(ctx).
+		Joins("JOIN enrollments e ON e.id = class_schedules.enrollment_id AND e.class_id = class_schedules.class_id").
+		Joins("JOIN classes c ON c.id = e.class_id AND c.tenant_id = e.tenant_id").
+		Where("class_schedules.enrollment_id IN ? AND e.deleted_at IS NULL AND c.deleted_at IS NULL AND c.type = ?", ids, "private").
+		Order("class_schedules.day_of_week, class_schedules.start_time, class_schedules.valid_from NULLS FIRST, class_schedules.id").
+		Find(&slots).Error
+	if err != nil {
+		return err
+	}
+	for _, slot := range slots {
+		if slot.EnrollmentID == nil {
+			continue
+		}
+		if owner := owners[*slot.EnrollmentID]; owner != nil && slot.ClassID == owner.ClassID {
+			owner.PrivateSchedules = append(owner.PrivateSchedules, slot)
+		}
+	}
+	return nil
 }
 
 func (r *enrollmentRepository) ExistsActive(ctx context.Context, studentID, classID uuid.UUID) (bool, error) {

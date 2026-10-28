@@ -92,7 +92,9 @@ type Enrollment struct {
 	// response can carry a schedule summary. It is hidden from JSON because raw
 	// enrollments are also serialized elsewhere (e.g. session attendees), whose
 	// contract must not change; EnrollmentResponse.Schedule is the public shape.
-	Schedule *ClassSchedule `gorm:"foreignKey:ScheduleID;references:ID" json:"-"`
+	Schedule               *ClassSchedule  `gorm:"foreignKey:ScheduleID;references:ID" json:"-"`
+	PrivateSchedules       []ClassSchedule `gorm:"-" json:"-"`
+	PrivateSchedulesLoaded bool            `gorm:"-" json:"-"`
 }
 
 type EnrollStudentRequest struct {
@@ -158,6 +160,15 @@ type EnrollmentResponse struct {
 	// schedule is no longer live (soft-deleted), so clients must treat it as
 	// optional even when schedule_id is present.
 	Schedule *EnrollmentScheduleSummary `json:"schedule,omitempty"`
+	// Present (including []) only when scoped reads successfully loaded private slots.
+	PrivateSchedules *[]EnrollmentPrivateScheduleSummary `json:"private_schedules,omitempty"`
+}
+
+type EnrollmentPrivateScheduleSummary struct {
+	ID uuid.UUID `json:"id"`
+	EnrollmentScheduleSummary
+	ValidFrom  *time.Time `json:"valid_from,omitempty"`
+	ValidUntil *time.Time `json:"valid_until,omitempty"`
 }
 
 // EnrollmentScheduleSummary is the read-only view of an enrollment's weekly
