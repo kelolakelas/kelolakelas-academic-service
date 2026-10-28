@@ -731,8 +731,31 @@ func enrollmentResponse(enrollment *domain.Enrollment) *domain.EnrollmentRespons
 		ClassID: enrollment.ClassID, Status: enrollment.Status, JoinedAt: enrollment.JoinedAt,
 		UpdatedAt: enrollment.UpdatedAt, Class: enrollment.Class, Student: enrollment.Student,
 		BillingCycle: enrollment.BillingCycle, ScheduleID: enrollment.ScheduleID,
-		Schedule: enrollmentScheduleSummary(enrollment),
+		Schedule:         enrollmentScheduleSummary(enrollment),
+		PrivateSchedules: enrollmentPrivateScheduleSummaries(enrollment),
 	}
+}
+
+func enrollmentPrivateScheduleSummaries(enrollment *domain.Enrollment) *[]domain.EnrollmentPrivateScheduleSummary {
+	if !enrollment.PrivateSchedulesLoaded {
+		return nil
+	}
+	summaries := make([]domain.EnrollmentPrivateScheduleSummary, 0, len(enrollment.PrivateSchedules))
+	seen := make(map[uuid.UUID]bool)
+	for _, slot := range enrollment.PrivateSchedules {
+		if slot.EnrollmentID == nil || *slot.EnrollmentID != enrollment.ID || slot.ClassID != enrollment.ClassID || slot.DeletedAt.Valid || seen[slot.ID] {
+			continue
+		}
+		seen[slot.ID] = true
+		summary := domain.EnrollmentPrivateScheduleSummary{ID: slot.ID, EnrollmentScheduleSummary: domain.EnrollmentScheduleSummary{DayOfWeek: slot.DayOfWeek, StartTime: slot.StartTime, EndTime: slot.EndTime}, ValidFrom: slot.ValidFrom, ValidUntil: slot.ValidUntil}
+		if slot.Location != nil {
+			if location := strings.TrimSpace(*slot.Location); location != "" {
+				summary.Location = &location
+			}
+		}
+		summaries = append(summaries, summary)
+	}
+	return &summaries
 }
 
 // enrollmentScheduleSummary maps the preloaded schedule into the response, or

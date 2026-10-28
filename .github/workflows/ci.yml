@@ -25,6 +25,7 @@ jobs:
       postgres:
         image: postgres:15
         env:
+      KEL222_TEST_DSN: host=127.0.0.1 port=5432 user=keltest password=keltest dbname=kel196_test sslmode=disable
           POSTGRES_USER: keltest
           POSTGRES_PASSWORD: keltest
           POSTGRES_DB: kel196_test
