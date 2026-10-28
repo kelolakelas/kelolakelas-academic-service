@@ -88,7 +88,7 @@ func TestClassCreationMigrationUpgrade(t *testing.T) {
 				t.Fatal(err)
 			}
 			version, dirty, err := m.Version()
-			if err != nil || dirty || version != 1790900004 {
+			if err != nil || dirty || version != 1790900005 {
 				t.Fatalf("version=%d dirty=%t err=%v", version, dirty, err)
 			}
 			first, err := u.CreateClassWithCategory(context.Background(), tenant, req)

@@ -140,7 +140,11 @@ func TestPrivateEnrollmentScheduleProjectionPostgres(t *testing.T) {
 		t.Fatal("deleted class exposed slots")
 	}
 	// A projection read failure must fail the response, never become a successful [].
-	must(db.Exec("DROP TABLE class_schedules CASCADE").Error)
+	must(db.Callback().Query().Before("gorm:query").Register("kel222_read_failure", func(tx *gorm.DB) {
+		if tx.Statement.Table == "class_schedules" {
+			tx.AddError(errors.New("injected schedule read failure"))
+		}
+	}))
 	if _, err = repo.GetByIDForAccess(ctx, &otherTenant, nil, foreign.ID); err == nil {
 		t.Fatal("schedule read failure became empty")
 	}
