@@ -58,7 +58,7 @@ func TestPrivateScheduleRequestValidationAndTransitions(t *testing.T) {
 	class := &domain.Class{ID: classID, TenantID: uuid.New(), Type: "private", IsPublished: true, EnrollmentStatus: "open"}
 	student := &domain.Student{ID: studentID, ParentID: parent}
 	repo := &requestRepoStub{}
-	u := NewPrivateScheduleRequestUsecase(repo, &marketplaceStudentRepo{student: student}, &marketplaceClassRepo{class: class}, nil, nil, nil, nil, nil)
+	u := NewPrivateScheduleRequestUsecase(repo, &marketplaceStudentRepo{student: student}, &marketplaceClassRepo{class: class}, marketplaceTx{}, nil, nil, nil, nil)
 	request := func() *domain.CreatePrivateScheduleRequest {
 		return &domain.CreatePrivateScheduleRequest{StudentID: studentID, BillingCycle: "monthly", Slots: []domain.PrivateScheduleSlot{{DayOfWeek: 1, StartTime: "10:00:00", EndTime: "11:00:00"}}, ParentEmail: "verified@example.test"}
 	}

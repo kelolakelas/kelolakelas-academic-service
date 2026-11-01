@@ -34,6 +34,9 @@ import (
 func TestClassCreationAcceptanceStack(t *testing.T) {
 	path := os.Getenv("KEL204_STACK_CONFIG")
 	if path == "" {
+		path = os.Getenv("KEL229_STACK_CONFIG")
+	}
+	if path == "" {
 		t.Skip("KEL204_STACK_CONFIG not set")
 	}
 	dsn := os.Getenv("KEL196_TEST_DSN")
@@ -67,6 +70,11 @@ func TestClassCreationAcceptanceStack(t *testing.T) {
 	defer m.Close()
 	if err := m.Migrate(1790900000); err != nil {
 		t.Fatal(err)
+	}
+	if os.Getenv("KEL229_STACK_CONFIG") != "" {
+		if err := m.Up(); err != nil {
+			t.Fatal(err)
+		}
 	}
 	tenant, teacher, category, role := uuid.New(), uuid.New(), uuid.New(), uuid.New()
 	id := creationIdentity{tenant: tenant, teacher: teacher}
@@ -130,6 +138,8 @@ func TestClassCreationAcceptanceStack(t *testing.T) {
 	})
 	protected := r.Group("/api/v1")
 	protected.Use(middleware.AuthMiddleware(secret))
+	classUC := usecase.NewClassUsecase(repository.NewClassRepository(db), repository.NewScheduleRepository(db), repository.NewSessionRepository(db), repository.NewEnrollmentRepository(db), id, repository.NewTransactionManager(db), repository.NewCategoryRepository(db))
+	protected.PATCH("/classes/:id", middleware.RequirePermission(id, "class:update"), handler.NewClassHandler(classUC, u).Update)
 	protected.POST("/classes/with-category", middleware.RequirePermission(id, "class:create"), handler.NewClassHandler(nil, u).WithCreationPermissions(id).CreateWithCategory)
 	for _, table := range []string{"categories", "classes", "schedules"} {
 		resource := table

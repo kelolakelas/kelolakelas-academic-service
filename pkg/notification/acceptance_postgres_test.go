@@ -54,7 +54,10 @@ func TestParentNotificationHTTPAcceptancePostgres(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	for _, name := range []string{"00000000000000_init_schema", "00001790812223_add_rescheduled_from_to_class_sessions", "00001790900002_parent_notifications", "00001790900003_session_reminders"} {
+	for _, name := range []string{"00000000000000_init_schema", "00001790812223_add_rescheduled_from_to_class_sessions", "00001790900002_parent_notifications", "00001790900003_session_reminders", "00001790900006_private_slot_limit"} {
+		if name == "00001790900006_private_slot_limit" && db.Migrator().HasColumn("classes", "private_slot_limit") {
+			continue
+		}
 		data, err := os.ReadFile("../../migrations/" + name + ".up.sql")
 		if err != nil {
 			t.Fatal(err)

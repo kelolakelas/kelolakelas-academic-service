@@ -43,7 +43,11 @@ func TestSessionGenerationWorkerPostgres(t *testing.T) {
 		"../../migrations/00000000000000_init_schema.up.sql",
 		// Applied on top of the current init schema: it must be a no-op there.
 		"../../migrations/00001790492411_session_generation_horizon.up.sql",
+		"../../migrations/00001790900006_private_slot_limit.up.sql",
 	} {
+		if file == "../../migrations/00001790900006_private_slot_limit.up.sql" && db.Migrator().HasColumn("classes", "private_slot_limit") {
+			continue
+		}
 		schema, err := os.ReadFile(file)
 		if err != nil {
 			t.Fatal(err)

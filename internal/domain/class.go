@@ -23,10 +23,13 @@ var (
 	// relies on binding:"required"; a pointer field needs an explicit check.
 	ErrClassNameRequired = errors.New("class name is required")
 	// ErrInvalidClassPrice rejects a negative price on update.
-	ErrInvalidClassPrice = errors.New("class price must not be negative")
+	ErrInvalidClassPrice        = errors.New("class price must not be negative")
+	ErrInvalidPrivateSlotLimit  = errors.New("private_slot_limit must be a positive PostgreSQL integer and is only allowed for private classes")
+	ErrPrivateSlotLimitExceeded = errors.New("selected weekly slots exceed the current private_slot_limit; submit a smaller recommendation")
 )
 
 type Class struct {
+	PrivateSlotLimit *int             `gorm:"type:integer" json:"private_slot_limit"`
 	ID               uuid.UUID        `gorm:"type:uuid;primaryKey;default:gen_random_uuid()" json:"id"`
 	TenantID         uuid.UUID        `gorm:"type:uuid;not null;index:idx_tenant_category" json:"tenant_id"`
 	CategoryID       uuid.UUID        `gorm:"type:uuid;not null;index:idx_tenant_category" json:"category_id"`
@@ -46,6 +49,7 @@ type Class struct {
 }
 
 type CreateClassRequest struct {
+	PrivateSlotLimit *int             `json:"private_slot_limit"`
 	CategoryID       uuid.UUID        `json:"category_id" binding:"required"`
 	Name             string           `json:"name" binding:"required,max=255"`
 	Description      *json.RawMessage `json:"description,omitempty"`
@@ -70,6 +74,7 @@ type UpdateClassPublicationRequest struct {
 // explicit `null`, so this DTO cannot clear a description. Clearing is out of
 // scope for the class update endpoint.
 type UpdateClassRequest struct {
+	PrivateSlotLimit *int                   `json:"private_slot_limit"`
 	TeacherIDs       *[]uuid.UUID           `json:"teacher_ids,omitempty"`
 	Category         *CreateCategoryRequest `json:"category,omitempty"`
 	IsPublished      *bool                  `json:"is_published,omitempty"`
@@ -91,6 +96,7 @@ type CreateClassWithCategoryRequest struct {
 }
 
 type CreateClassPayload struct {
+	PrivateSlotLimit *int             `json:"private_slot_limit"`
 	Name             string           `json:"name" binding:"required,max=255"`
 	Description      *json.RawMessage `json:"description,omitempty"`
 	Type             string           `json:"type" binding:"required,oneof=private group"`
@@ -113,6 +119,7 @@ type ClassCategorySummary struct {
 }
 
 type ClassResponse struct {
+	PrivateSlotLimit *int                  `json:"private_slot_limit"`
 	TeacherIDs       []uuid.UUID           `json:"teacher_ids,omitempty"`
 	ID               uuid.UUID             `json:"id"`
 	TenantID         uuid.UUID             `json:"tenant_id"`
@@ -125,4 +132,19 @@ type ClassResponse struct {
 	CreatedAt        time.Time             `json:"created_at"`
 	IsPublished      bool                  `json:"is_published"`
 	EnrollmentStatus string                `json:"enrollment_status"`
+}
+
+func ValidatePrivateSlotLimit(classType string, limit *int) error {
+	if limit != nil && (classType != "private" || *limit < 1 || int64(*limit) > 2147483647) {
+		return ErrInvalidPrivateSlotLimit
+	}
+	return nil
+}
+
+func NewPrivateSlotLimit(classType string, limit *int) *int {
+	if classType == "private" && limit == nil {
+		defaultLimit := 1
+		return &defaultLimit
+	}
+	return limit
 }

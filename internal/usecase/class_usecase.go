@@ -146,6 +146,15 @@ func (u *classUsecase) UpdateClass(ctx context.Context, tenantID, id uuid.UUID, 
 		if class.TenantID != tenantID {
 			return domain.ErrClassNotFound
 		}
+		if req.Type != nil && *req.Type != class.Type {
+			return domain.ErrClassTypeImmutable
+		}
+		if err := domain.ValidatePrivateSlotLimit(class.Type, req.PrivateSlotLimit); err != nil {
+			return err
+		}
+		if req.PrivateSlotLimit != nil {
+			class.PrivateSlotLimit = req.PrivateSlotLimit
+		}
 
 		if req.Category != nil && req.CategoryID != nil {
 			return domain.ErrCategoryNameRequired
@@ -185,10 +194,6 @@ func (u *classUsecase) UpdateClass(ctx context.Context, tenantID, id uuid.UUID, 
 				return domain.ErrCategoryForbidden
 			}
 			class.CategoryID = *req.CategoryID
-		}
-
-		if req.Type != nil && *req.Type != class.Type {
-			return domain.ErrClassTypeImmutable
 		}
 
 		if req.Name != nil {
@@ -259,6 +264,7 @@ func classResponseFrom(class *domain.Class) *domain.ClassResponse {
 		teachers = append(teachers, assignment.TeacherID)
 	}
 	return &domain.ClassResponse{
+		PrivateSlotLimit: class.PrivateSlotLimit,
 		TeacherIDs:       teachers,
 		ID:               class.ID,
 		TenantID:         class.TenantID,
@@ -274,6 +280,9 @@ func classResponseFrom(class *domain.Class) *domain.ClassResponse {
 }
 
 func (u *classUsecase) CreateClass(ctx context.Context, tenantID uuid.UUID, req *domain.CreateClassRequest) (*domain.ClassResponse, error) {
+	if err := domain.ValidatePrivateSlotLimit(req.Type, req.PrivateSlotLimit); err != nil {
+		return nil, err
+	}
 	// 1. Validate tenant status via gRPC
 	isActive, _, err := u.tenantClient.ValidateTenantStatus(ctx, tenantID.String())
 	if err != nil || !isActive {
@@ -294,6 +303,7 @@ func (u *classUsecase) CreateClass(ctx context.Context, tenantID uuid.UUID, req 
 
 	// 2. Create Class
 	class := &domain.Class{
+		PrivateSlotLimit: domain.NewPrivateSlotLimit(req.Type, req.PrivateSlotLimit),
 		ID:               uuid.New(),
 		TenantID:         tenantID,
 		CategoryID:       req.CategoryID,
@@ -313,6 +323,7 @@ func (u *classUsecase) CreateClass(ctx context.Context, tenantID uuid.UUID, req 
 	}
 
 	return &domain.ClassResponse{
+		PrivateSlotLimit: class.PrivateSlotLimit,
 		ID:               class.ID,
 		TenantID:         class.TenantID,
 		CategoryID:       class.CategoryID,

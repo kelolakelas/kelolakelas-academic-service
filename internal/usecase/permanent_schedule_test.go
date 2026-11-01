@@ -69,7 +69,10 @@ func TestPermanentChangePostgres(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer conn.ExecContext(context.Background(), "SELECT pg_advisory_unlock(51, 1)")
-	for _, file := range []string{"00000000000000_init_schema.up.sql", "00001790812223_add_rescheduled_from_to_class_sessions.up.sql"} {
+	for _, file := range []string{"00000000000000_init_schema.up.sql", "00001790812223_add_rescheduled_from_to_class_sessions.up.sql", "00001790900006_private_slot_limit.up.sql"} {
+		if file == "00001790900006_private_slot_limit.up.sql" && db.Migrator().HasColumn("classes", "private_slot_limit") {
+			continue
+		}
 		data, err := os.ReadFile("../../migrations/" + file)
 		if err != nil {
 			t.Fatal(err)
