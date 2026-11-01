@@ -31,7 +31,7 @@ func privateRequestError(c *gin.Context, err error) {
 		status, message = http.StatusNotFound, "Student not found for parent"
 	case errors.Is(err, domain.ErrPrivateRequestConflict), errors.Is(err, domain.ErrDuplicateEnrollment), errors.Is(err, domain.ErrPrivateRequestTransition):
 		status, message = http.StatusConflict, err.Error()
-	case errors.Is(err, domain.ErrPrivateClassRequired), errors.Is(err, domain.ErrClassNotEnrollable), errors.Is(err, domain.ErrPrivateRequestSlots):
+	case errors.Is(err, domain.ErrPrivateClassRequired), errors.Is(err, domain.ErrClassNotEnrollable), errors.Is(err, domain.ErrPrivateRequestSlots), errors.Is(err, domain.ErrPrivateSlotLimitExceeded):
 		status, message = http.StatusUnprocessableEntity, err.Error()
 	case errors.Is(err, domain.ErrInvalidPaymentMethod):
 		status, message = http.StatusBadRequest, err.Error()

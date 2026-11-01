@@ -142,7 +142,7 @@ func (u *classCreationUsecase) CreateClassWithCategory(
 		if status == "" {
 			status = "open"
 		}
-		class := &domain.Class{ID: uuid.New(), TenantID: tenantID, CategoryID: category.ID, Name: req.Class.Name, Description: req.Class.Description, Type: req.Class.Type, Price: req.Class.Price, IsPublished: req.Class.IsPublished, EnrollmentStatus: status}
+		class := &domain.Class{ID: uuid.New(), TenantID: tenantID, CategoryID: category.ID, Name: req.Class.Name, Description: req.Class.Description, Type: req.Class.Type, Price: req.Class.Price, PrivateSlotLimit: domain.NewPrivateSlotLimit(req.Class.Type, req.Class.PrivateSlotLimit), IsPublished: req.Class.IsPublished, EnrollmentStatus: status}
 		if err := u.classRepo.Create(txCtx, class); err != nil {
 			return err
 		}
@@ -198,6 +198,9 @@ func validateClassCreation(req *domain.CreateClassWithCategoryRequest) error {
 	invalid := func(reason string) error { return fmt.Errorf("%w: %s", ErrInvalidClassCreation, reason) }
 	if req == nil {
 		return invalid("payload required")
+	}
+	if err := domain.ValidatePrivateSlotLimit(req.Class.Type, req.Class.PrivateSlotLimit); err != nil {
+		return invalid(err.Error())
 	}
 	if (req.CategoryID == uuid.Nil) == (req.Category == nil) {
 		return invalid("provide exactly one of category_id or category")

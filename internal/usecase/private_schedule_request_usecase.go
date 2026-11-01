@@ -160,7 +160,7 @@ func (u *privateScheduleRequestUsecase) purchase(ctx context.Context, actorID, i
 		} else if !errors.Is(lookupErr, gorm.ErrRecordNotFound) {
 			return lookupErr
 		}
-		class, err := u.classes.GetByID(txCtx, request.ClassID)
+		class, err := privateDecisionClass(txCtx, u.classes, request.ClassID)
 		if err != nil {
 			return err
 		}
@@ -183,6 +183,9 @@ func (u *privateScheduleRequestUsecase) purchase(ctx context.Context, actorID, i
 		}
 		if err = validatePrivateSlots(slots); err != nil {
 			return err
+		}
+		if class.PrivateSlotLimit != nil && len(slots) > *class.PrivateSlotLimit {
+			return domain.ErrPrivateSlotLimitExceeded
 		}
 		enrollment = &domain.Enrollment{ID: uuid.New(), ParentEmail: request.ParentEmail, TenantID: tenantID, StudentID: request.StudentID, ClassID: request.ClassID, Status: "pending", BillingCycle: request.BillingCycle, IdempotencyKey: &key, PaymentStatus: "pending", GrossAmount: class.Price}
 		if err = u.enrollments.CreateIfCapacityAvailable(txCtx, enrollment); err != nil {
@@ -377,9 +380,35 @@ func (u *privateScheduleRequestUsecase) Reject(ctx context.Context, tenantID, id
 		if err := validatePrivateSlots(req.RecommendedSlots); err != nil {
 			return nil, err
 		}
-		return u.repo.RejectWithRecommendation(ctx, id, tenantID, reason, req.RecommendedSlots)
+		var response *domain.PrivateScheduleRequest
+		err := u.tx.WithTransaction(ctx, func(txCtx context.Context) error {
+			request, err := u.repo.LockForTenant(txCtx, id, tenantID)
+			if err != nil {
+				return err
+			}
+			class, err := privateDecisionClass(txCtx, u.classes, request.ClassID)
+			if err != nil {
+				return err
+			}
+			if class.TenantID != tenantID {
+				return domain.ErrPrivateRequestNotFound
+			}
+			if class.PrivateSlotLimit != nil && len(req.RecommendedSlots) > *class.PrivateSlotLimit {
+				return domain.ErrPrivateSlotLimitExceeded
+			}
+			response, err = u.repo.RejectWithRecommendation(txCtx, id, tenantID, reason, req.RecommendedSlots)
+			return err
+		})
+		return response, err
 	}
 	return u.repo.Transition(ctx, id, &tenantID, nil, "rejected", reason)
+}
+
+func privateDecisionClass(ctx context.Context, classes repository.ClassRepository, id uuid.UUID) (*domain.Class, error) {
+	if store, ok := classes.(repository.ClassUpdateStore); ok {
+		return store.GetByIDForUpdate(ctx, id)
+	}
+	return classes.GetByID(ctx, id)
 }
 
 func (u *privateScheduleRequestUsecase) DeclineRecommendation(ctx context.Context, parentID, id uuid.UUID) (*domain.PrivateScheduleRequest, error) {

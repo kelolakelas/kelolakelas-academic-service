@@ -37,7 +37,7 @@ func TestClassEditorPostgres(t *testing.T) {
 	}
 	pool, _ := db.DB()
 	defer pool.Close()
-	for _, file := range []string{"00000000000000_init_schema.up.sql", "00001790812223_add_rescheduled_from_to_class_sessions.up.sql"} {
+	for _, file := range []string{"00000000000000_init_schema.up.sql", "00001790812223_add_rescheduled_from_to_class_sessions.up.sql", "00001790900006_private_slot_limit.up.sql"} {
 		data, err := os.ReadFile("../../migrations/" + file)
 		if err != nil {
 			t.Fatal(err)

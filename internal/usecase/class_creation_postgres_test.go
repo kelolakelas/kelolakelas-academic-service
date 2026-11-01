@@ -77,7 +77,7 @@ func TestClassCreationPostgres(t *testing.T) {
 	}
 	sqlDB, _ := db.DB()
 	defer sqlDB.Close()
-	for _, file := range []string{"00000000000000_init_schema.up.sql", "00001790812223_add_rescheduled_from_to_class_sessions.up.sql", "00001790900001_class_creation_requests.up.sql"} {
+	for _, file := range []string{"00000000000000_init_schema.up.sql", "00001790812223_add_rescheduled_from_to_class_sessions.up.sql", "00001790900001_class_creation_requests.up.sql", "00001790900006_private_slot_limit.up.sql"} {
 		sql, err := os.ReadFile("../../migrations/" + file)
 		if err != nil {
 			t.Fatal(err)
@@ -207,9 +207,14 @@ func TestClassCreationPostgres(t *testing.T) {
 		req = fresh()
 		req.Class.Type = "private"
 		req.Schedules = nil
+		limit := 3
+		req.Class.PrivateSlotLimit = &limit
 		private, err := u.CreateClassWithCategory(ctx, tenant, req)
 		if err != nil || private.Category == nil || len(private.Schedules) != 0 {
 			t.Fatalf("new private: %+v %v", private, err)
+		}
+		if private.Class.PrivateSlotLimit == nil || *private.Class.PrivateSlotLimit != 3 || res.Class.PrivateSlotLimit == nil || *res.Class.PrivateSlotLimit != 1 {
+			t.Fatal("composite explicit/default limit not preserved")
 		}
 		req = fresh()
 		req.Category = nil

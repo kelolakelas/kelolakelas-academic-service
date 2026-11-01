@@ -78,14 +78,15 @@ func (r *classRepository) UpdateByTenant(ctx context.Context, class *domain.Clas
 	db := r.getDB(ctx).Model(&domain.Class{}).
 		Where("id = ? AND tenant_id = ?", class.ID, class.TenantID).
 		Updates(map[string]interface{}{
-			"category_id":       class.CategoryID,
-			"name":              class.Name,
-			"description":       class.Description,
-			"type":              class.Type,
-			"price":             class.Price,
-			"is_published":      class.IsPublished,
-			"enrollment_status": class.EnrollmentStatus,
-			"updated_at":        time.Now(),
+			"category_id":        class.CategoryID,
+			"name":               class.Name,
+			"description":        class.Description,
+			"type":               class.Type,
+			"price":              class.Price,
+			"private_slot_limit": class.PrivateSlotLimit,
+			"is_published":       class.IsPublished,
+			"enrollment_status":  class.EnrollmentStatus,
+			"updated_at":         time.Now(),
 		})
 	if db.Error != nil {
 		return db.Error

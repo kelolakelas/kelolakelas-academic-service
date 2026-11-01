@@ -19,6 +19,15 @@ import (
 	"gorm.io/gorm/logger"
 )
 
+type preSlotLimitClassRepository struct {
+	repository.ClassRepository
+	db *gorm.DB
+}
+
+func (r preSlotLimitClassRepository) Create(ctx context.Context, class *domain.Class) error {
+	return repository.GetDB(ctx, r.db).Omit("PrivateSlotLimit").Create(class).Error
+}
+
 // Exercise cmd/migrate's actual directory/driver, including an upgrade from the
 // deployed payment-method version that previously collided with retry storage.
 func TestClassCreationMigrationUpgrade(t *testing.T) {
@@ -58,7 +67,10 @@ func TestClassCreationMigrationUpgrade(t *testing.T) {
 			}
 			tenant, teacher := uuid.New(), uuid.New()
 			identity := creationIdentity{tenant: tenant, teacher: teacher}
-			u := usecase.NewClassCreationUsecase(repository.NewTransactionManager(db), repository.NewCategoryRepository(db), repository.NewClassRepository(db), repository.NewClassTeacherRepository(db), repository.NewScheduleRepository(db), repository.NewSessionRepository(db), identity, usecase.ClassCreationOptions{Membership: identity, Store: repository.NewClassCreationStore(db)})
+			newUsecase := func(classes repository.ClassRepository) usecase.ClassCreationUsecase {
+				return usecase.NewClassCreationUsecase(repository.NewTransactionManager(db), repository.NewCategoryRepository(db), classes, repository.NewClassTeacherRepository(db), repository.NewScheduleRepository(db), repository.NewSessionRepository(db), identity, usecase.ClassCreationOptions{Membership: identity, Store: repository.NewClassCreationStore(db)})
+			}
+			u := newUsecase(preSlotLimitClassRepository{ClassRepository: repository.NewClassRepository(db), db: db})
 			fresh := func() *domain.CreateClassWithCategoryRequest {
 				return &domain.CreateClassWithCategoryRequest{Category: &domain.CreateCategoryRequest{Name: "Migration category"}, Class: domain.CreateClassPayload{Name: "Migration class", Type: "group", Price: 100}, TeacherIDs: []uuid.UUID{teacher}, IdempotencyKey: uuid.NewString(), Schedules: []domain.ScheduleItemRequest{{TutorID: &teacher, Capacity: 3, DayOfWeek: 1, StartTime: "09:00", EndTime: "10:00"}}}
 			}
@@ -88,9 +100,10 @@ func TestClassCreationMigrationUpgrade(t *testing.T) {
 				t.Fatal(err)
 			}
 			version, dirty, err := m.Version()
-			if err != nil || dirty || version != 1790900005 {
+			if err != nil || dirty || version != 1790900006 {
 				t.Fatalf("version=%d dirty=%t err=%v", version, dirty, err)
 			}
+			u = newUsecase(repository.NewClassRepository(db))
 			first, err := u.CreateClassWithCategory(context.Background(), tenant, req)
 			if err != nil {
 				t.Fatal(err)

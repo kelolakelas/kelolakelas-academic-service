@@ -68,24 +68,25 @@ type TenantLocationSnapshot struct {
 }
 
 type CatalogItem struct {
-	ID              uuid.UUID        `json:"id"`
-	TenantID        uuid.UUID        `json:"tenant_id"`
-	TenantName      string           `json:"tenant_name"`
-	TenantAddress   *string          `json:"tenant_address,omitempty"`
-	TenantLatitude  *float64         `json:"latitude,omitempty"`
-	TenantLongitude *float64         `json:"longitude,omitempty"`
-	CategoryID      uuid.UUID        `json:"category_id"`
-	CategoryName    string           `json:"category_name"`
-	Name            string           `json:"name"`
-	Description     *json.RawMessage `json:"description,omitempty"`
-	Type            string           `json:"type"`
-	Price           int64            `json:"price"`
-	Schedules       json.RawMessage  `json:"schedules"`
-	DistanceKM      *float64         `json:"distance_km,omitempty"`
-	IsEnrollable    bool             `json:"is_enrollable"`
-	RatingAverage   *float64         `json:"rating_average"`
-	RatingCount     int64            `json:"rating_count"`
-	CreatedAt       time.Time        `json:"created_at"`
+	PrivateSlotLimit *int             `json:"private_slot_limit"`
+	ID               uuid.UUID        `json:"id"`
+	TenantID         uuid.UUID        `json:"tenant_id"`
+	TenantName       string           `json:"tenant_name"`
+	TenantAddress    *string          `json:"tenant_address,omitempty"`
+	TenantLatitude   *float64         `json:"latitude,omitempty"`
+	TenantLongitude  *float64         `json:"longitude,omitempty"`
+	CategoryID       uuid.UUID        `json:"category_id"`
+	CategoryName     string           `json:"category_name"`
+	Name             string           `json:"name"`
+	Description      *json.RawMessage `json:"description,omitempty"`
+	Type             string           `json:"type"`
+	Price            int64            `json:"price"`
+	Schedules        json.RawMessage  `json:"schedules"`
+	DistanceKM       *float64         `json:"distance_km,omitempty"`
+	IsEnrollable     bool             `json:"is_enrollable"`
+	RatingAverage    *float64         `json:"rating_average"`
+	RatingCount      int64            `json:"rating_count"`
+	CreatedAt        time.Time        `json:"created_at"`
 }
 
 // CatalogOpen is true when the platform public catalog policy (KEL-98) lets

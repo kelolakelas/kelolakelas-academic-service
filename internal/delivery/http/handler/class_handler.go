@@ -131,6 +131,10 @@ func (h *ClassHandler) Create(c *gin.Context) {
 
 	res, err := h.classUsecase.CreateClass(c.Request.Context(), tenantID, &req)
 	if err != nil {
+		if errors.Is(err, domain.ErrInvalidPrivateSlotLimit) {
+			c.JSON(http.StatusBadRequest, gin.H{"status": "error", "message": err.Error(), "data": nil})
+			return
+		}
 		if errors.Is(err, usecase.ErrTenantInactiveOrNotFound) {
 			c.JSON(http.StatusForbidden, gin.H{
 				"status":  "error",
@@ -258,7 +262,7 @@ func (h *ClassHandler) Update(c *gin.Context) {
 		case errors.Is(err, domain.ErrCategoryNotFound),
 			errors.Is(err, domain.ErrCategoryForbidden),
 			errors.Is(err, domain.ErrClassTypeImmutable),
-			errors.Is(err, domain.ErrClassNameRequired),
+			errors.Is(err, domain.ErrClassNameRequired), errors.Is(err, domain.ErrInvalidPrivateSlotLimit),
 			errors.Is(err, domain.ErrCategoryNameRequired), errors.Is(err, domain.ErrClassNotEnrollable), errors.Is(err, domain.ErrInvalidClassPrice):
 			c.JSON(http.StatusUnprocessableEntity, gin.H{"status": "error", "message": err.Error(), "data": nil})
 		default:
