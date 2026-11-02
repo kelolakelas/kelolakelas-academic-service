@@ -25,9 +25,14 @@ import (
 
 func privateChatPG(t *testing.T) *gorm.DB {
 	t.Helper()
-	dsn := os.Getenv("KEL226_TEST_DSN")
+	return privateWorkflowPG(t, "KEL226_TEST_DSN")
+}
+
+func privateWorkflowPG(t *testing.T, environment string) *gorm.DB {
+	t.Helper()
+	dsn := os.Getenv(environment)
 	if dsn == "" {
-		t.Skip("set KEL226_TEST_DSN to a disposable PostgreSQL database")
+		t.Skip("set " + environment + " to a disposable PostgreSQL database")
 	}
 	cfg, err := pgx.ParseConfig(dsn)
 	if err != nil {

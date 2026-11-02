@@ -70,7 +70,8 @@ func TestPrivateSlotLimitDecisionAndMaterializedRetry(t *testing.T) {
 						_, err := uc.AcceptRecommendation(context.Background(), parent, request.ID)
 						return err
 					}
-					_, err := uc.Approve(context.Background(), tenant, request.ID)
+					approval := &domain.ApprovePrivateScheduleRequest{SelectedSlotIndexes: []int{0, 1}, ProposalSnapshot: slots, ExpectedPrivateSlotLimit: &limit}
+					_, err := uc.Approve(context.Background(), tenant, request.ID, approval)
 					return err
 				}
 				if err := decide(); !errors.Is(err, domain.ErrPrivateSlotLimitExceeded) {

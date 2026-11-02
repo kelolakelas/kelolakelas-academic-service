@@ -35,6 +35,11 @@ func (r *approvalRequestRepo) SetStatus(_ context.Context, _, _ uuid.UUID, statu
 	return nil
 }
 
+func (r *approvalRequestRepo) SaveApprovedSlots(_ context.Context, _, _ uuid.UUID, slots []domain.PrivateScheduleSlot) error {
+	r.request.ApprovedSlots = append([]domain.PrivateScheduleSlot(nil), slots...)
+	return nil
+}
+
 type approvalEnrollmentRepo struct {
 	repository.EnrollmentRepository
 	enrollment        *domain.Enrollment

@@ -29,9 +29,9 @@ func privateRequestError(c *gin.Context, err error) {
 		status, message = http.StatusNotFound, "Schedule request or class not found"
 	case errors.Is(err, domain.ErrStudentOwnership):
 		status, message = http.StatusNotFound, "Student not found for parent"
-	case errors.Is(err, domain.ErrPrivateRequestConflict), errors.Is(err, domain.ErrDuplicateEnrollment), errors.Is(err, domain.ErrPrivateRequestTransition):
+	case errors.Is(err, domain.ErrPrivateSelectionStale), errors.Is(err, domain.ErrPrivateSelectionConflict), errors.Is(err, domain.ErrPrivateRequestConflict), errors.Is(err, domain.ErrDuplicateEnrollment), errors.Is(err, domain.ErrPrivateRequestTransition):
 		status, message = http.StatusConflict, err.Error()
-	case errors.Is(err, domain.ErrPrivateClassRequired), errors.Is(err, domain.ErrClassNotEnrollable), errors.Is(err, domain.ErrPrivateRequestSlots), errors.Is(err, domain.ErrPrivateSlotLimitExceeded):
+	case errors.Is(err, domain.ErrPrivateSelection), errors.Is(err, domain.ErrPrivateClassRequired), errors.Is(err, domain.ErrClassNotEnrollable), errors.Is(err, domain.ErrPrivateRequestSlots), errors.Is(err, domain.ErrPrivateSlotLimitExceeded):
 		status, message = http.StatusUnprocessableEntity, err.Error()
 	case errors.Is(err, domain.ErrInvalidPaymentMethod):
 		status, message = http.StatusBadRequest, err.Error()
@@ -44,7 +44,17 @@ func privateRequestError(c *gin.Context, err error) {
 			logInternalError(c.Request.Context(), "private schedule request", err)
 		}
 	}
-	c.JSON(status, gin.H{"status": "error", "message": message, "data": nil})
+	code := ""
+	if errors.Is(err, domain.ErrPrivateSelectionStale) {
+		code = "private_selection_stale"
+	}
+	if errors.Is(err, domain.ErrPrivateSelectionConflict) {
+		code = "private_selection_conflict"
+	}
+	if errors.Is(err, domain.ErrPrivateSelection) {
+		code = "private_selection_required"
+	}
+	c.JSON(status, gin.H{"status": "error", "message": message, "code": code, "data": nil})
 }
 
 func privateRequestParent(c *gin.Context) (uuid.UUID, bool) {
@@ -177,10 +187,12 @@ func (h *PrivateScheduleRequestHandler) Get(c *gin.Context) {
 // Approve godoc
 // @Summary Approve a pending private schedule request in own tenant
 // @Tags Private schedule requests
+// @Accept json
 // @Produce json
 // @Security BearerAuth
 // @x-permission {"permission":"enrollment:update","parent_tokens":"denied"}
 // @Param id path string true "Request UUID"
+// @Param request body domain.ApprovePrivateScheduleRequest false "Snapshot-qualified slot selection; required for first approval of bounded classes"
 // @Success 200 {object} domain.HTTPResponse{data=domain.PublicEnrollmentResponse}
 // @Failure 403 {object} domain.ErrorResponse
 // @Failure 404 {object} domain.ErrorResponse
@@ -197,7 +209,15 @@ func (h *PrivateScheduleRequestHandler) Approve(c *gin.Context) {
 	if !ok {
 		return
 	}
-	result, err := h.usecase.Approve(c.Request.Context(), tenant, id)
+	var approval *domain.ApprovePrivateScheduleRequest
+	if c.Request.Body != nil && c.Request.ContentLength != 0 {
+		approval = &domain.ApprovePrivateScheduleRequest{}
+		if err := c.ShouldBindJSON(approval); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"status": "error", "message": "Invalid approval selection"})
+			return
+		}
+	}
+	result, err := h.usecase.Approve(c.Request.Context(), tenant, id, approval)
 	if err != nil {
 		if errors.Is(err, domain.ErrPlatformFeeExceedsGross) {
 			c.JSON(http.StatusUnprocessableEntity, gin.H{"status": "error", "message": err.Error(), "code": domain.PlatformFeeExceedsGrossErrorCode, "data": nil})

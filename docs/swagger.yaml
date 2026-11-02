@@ -1,5 +1,18 @@
 basePath: /
 definitions:
+  github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ApprovePrivateScheduleRequest:
+    properties:
+      expected_private_slot_limit:
+        type: integer
+      proposal_snapshot:
+        items:
+          $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.PrivateScheduleSlot'
+        type: array
+      selected_slot_indexes:
+        items:
+          type: integer
+        type: array
+    type: object
   github_com_kelolakelas_kelolakelas-academic-service_internal_domain.AssignEnrollmentScheduleRequest:
     properties:
       schedule_id:
@@ -102,6 +115,8 @@ definitions:
         type: string
       price:
         type: integer
+      private_slot_limit:
+        type: integer
       rating_average:
         type: number
       rating_count:
@@ -199,6 +214,8 @@ definitions:
         description: 'Financial Data: Always use int64 for money, price, balance,
           or amounts'
         type: integer
+      private_slot_limit:
+        type: integer
       tenant_id:
         type: string
       type:
@@ -244,6 +261,8 @@ definitions:
       name:
         type: string
       price:
+        type: integer
+      private_slot_limit:
         type: integer
       teacher_ids:
         items:
@@ -408,6 +427,8 @@ definitions:
       price:
         minimum: 0
         type: integer
+      private_slot_limit:
+        type: integer
       type:
         enum:
         - private
@@ -439,6 +460,8 @@ definitions:
         type: string
       price:
         minimum: 0
+        type: integer
+      private_slot_limit:
         type: integer
       type:
         enum:
@@ -654,6 +677,30 @@ definitions:
       pagination:
         $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.Pagination'
     type: object
+  github_com_kelolakelas_kelolakelas-academic-service_internal_domain.EnrollmentPrivateScheduleSummary:
+    properties:
+      day_of_week:
+        description: 1 = Senin, 7 = Minggu (ISO 8601)
+        example: 1
+        type: integer
+      end_time:
+        description: HH:MM:SS
+        example: "17:30:00"
+        type: string
+      id:
+        type: string
+      location:
+        example: Ruang A
+        type: string
+      start_time:
+        description: HH:MM:SS
+        example: "16:00:00"
+        type: string
+      valid_from:
+        type: string
+      valid_until:
+        type: string
+    type: object
   github_com_kelolakelas_kelolakelas-academic-service_internal_domain.EnrollmentResponse:
     properties:
       billing_cycle:
@@ -666,6 +713,12 @@ definitions:
         type: string
       joined_at:
         type: string
+      private_schedules:
+        description: Present (including []) only when scoped reads successfully loaded
+          private slots.
+        items:
+          $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.EnrollmentPrivateScheduleSummary'
+        type: array
       schedule:
         allOf:
         - $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.EnrollmentScheduleSummary'
@@ -861,6 +914,10 @@ definitions:
     type: object
   github_com_kelolakelas_kelolakelas-academic-service_internal_domain.PrivateScheduleRequest:
     properties:
+      approved_slots:
+        items:
+          $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.PrivateScheduleSlot'
+        type: array
       billing_cycle:
         type: string
       class_id:
@@ -1267,6 +1324,8 @@ definitions:
         type: string
       price:
         minimum: 0
+        type: integer
+      private_slot_limit:
         type: integer
       teacher_ids:
         items:
@@ -3175,12 +3234,20 @@ paths:
         permission: enrollment:read
   /api/v1/schedule-requests/{id}/approve:
     post:
+      consumes:
+      - application/json
       parameters:
       - description: Request UUID
         in: path
         name: id
         required: true
         type: string
+      - description: Snapshot-qualified slot selection; required for first approval
+          of bounded classes
+        in: body
+        name: request
+        schema:
+          $ref: '#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ApprovePrivateScheduleRequest'
       produces:
       - application/json
       responses:

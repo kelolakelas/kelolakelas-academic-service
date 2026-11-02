@@ -2904,6 +2904,9 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
+                "consumes": [
+                    "application/json"
+                ],
                 "produces": [
                     "application/json"
                 ],
@@ -2918,6 +2921,14 @@ const docTemplate = `{
                         "name": "id",
                         "in": "path",
                         "required": true
+                    },
+                    {
+                        "description": "Snapshot-qualified slot selection; required for first approval of bounded classes",
+                        "name": "request",
+                        "in": "body",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ApprovePrivateScheduleRequest"
+                        }
                     }
                 ],
                 "responses": {
@@ -6054,6 +6065,26 @@ const docTemplate = `{
         }
     },
     "definitions": {
+        "github_com_kelolakelas_kelolakelas-academic-service_internal_domain.ApprovePrivateScheduleRequest": {
+            "type": "object",
+            "properties": {
+                "expected_private_slot_limit": {
+                    "type": "integer"
+                },
+                "proposal_snapshot": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.PrivateScheduleSlot"
+                    }
+                },
+                "selected_slot_indexes": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                }
+            }
+        },
         "github_com_kelolakelas_kelolakelas-academic-service_internal_domain.AssignEnrollmentScheduleRequest": {
             "type": "object",
             "required": [
@@ -6206,6 +6237,9 @@ const docTemplate = `{
                 "price": {
                     "type": "integer"
                 },
+                "private_slot_limit": {
+                    "type": "integer"
+                },
                 "rating_average": {
                     "type": "number"
                 },
@@ -6352,6 +6386,9 @@ const docTemplate = `{
                     "description": "Financial Data: Always use int64 for money, price, balance, or amounts",
                     "type": "integer"
                 },
+                "private_slot_limit": {
+                    "type": "integer"
+                },
                 "tenant_id": {
                     "type": "string"
                 },
@@ -6420,6 +6457,9 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "price": {
+                    "type": "integer"
+                },
+                "private_slot_limit": {
                     "type": "integer"
                 },
                 "teacher_ids": {
@@ -6650,6 +6690,9 @@ const docTemplate = `{
                     "type": "integer",
                     "minimum": 0
                 },
+                "private_slot_limit": {
+                    "type": "integer"
+                },
                 "type": {
                     "type": "string",
                     "enum": [
@@ -6696,6 +6739,9 @@ const docTemplate = `{
                 "price": {
                     "type": "integer",
                     "minimum": 0
+                },
+                "private_slot_limit": {
+                    "type": "integer"
                 },
                 "type": {
                     "type": "string",
@@ -6998,6 +7044,39 @@ const docTemplate = `{
                 }
             }
         },
+        "github_com_kelolakelas_kelolakelas-academic-service_internal_domain.EnrollmentPrivateScheduleSummary": {
+            "type": "object",
+            "properties": {
+                "day_of_week": {
+                    "description": "1 = Senin, 7 = Minggu (ISO 8601)",
+                    "type": "integer",
+                    "example": 1
+                },
+                "end_time": {
+                    "description": "HH:MM:SS",
+                    "type": "string",
+                    "example": "17:30:00"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "location": {
+                    "type": "string",
+                    "example": "Ruang A"
+                },
+                "start_time": {
+                    "description": "HH:MM:SS",
+                    "type": "string",
+                    "example": "16:00:00"
+                },
+                "valid_from": {
+                    "type": "string"
+                },
+                "valid_until": {
+                    "type": "string"
+                }
+            }
+        },
         "github_com_kelolakelas_kelolakelas-academic-service_internal_domain.EnrollmentResponse": {
             "type": "object",
             "properties": {
@@ -7015,6 +7094,13 @@ const docTemplate = `{
                 },
                 "joined_at": {
                     "type": "string"
+                },
+                "private_schedules": {
+                    "description": "Present (including []) only when scoped reads successfully loaded private slots.",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.EnrollmentPrivateScheduleSummary"
+                    }
                 },
                 "schedule": {
                     "description": "Schedule summarises the weekly slot behind ScheduleID (KEL-70). It is\nomitted when the enrollment has no schedule (private class) or when the\nschedule is no longer live (soft-deleted), so clients must treat it as\noptional even when schedule_id is present.",
@@ -7294,6 +7380,12 @@ const docTemplate = `{
         "github_com_kelolakelas_kelolakelas-academic-service_internal_domain.PrivateScheduleRequest": {
             "type": "object",
             "properties": {
+                "approved_slots": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_kelolakelas_kelolakelas-academic-service_internal_domain.PrivateScheduleSlot"
+                    }
+                },
                 "billing_cycle": {
                     "type": "string"
                 },
@@ -7892,6 +7984,9 @@ const docTemplate = `{
                 "price": {
                     "type": "integer",
                     "minimum": 0
+                },
+                "private_slot_limit": {
+                    "type": "integer"
                 },
                 "teacher_ids": {
                     "type": "array",

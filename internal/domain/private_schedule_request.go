@@ -14,6 +14,9 @@ var (
 	ErrPrivateClassRequired     = errors.New("schedule requests require a private class")
 	ErrPrivateRequestSlots      = errors.New("slots must have valid non-overlapping times with end_time after start_time")
 	ErrPrivateCheckout          = errors.New("private classes require an approved schedule request; direct checkout is unavailable")
+	ErrPrivateSelection         = errors.New("choose valid proposal slots and send the proposal snapshot before approval")
+	ErrPrivateSelectionStale    = errors.New("proposal or slot limit changed; reload the request before approval")
+	ErrPrivateSelectionConflict = errors.New("approval already materialized with a different slot selection")
 )
 
 const PrivateCheckoutErrorCode = "private_schedule_request_required"
@@ -39,6 +42,12 @@ type RejectPrivateScheduleRequest struct {
 	RecommendedSlots []PrivateScheduleSlot `json:"recommended_slots,omitempty"`
 }
 
+type ApprovePrivateScheduleRequest struct {
+	SelectedSlotIndexes      []int                 `json:"selected_slot_indexes"`
+	ProposalSnapshot         []PrivateScheduleSlot `json:"proposal_snapshot"`
+	ExpectedPrivateSlotLimit *int                  `json:"expected_private_slot_limit"`
+}
+
 type PrivateScheduleRequest struct {
 	ChatVersion      int64                 `json:"-"`
 	ID               uuid.UUID             `gorm:"type:uuid;primaryKey" json:"id"`
@@ -50,6 +59,7 @@ type PrivateScheduleRequest struct {
 	BillingCycle     string                `gorm:"type:varchar(20);not null" json:"billing_cycle"`
 	PaymentMethod    string                `gorm:"type:varchar(2);not null;default:VC" json:"payment_method"`
 	Slots            []PrivateScheduleSlot `gorm:"serializer:json;type:jsonb;not null" json:"slots"`
+	ApprovedSlots    []PrivateScheduleSlot `gorm:"serializer:json;type:jsonb" json:"approved_slots,omitempty"`
 	RecommendedSlots []PrivateScheduleSlot `gorm:"serializer:json;type:jsonb" json:"recommended_slots,omitempty"`
 	Note             *string               `gorm:"type:text" json:"note,omitempty"`
 	Status           string                `gorm:"type:varchar(20);not null" json:"status"`

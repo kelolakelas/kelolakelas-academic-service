@@ -24,7 +24,7 @@ type PrivateScheduleRequestUsecase interface {
 	Reject(context.Context, uuid.UUID, uuid.UUID, *domain.RejectPrivateScheduleRequest) (*domain.PrivateScheduleRequest, error)
 	Cancel(context.Context, uuid.UUID, uuid.UUID) (*domain.PrivateScheduleRequest, error)
 	DeclineRecommendation(context.Context, uuid.UUID, uuid.UUID) (*domain.PrivateScheduleRequest, error)
-	Approve(context.Context, uuid.UUID, uuid.UUID) (*domain.PublicEnrollmentResponse, error)
+	Approve(context.Context, uuid.UUID, uuid.UUID, ...*domain.ApprovePrivateScheduleRequest) (*domain.PublicEnrollmentResponse, error)
 	AcceptRecommendation(context.Context, uuid.UUID, uuid.UUID) (*domain.PublicEnrollmentResponse, error)
 }
 
@@ -86,17 +86,21 @@ func validatePrivateSlots(slots []domain.PrivateScheduleSlot) error {
 }
 
 // Approve and AcceptRecommendation share the same locked purchase and billing path.
-func (u *privateScheduleRequestUsecase) Approve(ctx context.Context, tenantID, id uuid.UUID) (*domain.PublicEnrollmentResponse, error) {
-	return u.purchase(ctx, tenantID, id, false)
+func (u *privateScheduleRequestUsecase) Approve(ctx context.Context, tenantID, id uuid.UUID, approvals ...*domain.ApprovePrivateScheduleRequest) (*domain.PublicEnrollmentResponse, error) {
+	var approval *domain.ApprovePrivateScheduleRequest
+	if len(approvals) > 0 {
+		approval = approvals[0]
+	}
+	return u.purchase(ctx, tenantID, id, false, approval)
 }
 
 func (u *privateScheduleRequestUsecase) AcceptRecommendation(ctx context.Context, parentID, id uuid.UUID) (*domain.PublicEnrollmentResponse, error) {
-	return u.purchase(ctx, parentID, id, true)
+	return u.purchase(ctx, parentID, id, true, nil)
 }
 
 // purchase serializes creation on the request row. Billing runs only after the
 // transaction commits; retries reuse its stable key and enrollment.
-func (u *privateScheduleRequestUsecase) purchase(ctx context.Context, actorID, id uuid.UUID, recommendation bool) (*domain.PublicEnrollmentResponse, error) {
+func (u *privateScheduleRequestUsecase) purchase(ctx context.Context, actorID, id uuid.UUID, recommendation bool, approval *domain.ApprovePrivateScheduleRequest) (*domain.PublicEnrollmentResponse, error) {
 	if actorID == uuid.Nil || id == uuid.Nil {
 		return nil, domain.ErrPrivateRequestNotFound
 	}
@@ -126,6 +130,19 @@ func (u *privateScheduleRequestUsecase) purchase(ctx context.Context, actorID, i
 		} else if len(request.RecommendedSlots) > 0 || request.Status != "pending" && request.Status != "approved" {
 			return domain.ErrPrivateRequestTransition
 		}
+		var selected []domain.PrivateScheduleSlot
+		if !recommendation {
+			selected, err = privateSelectedSlots(request, approval)
+			if err != nil {
+				return err
+			}
+			if len(request.ApprovedSlots) > 0 && approval != nil && !samePrivateSlots(selected, request.ApprovedSlots) {
+				return domain.ErrPrivateSelectionConflict
+			}
+			if request.Status == "approved" && len(request.ApprovedSlots) == 0 && approval != nil && !samePrivateSlots(selected, request.Slots) {
+				return domain.ErrPrivateSelectionConflict
+			}
+		}
 		if request.Status == "approved" {
 			enrollment, err = u.enrollments.GetByIdempotencyKey(txCtx, request.ParentID, key)
 			if err != nil {
@@ -140,6 +157,9 @@ func (u *privateScheduleRequestUsecase) purchase(ctx context.Context, actorID, i
 		// request-derived key and schedules. Retry the same purchase after the
 		// pricing policy changes rather than allocating a second enrollment.
 		if existing, lookupErr := u.enrollments.GetByIdempotencyKey(txCtx, request.ParentID, key); lookupErr == nil {
+			if !recommendation && approval != nil && len(request.ApprovedSlots) == 0 && !samePrivateSlots(selected, request.Slots) {
+				return domain.ErrPrivateSelectionConflict
+			}
 			if existing.Status == "pending" && existing.PaymentTransactionID == nil {
 				enrollment = existing
 				return u.repo.SetStatus(txCtx, id, tenantID, "approved")
@@ -180,12 +200,26 @@ func (u *privateScheduleRequestUsecase) purchase(ctx context.Context, actorID, i
 		slots := request.Slots
 		if recommendation {
 			slots = request.RecommendedSlots
+		} else {
+			slots = selected
+			if approval == nil && class.PrivateSlotLimit != nil {
+				return domain.ErrPrivateSelection
+			}
+			if approval != nil && !samePrivateLimit(approval.ExpectedPrivateSlotLimit, class.PrivateSlotLimit) {
+				return domain.ErrPrivateSelectionStale
+			}
 		}
 		if err = validatePrivateSlots(slots); err != nil {
 			return err
 		}
 		if class.PrivateSlotLimit != nil && len(slots) > *class.PrivateSlotLimit {
 			return domain.ErrPrivateSlotLimitExceeded
+		}
+		if !recommendation {
+			if err = u.repo.SaveApprovedSlots(txCtx, id, tenantID, slots); err != nil {
+				return err
+			}
+			request.ApprovedSlots = slots
 		}
 		enrollment = &domain.Enrollment{ID: uuid.New(), ParentEmail: request.ParentEmail, TenantID: tenantID, StudentID: request.StudentID, ClassID: request.ClassID, Status: "pending", BillingCycle: request.BillingCycle, IdempotencyKey: &key, PaymentStatus: "pending", GrossAmount: class.Price}
 		if err = u.enrollments.CreateIfCapacityAvailable(txCtx, enrollment); err != nil {

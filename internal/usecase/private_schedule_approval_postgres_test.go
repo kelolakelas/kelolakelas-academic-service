@@ -2,13 +2,11 @@ package usecase
 
 import (
 	"context"
-	"os"
+	"errors"
 	"sync"
 	"testing"
 
 	"github.com/google/uuid"
-	"gorm.io/driver/postgres"
-	"gorm.io/gorm"
 
 	"github.com/kelolakelas/kelolakelas-academic-service/internal/domain"
 	"github.com/kelolakelas/kelolakelas-academic-service/internal/repository"
@@ -17,23 +15,7 @@ import (
 
 // Runs against an isolated KEL108_TEST_DSN database; no shared DB is mutated.
 func TestPrivateApprovalPostgresParallel(t *testing.T) {
-	dsn := os.Getenv("KEL108_TEST_DSN")
-	if dsn == "" {
-		t.Skip("KEL108_TEST_DSN not set")
-	}
-	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
-	if err != nil {
-		t.Fatal(err)
-	}
-	for _, migration := range []string{"00000000000000_init_schema.up.sql", "00001790600000_private_schedule_requests.up.sql"} {
-		sql, readErr := os.ReadFile("../../migrations/" + migration)
-		if readErr != nil {
-			t.Fatal(readErr)
-		}
-		if err := db.Exec(string(sql)).Error; err != nil {
-			t.Fatal(err)
-		}
-	}
+	db := privateWorkflowPG(t, "KEL108_TEST_DSN")
 	tenant, parent, studentID, classID, categoryID, requestID := uuid.New(), uuid.New(), uuid.New(), uuid.New(), uuid.New(), uuid.New()
 	for _, stmt := range []struct {
 		sql  string
@@ -109,14 +91,108 @@ type concurrentApprovalBilling struct {
 	sync.Mutex
 	response billing.InvoiceResponse
 	keys     int
+	err      error
 }
 
 func (b *concurrentApprovalBilling) GenerateInvoice(_ context.Context, req billing.InvoiceRequest) (*billing.InvoiceResponse, error) {
 	b.Lock()
 	defer b.Unlock()
 	b.keys++
+	if b.err != nil {
+		return nil, b.err
+	}
 	return &b.response, nil
 }
 func (*concurrentApprovalBilling) CancelEnrollmentPayment(context.Context, uuid.UUID) (*billing.CancelResponse, error) {
 	return nil, nil
+}
+
+func TestSelectedPrivateApprovalPostgres(t *testing.T) {
+	for _, scenario := range []string{"same selection", "different selections", "invoice recovery"} {
+		t.Run(scenario, func(t *testing.T) {
+			db := privateWorkflowPG(t, "KEL108_TEST_DSN")
+			tenant, parent, student, class, category := uuid.New(), uuid.New(), uuid.New(), uuid.New(), uuid.New()
+			for _, statement := range []struct {
+				query string
+				args  []any
+			}{
+				{"INSERT INTO categories(id,tenant_id,name) VALUES(?,?,'Subset')", []any{category, tenant}},
+				{"INSERT INTO classes(id,tenant_id,category_id,name,type,price,is_published,enrollment_status,private_slot_limit) VALUES(?,?,?,'Subset','private',100000,true,'open',2)", []any{class, tenant, category}},
+				{"INSERT INTO students(id,parent_id,first_name) VALUES(?,?,'Subset')", []any{student, parent}},
+			} {
+				if err := db.Exec(statement.query, statement.args...).Error; err != nil {
+					t.Fatal(err)
+				}
+			}
+			ctx := domain.WithPrivateChatActor(context.Background(), domain.PrivateChatActor{UserID: parent, IsParent: true})
+			requests := repository.NewPrivateScheduleRequestRepositoryWithChat(db)
+			request := &domain.PrivateScheduleRequest{ID: uuid.New(), TenantID: tenant, ParentID: parent, StudentID: student, ClassID: class, ParentEmail: "parent@example.test", BillingCycle: "monthly", Status: "pending", Slots: []domain.PrivateScheduleSlot{{DayOfWeek: 1, StartTime: "10:00:00", EndTime: "11:00:00"}, {DayOfWeek: 3, StartTime: "12:00:00", EndTime: "13:00:00"}, {DayOfWeek: 5, StartTime: "14:00:00", EndTime: "15:00:00"}}}
+			if err := requests.Create(ctx, request); err != nil {
+				t.Fatal(err)
+			}
+			ctx = domain.WithPrivateChatActor(context.Background(), domain.PrivateChatActor{UserID: uuid.New(), TenantID: tenant, RoleID: uuid.New(), MemberID: uuid.New()})
+			invoice := &concurrentApprovalBilling{response: billing.InvoiceResponse{TransactionID: uuid.New(), CheckoutSessionURL: "https://pay.example.test/subset"}}
+			uc := NewPrivateScheduleRequestUsecase(requests, repository.NewStudentRepository(db), repository.NewClassRepository(db), repository.NewTransactionManager(db), repository.NewEnrollmentRepository(db), repository.NewScheduleRepository(db), repository.NewSessionRepository(db), invoice)
+			limit := 2
+			approval := &domain.ApprovePrivateScheduleRequest{SelectedSlotIndexes: []int{1}, ProposalSnapshot: request.Slots, ExpectedPrivateSlotLimit: &limit}
+			if scenario == "invoice recovery" {
+				invoice.err = errors.New("timeout")
+				if _, err := uc.Approve(ctx, tenant, request.ID, approval); err == nil {
+					t.Fatal("missing invoice failure")
+				}
+				invoice.err = nil
+			}
+			var workers sync.WaitGroup
+			errorsFound := make(chan error, 8)
+			for index := 0; index < 8; index++ {
+				choice := *approval
+				if scenario == "different selections" && index%2 == 0 {
+					choice.SelectedSlotIndexes = []int{0, 2}
+				}
+				workers.Add(1)
+				go func() {
+					defer workers.Done()
+					_, err := uc.Approve(ctx, tenant, request.ID, &choice)
+					errorsFound <- err
+				}()
+			}
+			workers.Wait()
+			close(errorsFound)
+			conflicts := 0
+			for err := range errorsFound {
+				if errors.Is(err, domain.ErrPrivateSelectionConflict) {
+					conflicts++
+				} else if err != nil {
+					t.Fatal(err)
+				}
+			}
+			if scenario == "different selections" && conflicts != 4 {
+				t.Fatalf("conflicts=%d", conflicts)
+			}
+			stored, err := requests.Get(ctx, request.ID, &tenant, nil)
+			if err != nil || len(stored.Slots) != 3 || len(stored.ApprovedSlots) == 0 {
+				t.Fatal("lost decision", err)
+			}
+			var enrollmentCount, scheduleCount, unselectedSessions int64
+			db.Table("enrollments").Where("class_id=? AND gross_amount=100000", class).Count(&enrollmentCount)
+			db.Table("class_schedules").Where("class_id=?", class).Count(&scheduleCount)
+			if enrollmentCount != 1 || scheduleCount != int64(len(stored.ApprovedSlots)) {
+				t.Fatal("duplicate or wrong artifacts", enrollmentCount, scheduleCount)
+			}
+			var event domain.PrivateChatEvent
+			if err := db.Where("request_id=? AND kind='approved'", request.ID).First(&event).Error; err != nil || !samePrivateSlots(event.Slots, stored.ApprovedSlots) {
+				t.Fatal("chat exposes discarded proposals", err)
+			}
+			days := make([]int, 0, len(stored.ApprovedSlots))
+			for _, slot := range stored.ApprovedSlots {
+				days = append(days, slot.DayOfWeek)
+			}
+			if err := db.Table("class_sessions").Where("class_id=? AND EXTRACT(ISODOW FROM session_date) NOT IN ?", class, days).Count(&unselectedSessions).Error; err != nil {
+				t.Fatal(err)
+			}
+			if unselectedSessions != 0 {
+				t.Fatal("unselected sessions generated")
+			}
+		})
+	}
 }

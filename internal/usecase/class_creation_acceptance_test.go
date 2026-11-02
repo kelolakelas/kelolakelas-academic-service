@@ -37,6 +37,9 @@ func TestClassCreationAcceptanceStack(t *testing.T) {
 		path = os.Getenv("KEL229_STACK_CONFIG")
 	}
 	if path == "" {
+		path = os.Getenv("KEL230_STACK_CONFIG")
+	}
+	if path == "" {
 		t.Skip("KEL204_STACK_CONFIG not set")
 	}
 	dsn := os.Getenv("KEL196_TEST_DSN")
@@ -71,7 +74,7 @@ func TestClassCreationAcceptanceStack(t *testing.T) {
 	if err := m.Migrate(1790900000); err != nil {
 		t.Fatal(err)
 	}
-	if os.Getenv("KEL229_STACK_CONFIG") != "" {
+	if os.Getenv("KEL229_STACK_CONFIG") != "" || os.Getenv("KEL230_STACK_CONFIG") != "" {
 		if err := m.Up(); err != nil {
 			t.Fatal(err)
 		}
@@ -81,7 +84,7 @@ func TestClassCreationAcceptanceStack(t *testing.T) {
 	if err := db.Exec("INSERT INTO categories(id,tenant_id,name) VALUES(?,?,'Existing')", category, tenant).Error; err != nil {
 		t.Fatal(err)
 	}
-	permissions := []string{"class:read", "class:create", "class:update", "class:delete", "category:create", "category:read", "schedule:read", "schedule:create", "member:read"}
+	permissions := []string{"class:read", "class:create", "class:update", "class:delete", "category:create", "category:read", "schedule:read", "schedule:create", "member:read", "enrollment:read", "enrollment:update"}
 	identity := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		switch r.URL.Path {
@@ -138,6 +141,10 @@ func TestClassCreationAcceptanceStack(t *testing.T) {
 	})
 	protected := r.Group("/api/v1")
 	protected.Use(middleware.AuthMiddleware(secret))
+	privateConfig := map[string]string{}
+	if os.Getenv("KEL230_STACK_CONFIG") != "" {
+		privateConfig = configurePrivateSelectionAcceptance(t, db, r, protected, tenant, category, secret)
+	}
 	classUC := usecase.NewClassUsecase(repository.NewClassRepository(db), repository.NewScheduleRepository(db), repository.NewSessionRepository(db), repository.NewEnrollmentRepository(db), id, repository.NewTransactionManager(db), repository.NewCategoryRepository(db))
 	protected.PATCH("/classes/:id", middleware.RequirePermission(id, "class:update"), handler.NewClassHandler(classUC, u).Update)
 	protected.POST("/classes/with-category", middleware.RequirePermission(id, "class:create"), handler.NewClassHandler(nil, u).WithCreationPermissions(id).CreateWithCategory)
@@ -189,6 +196,9 @@ func TestClassCreationAcceptanceStack(t *testing.T) {
 		t.Fatal("gateway not ready")
 	}
 	config := map[string]string{"token": token, "gateway": gateway, "academic": academic.URL, "category": category.String(), "teacher": teacher.String(), "tenant": tenant.String()}
+	for key, value := range privateConfig {
+		config[key] = value
+	}
 	data, _ := json.Marshal(config)
 	if err := os.WriteFile(path, data, 0600); err != nil {
 		t.Fatal(err)
