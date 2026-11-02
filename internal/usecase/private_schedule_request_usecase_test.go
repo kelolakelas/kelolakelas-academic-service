@@ -53,6 +53,11 @@ func (r *requestRepoStub) SetStatus(_ context.Context, _, _ uuid.UUID, status st
 	return nil
 }
 
+func (r *requestRepoStub) SaveApprovedSlots(_ context.Context, _, _ uuid.UUID, slots []domain.PrivateScheduleSlot) error {
+	r.created.ApprovedSlots = slots
+	return nil
+}
+
 func TestPrivateScheduleRequestValidationAndTransitions(t *testing.T) {
 	parent, studentID, classID := uuid.New(), uuid.New(), uuid.New()
 	class := &domain.Class{ID: classID, TenantID: uuid.New(), Type: "private", IsPublished: true, EnrollmentStatus: "open"}

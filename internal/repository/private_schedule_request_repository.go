@@ -24,6 +24,7 @@ type PrivateScheduleRequestRepository interface {
 	LockForParent(ctx context.Context, id, parentID uuid.UUID) (*domain.PrivateScheduleRequest, error)
 	LockForTenant(ctx context.Context, id, tenantID uuid.UUID) (*domain.PrivateScheduleRequest, error)
 	SetStatus(ctx context.Context, id, tenantID uuid.UUID, status string) error
+	SaveApprovedSlots(ctx context.Context, id, tenantID uuid.UUID, slots []domain.PrivateScheduleSlot) error
 }
 
 type privateScheduleRequestRepository struct{ db *gorm.DB }
@@ -157,6 +158,21 @@ func (r *privateScheduleRequestRepository) SetStatus(ctx context.Context, id, te
 	}
 	if result.RowsAffected != 1 {
 		return domain.ErrPrivateRequestNotFound
+	}
+	return nil
+}
+
+func (r *privateScheduleRequestRepository) SaveApprovedSlots(ctx context.Context, id, tenantID uuid.UUID, slots []domain.PrivateScheduleSlot) error {
+	encoded, err := json.Marshal(slots)
+	if err != nil {
+		return err
+	}
+	result := GetDB(ctx, r.db).Model(&domain.PrivateScheduleRequest{}).Where("id = ? AND tenant_id = ? AND approved_slots IS NULL", id, tenantID).Update("approved_slots", string(encoded))
+	if result.Error != nil {
+		return result.Error
+	}
+	if result.RowsAffected != 1 {
+		return domain.ErrPrivateSelectionConflict
 	}
 	return nil
 }

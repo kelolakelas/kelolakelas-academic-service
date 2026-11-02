@@ -78,6 +78,9 @@ func (r *privateChatRequests) capture(ctx context.Context, req *domain.PrivateSc
 		return err
 	}
 	slots := req.Slots
+	if kind == "approved" && len(req.ApprovedSlots) > 0 {
+		slots = req.ApprovedSlots
+	}
 	if (kind == "approved" || kind == "recommendation_accepted") && len(req.RecommendedSlots) > 0 {
 		slots = req.RecommendedSlots
 	}

@@ -100,7 +100,7 @@ func TestClassCreationMigrationUpgrade(t *testing.T) {
 				t.Fatal(err)
 			}
 			version, dirty, err := m.Version()
-			if err != nil || dirty || version != 1790900006 {
+			if err != nil || dirty || version != 1790900007 {
 				t.Fatalf("version=%d dirty=%t err=%v", version, dirty, err)
 			}
 			u = newUsecase(repository.NewClassRepository(db))

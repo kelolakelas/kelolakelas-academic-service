@@ -60,6 +60,7 @@ func TestPrivateSlotLimitPostgres(t *testing.T) {
 	must("INSERT INTO categories(id,tenant_id,name) VALUES(?,?,'Test')", category, tenant)
 	must("INSERT INTO classes(id,tenant_id,category_id,name,type,price,is_published) VALUES(?,?,?,'Legacy','private',100,true)", legacy, tenant, category)
 	migrate("00001790900006_private_slot_limit.up.sql")
+	migrate("00001790900007_private_approved_slots.up.sql")
 	classes, categories := repository.NewClassRepository(db), repository.NewCategoryRepository(db)
 	ctx := context.Background()
 	stored, err := classes.GetByID(ctx, legacy)
@@ -130,7 +131,8 @@ func TestPrivateSlotLimitPostgres(t *testing.T) {
 	case <-time.After(5 * time.Second):
 		t.Fatal("edit lock timeout")
 	}
-	go func() { _, err := uc.Approve(ctx, tenant, request.ID); approvalDone <- err }()
+	approval := &domain.ApprovePrivateScheduleRequest{SelectedSlotIndexes: []int{0, 1}, ProposalSnapshot: slots, ExpectedPrivateSlotLimit: &limit}
+	go func() { _, err := uc.Approve(ctx, tenant, request.ID, approval); approvalDone <- err }()
 	select {
 	case err := <-approvalDone:
 		close(release)
@@ -141,7 +143,7 @@ func TestPrivateSlotLimitPostgres(t *testing.T) {
 	if err := <-editDone; err != nil {
 		t.Fatal(err)
 	}
-	if err := <-approvalDone; !errors.Is(err, domain.ErrPrivateSlotLimitExceeded) {
+	if err := <-approvalDone; !errors.Is(err, domain.ErrPrivateSelectionStale) {
 		t.Fatal("stale approval", err)
 	}
 	for _, table := range []string{"enrollments", "class_schedules", "class_sessions"} {
@@ -156,7 +158,7 @@ func TestPrivateSlotLimitPostgres(t *testing.T) {
 	if _, err := classUC.UpdateClass(ctx, tenant, legacy, &domain.UpdateClassRequest{PrivateSlotLimit: &limit}); err != nil {
 		t.Fatal(err)
 	}
-	result, err := uc.Approve(ctx, tenant, request.ID)
+	result, err := uc.Approve(ctx, tenant, request.ID, approval)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -20,6 +20,7 @@ type privateRequestUsecaseRecorder struct {
 	email          string
 	tenant, parent *uuid.UUID
 	approveErr     error
+	approval       *domain.ApprovePrivateScheduleRequest
 	rejection      *domain.RejectPrivateScheduleRequest
 }
 
@@ -60,8 +61,11 @@ func (u *privateRequestUsecaseRecorder) Cancel(_ context.Context, parent, id uui
 	u.called = "cancel"
 	return &domain.PrivateScheduleRequest{ID: id, ParentID: parent, Status: "cancelled"}, nil
 }
-func (u *privateRequestUsecaseRecorder) Approve(_ context.Context, tenant, id uuid.UUID) (*domain.PublicEnrollmentResponse, error) {
+func (u *privateRequestUsecaseRecorder) Approve(_ context.Context, tenant, id uuid.UUID, approvals ...*domain.ApprovePrivateScheduleRequest) (*domain.PublicEnrollmentResponse, error) {
 	u.called = "approve"
+	if len(approvals) > 0 {
+		u.approval = approvals[0]
+	}
 	u.tenant = &tenant
 	if u.approveErr != nil {
 		return nil, u.approveErr
@@ -154,6 +158,13 @@ func TestPrivateRequestHandlerPermissionAndParent(t *testing.T) {
 		t.Fatalf("tenant denied approve=%d called=%s", code, u.called)
 	}
 	p.allowed = true
+	selection := `{"selected_slot_indexes":[1],"proposal_snapshot":[{"day_of_week":1,"start_time":"10:00:00","end_time":"11:00:00"},{"day_of_week":3,"start_time":"12:00:00","end_time":"13:00:00"}],"expected_private_slot_limit":1}`
+	if code := call(http.MethodPost, "/api/v1/schedule-requests/"+id+"/approve", selection, tenantToken); code != 200 || u.approval == nil || len(u.approval.SelectedSlotIndexes) != 1 || u.approval.SelectedSlotIndexes[0] != 1 {
+		t.Fatalf("approval binding %d %+v", code, u.approval)
+	}
+	if code := call(http.MethodPost, "/api/v1/schedule-requests/"+id+"/approve", `{"selected_slot_indexes":["bad"]}`, tenantToken); code != 400 {
+		t.Fatalf("malformed approval=%d", code)
+	}
 	if code := call(http.MethodPost, "/api/v1/schedule-requests/"+id+"/approve", "", tenantToken); code != 200 || u.called != "approve" || u.tenant == nil {
 		t.Fatalf("tenant approve=%d called=%s", code, u.called)
 	}
@@ -162,6 +173,7 @@ func TestPrivateRequestHandlerPermissionAndParent(t *testing.T) {
 		status int
 	}{
 		{domain.ErrPrivateRequestNotFound, 404}, {domain.ErrPrivateRequestTransition, 409}, {domain.ErrPlatformFeeExceedsGross, 422},
+		{domain.ErrPrivateSelection, 422}, {domain.ErrPrivateSelectionStale, 409}, {domain.ErrPrivateSelectionConflict, 409},
 	} {
 		u.approveErr = tc.err
 		if code := call(http.MethodPost, "/api/v1/schedule-requests/"+id+"/approve", "", tenantToken); code != tc.status {
